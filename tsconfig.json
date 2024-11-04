@@ -10,11 +10,12 @@
     ],
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
-    "strict": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "experimentalDecorators": true,
-    "emitDecoratorMetadata": true
+    "emitDecoratorMetadata": true,
+    "strict": false,
+    "strictNullChecks": true
   },
   "include": [
     "src/**/*",
