@@ -16,6 +16,8 @@
     "pino-pretty": "^11.3.0"
   },
   "devDependencies": {
+    "@commitlint/cli": "^19.5.0",
+    "@commitlint/config-conventional": "^19.5.0",
     "bun-types": "latest",
     "husky": "^9.1.6",
     "install": "^0.13.0",
