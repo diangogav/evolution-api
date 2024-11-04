@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "baseUrl": ".",
+    "outDir": "./build",
     "target": "ES2021",
     "module": "ES2022",
     "moduleResolution": "node",

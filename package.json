@@ -7,7 +7,8 @@
     "dev": "bun run --watch src/index.ts",
     "lint": "eslint --ignore-pattern .gitignore .",
     "lint:fix": "bun run lint -- --fix",
-    "prepare": "husky"
+    "prepare": "husky",
+    "build": "tsc"
   },
   "dependencies": {
     "elysia": "latest",
