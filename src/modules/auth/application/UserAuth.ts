@@ -1,6 +1,5 @@
-import { NotFoundError } from "elysia";
-
 import { AuthenticationError } from "../../../shared/errors/AuthenticationError";
+import { NotFoundError } from "../../../shared/errors/NotFoundError";
 import { Hash } from "../../../shared/Hash";
 import { JWT } from "../../../shared/JWT";
 import { UserRepository } from "../../user/domain/UserRepository";
