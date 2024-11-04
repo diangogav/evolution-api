@@ -39,12 +39,11 @@ export class User {
 		return new User(data);
 	}
 
-	toJson(): { id: string; username: string; email: string; password: string } {
+	toJson(): { id: string; username: string; email: string } {
 		return {
 			id: this.id,
 			username: this.username,
 			email: this.email,
-			password: this.password,
 		};
 	}
 }

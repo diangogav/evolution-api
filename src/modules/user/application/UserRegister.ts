@@ -1,5 +1,6 @@
 import { EmailSender } from "../../../shared/email/domain/EmailSender";
 import { ConflictError } from "../../../shared/errors/ConflictError";
+import { Hash } from "../../../shared/Hash";
 import { Logger } from "../../../shared/logger/domain/Logger";
 import { User } from "../domain/User";
 import { UserRepository } from "../domain/UserRepository";
@@ -7,6 +8,7 @@ import { UserRepository } from "../domain/UserRepository";
 export class UserRegister {
 	constructor(
 		private readonly repository: UserRepository,
+		private readonly hash: Hash,
 		private readonly logger: Logger,
 		private readonly emailSender: EmailSender,
 	) {}
@@ -21,8 +23,9 @@ export class UserRegister {
 		}
 
 		const password = this.passwordGenerator(4);
+		const passwordHashed = await this.hash.hash(password);
 
-		const user = User.create({ id, email, username, password });
+		const user = User.create({ id, email, username, password: passwordHashed });
 
 		await this.repository.create(user);
 
