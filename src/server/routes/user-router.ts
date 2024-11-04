@@ -3,6 +3,8 @@ import { randomUUID } from "crypto";
 import { Elysia, t } from "elysia";
 
 import { UserAuth } from "../../modules/auth/application/UserAuth";
+import { MatchesGetter } from "../../modules/match/application/MatchesGetter";
+import { MatchPostgresRepository } from "../../modules/match/infrastructure/MatchPostgresRepository";
 import { UserStatsFinder } from "../../modules/stats/application/UserStatsFinder";
 import { UserStatsPostgresRepository } from "../../modules/stats/infrastructure/UserStatsPostgresRepository";
 import { UserPasswordUpdater } from "../../modules/user/application/UserPasswordUpdater";
@@ -17,6 +19,7 @@ const logger = new Pino();
 const emailSender = new SengridEmailSender();
 const userRepository = new UserPostgresRepository();
 const userStatsRepository = new UserStatsPostgresRepository();
+const matchRepository = new MatchPostgresRepository();
 const hash = new Hash();
 const jwt = new JWT();
 
@@ -73,6 +76,27 @@ export const userRouter = new Elysia({ prefix: "/users" })
 		{
 			query: t.Object({
 				banListName: t.String({ default: "Global" }),
+			}),
+			params: t.Object({
+				userId: t.String(),
+			}),
+		},
+	)
+	.get(
+		"/:userId/matches",
+		async ({ query, params }) => {
+			const banListName = query.banListName;
+			const userId = params.userId;
+			const limit = query.limit;
+			const page = query.page;
+
+			return new MatchesGetter(matchRepository).get({ banListName, userId, limit, page });
+		},
+		{
+			query: t.Object({
+				page: t.Number({ default: 1, minimum: 1 }),
+				limit: t.Number({ default: 100, maximum: 100 }),
+				banListName: t.Optional(t.String()),
 			}),
 			params: t.Object({
 				userId: t.String(),
