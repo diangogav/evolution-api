@@ -6,6 +6,7 @@ import { InvalidArgumentError } from "../shared/errors/InvalidArgumentError";
 import { NotFoundError } from "../shared/errors/NotFoundError";
 import { Logger } from "../shared/logger/domain/Logger";
 
+import { leaderboardRouter } from "./routes/leaderboard-router";
 import { userRouter } from "./routes/user-router";
 
 export class Server {
@@ -35,7 +36,7 @@ export class Server {
 
 		// @ts-expect-error linter not config correctly
 		this.app.group("/api/v1", (app: Elysia) => {
-			return app.use(userRouter);
+			return app.use(userRouter).use(leaderboardRouter);
 		});
 		this.logger = logger;
 	}
