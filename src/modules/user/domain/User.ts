@@ -1,3 +1,5 @@
+import { InvalidArgumentError } from "../../../shared/errors/InvalidArgumentError";
+
 export class User {
 	public readonly id: string;
 	public readonly username: string;
@@ -45,5 +47,18 @@ export class User {
 			username: this.username,
 			email: this.email,
 		};
+	}
+
+	updatePassword(password: string): User {
+		if (!password) {
+			throw new InvalidArgumentError(`password cannot be empty`);
+		}
+
+		return new User({
+			id: this.id,
+			username: this.username,
+			password,
+			email: this.email,
+		});
 	}
 }
