@@ -15,8 +15,10 @@
     "dotenv": "^16.4.5",
     "elysia": "latest",
     "eslint-config-codely": "^4.2.0",
+    "pg": "^8.13.1",
     "pino": "^9.5.0",
-    "pino-pretty": "^11.3.0"
+    "pino-pretty": "^11.3.0",
+    "typeorm": "^0.3.20"
   },
   "devDependencies": {
     "@commitlint/cli": "^19.5.0",
