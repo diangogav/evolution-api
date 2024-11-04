@@ -35,6 +35,10 @@ export class User {
 		return new User({ id, username, email, password });
 	}
 
+	static from(data: { id: string; username: string; password: string; email: string }): User {
+		return new User(data);
+	}
+
 	toJson(): { id: string; username: string; email: string; password: string } {
 		return {
 			id: this.id,
