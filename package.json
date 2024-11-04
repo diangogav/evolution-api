@@ -7,7 +7,7 @@
     "dev": "bun run --watch src/index.ts",
     "lint": "eslint --ignore-pattern .gitignore .",
     "lint:fix": "bun run lint -- --fix",
-    "prepare": "husky",
+    "prepare": "if [ \"$NODE_ENV\" != \"production\" ]; then husky install; fi",
     "build": "tsc"
   },
   "dependencies": {
