@@ -1,3 +1,4 @@
+import swagger from "@elysiajs/swagger";
 import { Elysia } from "elysia";
 
 import { AuthenticationError } from "../shared/errors/AuthenticationError";
@@ -14,7 +15,7 @@ export class Server {
 	private readonly logger: Logger;
 
 	constructor(logger: Logger) {
-		this.app = new Elysia().onError(({ error, set }) => {
+		this.app = new Elysia().use(swagger()).onError(({ error, set }) => {
 			if (error instanceof ConflictError) {
 				set.status = 409;
 			}
