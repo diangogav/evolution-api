@@ -15,4 +15,8 @@ export const config = {
 		from: ensureEnvVariable(process.env.SENDGRID_FROM_EMAIL as string, "SENDGRID_FROM_EMAIL"),
 		templateId: ensureEnvVariable(process.env.SENDGRID_TEMPLATE_ID as string, "SENDGRID_TEMPLATE_ID"),
 	},
+	jwt: {
+		secret: ensureEnvVariable(process.env.JWT_SECRET as string, "JWT_SECRET"),
+		issuer: ensureEnvVariable(process.env.JWT_ISSUER as string, "JWT_ISSUER"),
+	},
 };

@@ -27,4 +27,19 @@ export class UserPostgresRepository implements UserRepository {
 		});
 		await repository.save(userProfileEntity);
 	}
+
+	async findByEmail(email: string): Promise<User | null> {
+		const repository = dataSource.getRepository(UserProfileEntity);
+		const userProfileEntity = await repository.findOne({
+			where: {
+				email,
+			},
+		});
+
+		if (!userProfileEntity) {
+			return null;
+		}
+
+		return User.from(userProfileEntity);
+	}
 }

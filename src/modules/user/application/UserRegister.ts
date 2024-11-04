@@ -23,6 +23,7 @@ export class UserRegister {
 		}
 
 		const password = this.passwordGenerator(4);
+		this.logger.debug(`Password generate for email ${email} is ${password}`);
 		const passwordHashed = await this.hash.hash(password);
 
 		const user = User.create({ id, email, username, password: passwordHashed });
