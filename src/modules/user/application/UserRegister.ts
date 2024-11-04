@@ -1,4 +1,5 @@
 import { EmailSender } from "../../../shared/email/domain/EmailSender";
+import { ConflictError } from "../../../shared/errors/ConflictError";
 import { Logger } from "../../../shared/logger/domain/Logger";
 import { User } from "../domain/User";
 import { UserRepository } from "../domain/UserRepository";
@@ -16,7 +17,7 @@ export class UserRegister {
 		const existingUser = await this.repository.findByEmailOrUsername(email, username);
 
 		if (existingUser) {
-			throw new Error(`User with email ${email} and username ${username} already exists`);
+			throw new ConflictError(`User with email ${email} or username ${username} already exists`);
 		}
 
 		const password = this.passwordGenerator(4);

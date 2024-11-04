@@ -12,7 +12,7 @@ const userRepository = new UserPostgresRepository();
 
 export const userRouter = new Elysia({ prefix: "/users" }).post(
 	"/register",
-	({ body }) => {
+	async ({ body }) => {
 		const id = randomUUID();
 
 		return new UserRegister(userRepository, logger, emailSender).register({ ...body, id });

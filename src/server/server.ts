@@ -1,5 +1,6 @@
 import { Elysia } from "elysia";
 
+import { ConflictError } from "../shared/errors/ConflictError";
 import { Logger } from "../shared/logger/domain/Logger";
 
 import { userRouter } from "./routes/user-router";
@@ -9,7 +10,16 @@ export class Server {
 	private readonly logger: Logger;
 
 	constructor(logger: Logger) {
-		this.app = new Elysia();
+		this.app = new Elysia().onError(({ error, set }) => {
+			if (error instanceof ConflictError) {
+				set.status = 409;
+
+				return error;
+			}
+
+			return error;
+		});
+
 		// @ts-expect-error linter not config correctly
 		this.app.group("/api/v1", (app: Elysia) => {
 			return app.use(userRouter);
