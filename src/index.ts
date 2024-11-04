@@ -1,6 +1,8 @@
-import {Server} from "./server/server";
+import { Server } from "./server/server";
+import { Pino } from "./shared/logger/infrastructure/Pino";
 
 (() => {
-    const server = new Server()
-    server.start()
-})()
+	const logger = new Pino();
+	const server = new Server(logger);
+	server.start();
+})();

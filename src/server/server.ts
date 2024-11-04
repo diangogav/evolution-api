@@ -1,13 +1,19 @@
-import { Elysia } from "elysia"
+import { Elysia } from "elysia";
+
+import { Logger } from "../shared/logger/domain/Logger";
 
 export class Server {
-    private app: Elysia;
+	private readonly app: Elysia;
+	private readonly logger: Logger;
 
-    constructor() {
-        this.app = new Elysia();
-    }
+	constructor(logger: Logger) {
+		this.app = new Elysia();
+		this.logger = logger;
+	}
 
-    start() {
-        this.app.listen(process.env.PORT || 3000, () => console.log(`Server started on port ${process.env.PORT || 3000}`));
-    }
+	start(): void {
+		this.app.listen(process.env.PORT ?? 3000, () =>
+			this.logger.info(`Server started on port ${process.env.PORT ?? 3000}`),
+		);
+	}
 }
