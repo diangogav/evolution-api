@@ -33,6 +33,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# enviroment
+.env
+
 **/*.trace
 **/*.zip
 **/*.tar.gz
