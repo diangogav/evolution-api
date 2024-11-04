@@ -2,14 +2,16 @@
   "name": "evolution-api",
   "version": "1.0.50",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "bun run --watch src/index.ts"
+    "test": "bun test",
+    "dev": "bun run --watch src/index.ts",
+    "prepare": "husky"
   },
   "dependencies": {
     "elysia": "latest"
   },
   "devDependencies": {
-    "bun-types": "latest"
+    "bun-types": "latest",
+    "husky": "^9.1.6"
   },
   "module": "src/index.js"
 }
