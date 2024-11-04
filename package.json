@@ -16,6 +16,7 @@
     "dotenv": "^16.4.5",
     "elysia": "latest",
     "eslint-config-codely": "^4.2.0",
+    "jsonwebtoken": "^9.0.2",
     "pg": "^8.13.1",
     "pino": "^9.5.0",
     "pino-pretty": "^11.3.0",
@@ -24,6 +25,7 @@
   "devDependencies": {
     "@commitlint/cli": "^19.5.0",
     "@commitlint/config-conventional": "^19.5.0",
+    "@types/jsonwebtoken": "^9.0.7",
     "bun-types": "latest",
     "husky": "^9.1.6",
     "install": "^0.13.0",
