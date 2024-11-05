@@ -11,7 +11,13 @@ export class UserAuth {
 		private readonly jwt: JWT,
 	) {}
 
-	async login({ email, password }: { email: string; password: string }): Promise<string> {
+	async login({
+		email,
+		password,
+	}: {
+		email: string;
+		password: string;
+	}): Promise<{ token: string; username: string }> {
 		const user = await this.userRepository.findByEmail(email);
 		if (!user) {
 			throw new NotFoundError(`user with email ${email} not found`);
@@ -23,6 +29,11 @@ export class UserAuth {
 			throw new AuthenticationError("Wrong email or password");
 		}
 
-		return this.jwt.generate({ id: user.id });
+		const token = this.jwt.generate({ id: user.id });
+
+		return {
+			token,
+			username: user.username,
+		};
 	}
 }
