@@ -1,3 +1,4 @@
+import cors from "@elysiajs/cors";
 import swagger from "@elysiajs/swagger";
 import { Elysia } from "elysia";
 
@@ -15,25 +16,28 @@ export class Server {
 	private readonly logger: Logger;
 
 	constructor(logger: Logger) {
-		this.app = new Elysia().use(swagger()).onError(({ error, set }) => {
-			if (error instanceof ConflictError) {
-				set.status = 409;
-			}
+		this.app = new Elysia()
+			.use(cors())
+			.use(swagger())
+			.onError(({ error, set }) => {
+				if (error instanceof ConflictError) {
+					set.status = 409;
+				}
 
-			if (error instanceof AuthenticationError) {
-				set.status = 401;
-			}
+				if (error instanceof AuthenticationError) {
+					set.status = 401;
+				}
 
-			if (error instanceof NotFoundError) {
-				set.status = 404;
-			}
+				if (error instanceof NotFoundError) {
+					set.status = 404;
+				}
 
-			if (error instanceof InvalidArgumentError) {
-				set.status = 400;
-			}
+				if (error instanceof InvalidArgumentError) {
+					set.status = 400;
+				}
 
-			return error;
-		});
+				return error;
+			});
 
 		// @ts-expect-error linter not config correctly
 		this.app.group("/api/v1", (app: Elysia) => {
