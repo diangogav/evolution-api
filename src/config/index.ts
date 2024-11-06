@@ -12,6 +12,7 @@ function ensureEnvVariable(variable: string, variableName: string): string {
 
 export const config = {
 	sendgrid: {
+		apiKey: ensureEnvVariable(process.env.SENDGRID_API_KEY as string, "SENDGRID_API_KEY"),
 		from: ensureEnvVariable(process.env.SENDGRID_FROM_EMAIL as string, "SENDGRID_FROM_EMAIL"),
 		templateId: ensureEnvVariable(process.env.SENDGRID_TEMPLATE_ID as string, "SENDGRID_TEMPLATE_ID"),
 	},
