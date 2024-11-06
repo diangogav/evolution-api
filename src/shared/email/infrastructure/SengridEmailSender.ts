@@ -18,10 +18,7 @@ export class SengridEmailSender implements EmailSender {
 							email,
 						},
 					],
-					dynamic_template_data: {
-						username: data.email,
-						password: data.password,
-					},
+					dynamic_template_data: data,
 				},
 			],
 			templateId: config.sendgrid.templateId,
