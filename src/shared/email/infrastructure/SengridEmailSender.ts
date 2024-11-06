@@ -3,6 +3,8 @@ import sgMail from "@sendgrid/mail";
 import { config } from "../../../config";
 import { EmailSender } from "../domain/EmailSender";
 
+sgMail.setApiKey(config.sendgrid.apiKey);
+
 export class SengridEmailSender implements EmailSender {
 	async send(email: string, data: { [key: string]: string }): Promise<void> {
 		const message = {
