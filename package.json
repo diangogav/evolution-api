@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "test": "bun test",
+    "test:coverage": "bun test --coverage",
     "dev": "bun run --watch src/index.ts",
     "lint": "eslint --ignore-pattern .gitignore .",
     "lint:fix": "bun run lint -- --fix",
@@ -28,6 +29,7 @@
   "devDependencies": {
     "@commitlint/cli": "^19.5.0",
     "@commitlint/config-conventional": "^19.5.0",
+    "@faker-js/faker": "^9.2.0",
     "@types/jsonwebtoken": "^9.0.7",
     "bun-types": "latest",
     "husky": "^9.1.6",

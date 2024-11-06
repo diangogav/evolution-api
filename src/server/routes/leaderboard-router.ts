@@ -1,14 +1,14 @@
 import { Elysia, t } from "elysia";
 
-import { LeaderboardGetter } from "../../modules/leaderboard/application/LeaderboardGetter";
-import { LeaderboardPostgresRepository } from "../../modules/leaderboard/infrastructure/LeaderboardPostgresRepository";
+import { UserStatsLeaderboardGetter } from "../../modules/stats/application/UserStatsLeaderboardGetter";
+import { UserStatsPostgresRepository } from "../../modules/stats/infrastructure/UserStatsPostgresRepository";
 
-const leaderboardRepository = new LeaderboardPostgresRepository();
+const userStatsRepository = new UserStatsPostgresRepository();
 
-export const leaderboardRouter = new Elysia({ prefix: "/leaderboard" }).get(
+export const leaderboardRouter = new Elysia({ prefix: "/stats" }).get(
 	"/",
 	async ({ query }) => {
-		return new LeaderboardGetter(leaderboardRepository).get(query);
+		return new UserStatsLeaderboardGetter(userStatsRepository).get(query);
 	},
 	{
 		query: t.Object({
