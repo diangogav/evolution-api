@@ -4,7 +4,7 @@ import { UserStatsRepository } from "../domain/UserStatsRepository";
 export class UserStatsFinder {
 	constructor(private readonly repository: UserStatsRepository) {}
 
-	async find({ banListName = "Global", userId }: { banListName: string; userId: string }): Promise<unknown> {
+	async find({ banListName = "Global", userId }: { banListName?: string; userId: string }): Promise<unknown> {
 		const stats = await this.repository.find(userId, banListName);
 
 		if (!stats) {
