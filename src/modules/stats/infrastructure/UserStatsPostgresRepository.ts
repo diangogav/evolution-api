@@ -10,7 +10,7 @@ export class UserStatsPostgresRepository implements UserStatsRepository {
 			`
             WITH RankedPlayers AS (
                 SELECT 
-                    id,
+                    username,
                     user_id,
                     points,
                     wins,
@@ -20,6 +20,8 @@ export class UserStatsPostgresRepository implements UserStatsRepository {
                     RANK() OVER (ORDER BY points DESC, (wins::float / NULLIF(wins + losses, 0)) DESC) AS "position"
                 FROM 
                     player_stats
+                INNER JOIN users ON 
+                	users.id = player_stats.user_id
                 WHERE 
                     ban_list_name = $2
             )
@@ -55,6 +57,7 @@ export class UserStatsPostgresRepository implements UserStatsRepository {
 			.innerJoin(UserProfileEntity, "users", "player_stats.userId = users.id")
 			.select([
 				"users.id as userId",
+				"users.username as username",
 				"player_stats.points AS points",
 				"player_stats.wins AS wins",
 				"player_stats.losses AS losses",
