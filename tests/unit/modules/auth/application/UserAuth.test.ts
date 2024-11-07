@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, spyOn } from "bun:test";
+import { mock, MockProxy } from "jest-mock-extended";
 
 import { UserAuth } from "../../../../../src/modules/auth/application/UserAuth";
 import { User } from "../../../../../src/modules/user/domain/User";
 import { UserRepository } from "../../../../../src/modules/user/domain/UserRepository";
-import { UserPostgresRepository } from "../../../../../src/modules/user/infrastructure/UserPostgresRepository";
 import { AuthenticationError } from "../../../../../src/shared/errors/AuthenticationError";
 import { Hash } from "../../../../../src/shared/Hash";
 import { JWT } from "../../../../../src/shared/JWT";
@@ -12,7 +12,7 @@ import { UserMother } from "../../users/mothers/UserMother";
 
 describe("UserAuth", () => {
 	let userAuth: UserAuth;
-	let repository: UserRepository;
+	let repository: MockProxy<UserRepository>;
 	let hash: Hash;
 	let jwt: JWT;
 	let user: User;
@@ -21,7 +21,7 @@ describe("UserAuth", () => {
 	beforeEach(async () => {
 		hash = new Hash();
 		jwt = new JWT({ issuer: "issuer", secret: "secret" });
-		repository = new UserPostgresRepository();
+		repository = mock<UserRepository>();
 		userAuth = new UserAuth(repository, hash, jwt);
 		request = UserAuthRequestMother.create();
 		const hashedPassword = await hash.hash(request.password);
@@ -29,10 +29,10 @@ describe("UserAuth", () => {
 	});
 
 	it("Should login success if data is correct", async () => {
-		const spy = spyOn(repository, "findByEmail").mockResolvedValue(user);
+		repository.findByEmail.mockResolvedValue(user);
 		const response = await userAuth.login(request);
-		expect(spy).toHaveBeenCalledTimes(1);
-		expect(spy).toHaveBeenCalledWith(request.email);
+		expect(repository.findByEmail).toHaveBeenCalledTimes(1);
+		expect(repository.findByEmail).toHaveBeenCalledWith(request.email);
 		expect(response).toContainAllKeys(["token", "username", "id"]);
 		expect(response.username).toBe(user.username);
 	});
