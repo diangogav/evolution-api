@@ -33,7 +33,7 @@ describe("UserAuth", () => {
 		const response = await userAuth.login(request);
 		expect(spy).toHaveBeenCalledTimes(1);
 		expect(spy).toHaveBeenCalledWith(request.email);
-		expect(response).toContainAllKeys(["token", "username"]);
+		expect(response).toContainAllKeys(["token", "username", "id"]);
 		expect(response.username).toBe(user.username);
 	});
 
