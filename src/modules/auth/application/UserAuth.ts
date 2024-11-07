@@ -1,5 +1,4 @@
 import { AuthenticationError } from "../../../shared/errors/AuthenticationError";
-import { NotFoundError } from "../../../shared/errors/NotFoundError";
 import { Hash } from "../../../shared/Hash";
 import { JWT } from "../../../shared/JWT";
 import { UserRepository } from "../../user/domain/UserRepository";
@@ -20,7 +19,7 @@ export class UserAuth {
 	}): Promise<{ token: string; username: string }> {
 		const user = await this.userRepository.findByEmail(email);
 		if (!user) {
-			throw new NotFoundError(`user with email ${email} not found`);
+			throw new AuthenticationError("Wrong email or password");
 		}
 
 		const isCorrectPassword = await this.hash.compare(password, user.password);
