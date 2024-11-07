@@ -1,21 +1,21 @@
 import jwt, { JwtPayload } from "jsonwebtoken";
 
-import { config } from "../config";
-
 import { AuthenticationError } from "./errors/AuthenticationError";
 
 export class JWT {
+	constructor(private readonly config: { issuer: string; secret: string }) {}
+
 	generate(payload: { [key: string]: unknown }): string {
 		const options = {
-			issuer: config.jwt.issuer,
+			issuer: this.config.issuer,
 		};
 
-		return jwt.sign(payload, config.jwt.secret, options);
+		return jwt.sign(payload, this.config.secret, options);
 	}
 
 	decode(token: string): string | JwtPayload {
 		try {
-			return jwt.verify(token, config.jwt.secret, { issuer: config.jwt.issuer });
+			return jwt.verify(token, this.config.secret, { issuer: this.config.issuer });
 		} catch (_error) {
 			throw new AuthenticationError(`Invalid token.`);
 		}

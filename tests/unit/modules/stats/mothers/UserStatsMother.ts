@@ -4,7 +4,7 @@ import { UserStats } from "../../../../../src/modules/stats/domain/UserStats";
 
 export class UserStatsMother {
 	static create(params?: Partial<UserStats>): UserStats {
-		return UserStats.create({
+		return UserStats.from({
 			userId: faker.string.uuid(),
 			username: faker.internet.username(),
 			points: faker.number.int(),

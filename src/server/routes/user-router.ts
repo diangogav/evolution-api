@@ -2,6 +2,7 @@ import { bearer } from "@elysiajs/bearer";
 import { randomUUID } from "crypto";
 import { Elysia, t } from "elysia";
 
+import { config } from "../../config";
 import { UserAuth } from "../../modules/auth/application/UserAuth";
 import { MatchesGetter } from "../../modules/match/application/MatchesGetter";
 import { MatchPostgresRepository } from "../../modules/match/infrastructure/MatchPostgresRepository";
@@ -21,7 +22,7 @@ const userRepository = new UserPostgresRepository();
 const userStatsRepository = new UserStatsPostgresRepository();
 const matchRepository = new MatchPostgresRepository();
 const hash = new Hash();
-const jwt = new JWT();
+const jwt = new JWT(config.jwt);
 
 export const userRouter = new Elysia({ prefix: "/users" })
 	.post(
