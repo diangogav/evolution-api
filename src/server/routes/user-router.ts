@@ -90,14 +90,16 @@ export const userRouter = new Elysia({ prefix: "/users" })
 			const userId = params.userId;
 			const limit = query.limit;
 			const page = query.page;
+			const season = query.season;
 
-			return new MatchesGetter(matchRepository).get({ banListName, userId, limit, page });
+			return new MatchesGetter(matchRepository).get({ banListName, userId, limit, page, season });
 		},
 		{
 			query: t.Object({
 				page: t.Number({ default: 1, minimum: 1 }),
 				limit: t.Number({ default: 100, maximum: 100 }),
 				banListName: t.Optional(t.String()),
+				season: t.Number({ minimum: 1 }),
 			}),
 			params: t.Object({
 				userId: t.String(),

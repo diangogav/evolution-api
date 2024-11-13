@@ -15,6 +15,7 @@ export class MatchMother {
 			points: faker.number.int(),
 			winner: faker.datatype.boolean(),
 			date: faker.date.past(),
+			season: faker.number.int({ min: 1, max: 10 }),
 			...params,
 		});
 	}

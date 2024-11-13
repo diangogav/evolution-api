@@ -6,10 +6,12 @@ export interface MatchRepository {
 		banListName,
 		limit,
 		page,
+		season,
 	}: {
 		userId: string;
 		banListName?: string;
 		limit: number;
 		page: number;
+		season: number;
 	}): Promise<Match[]>;
 }

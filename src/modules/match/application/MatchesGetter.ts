@@ -9,12 +9,14 @@ export class MatchesGetter {
 		banListName,
 		limit = 100,
 		page = 1,
+		season,
 	}: {
 		userId: string;
 		banListName?: string;
 		limit: number;
 		page: number;
+		season: number;
 	}): Promise<Match[]> {
-		return this.repository.get({ userId, banListName, limit, page });
+		return this.repository.get({ userId, banListName, limit, page, season });
 	}
 }

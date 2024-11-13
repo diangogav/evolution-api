@@ -9,6 +9,7 @@ export class Match {
 	public readonly points: number;
 	public readonly winner: boolean;
 	public readonly date: Date;
+	public readonly season: number;
 
 	private constructor({
 		userId,
@@ -21,6 +22,7 @@ export class Match {
 		points,
 		winner,
 		date,
+		season,
 	}: {
 		userId: string;
 		bestOf: number;
@@ -32,6 +34,7 @@ export class Match {
 		points: number;
 		winner: boolean;
 		date: Date;
+		season: number;
 	}) {
 		this.userId = userId;
 		this.bestOf = bestOf;
@@ -43,6 +46,7 @@ export class Match {
 		this.points = points;
 		this.winner = winner;
 		this.date = date;
+		this.season = season;
 	}
 
 	static create({
@@ -56,6 +60,7 @@ export class Match {
 		points,
 		winner,
 		date,
+		season,
 	}: {
 		userId: string;
 		bestOf: number;
@@ -67,6 +72,7 @@ export class Match {
 		points: number;
 		winner: boolean;
 		date: Date;
+		season: number;
 	}): Match {
 		return new Match({
 			userId,
@@ -79,6 +85,7 @@ export class Match {
 			points,
 			winner,
 			date,
+			season,
 		});
 	}
 
@@ -93,6 +100,7 @@ export class Match {
 		points: number;
 		winner: boolean;
 		date: Date;
+		season: number;
 	}): Match {
 		return Match.create(data);
 	}
@@ -108,6 +116,7 @@ export class Match {
 		points: number;
 		winner: boolean;
 		date: Date;
+		season: number;
 	} {
 		return {
 			userId: this.userId,
@@ -120,6 +129,7 @@ export class Match {
 			points: this.points,
 			winner: this.winner,
 			date: this.date,
+			season: this.season,
 		};
 	}
 }

@@ -9,17 +9,20 @@ export class MatchPostgresRepository implements MatchRepository {
 		banListName,
 		limit,
 		page,
+		season,
 	}: {
 		userId: string;
 		banListName?: string;
 		limit: number;
 		page: number;
+		season: number;
 	}): Promise<Match[]> {
 		const repository = dataSource.getRepository(MatchResumeEntity);
 
 		const queryBuilder = repository
 			.createQueryBuilder("match_resume")
 			.where("match_resume.userId = :userId", { userId })
+			.andWhere("match_resume.season = :season", { season })
 			.orderBy("match_resume.date", "DESC")
 			.offset((page - 1) * limit)
 			.limit(limit);
