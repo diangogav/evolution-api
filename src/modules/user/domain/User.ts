@@ -2,9 +2,9 @@ import { InvalidArgumentError } from "../../../shared/errors/InvalidArgumentErro
 
 export class User {
 	public readonly id: string;
-	public readonly username: string;
 	public readonly email: string;
 	public readonly password: string;
+	private _username: string;
 
 	private constructor({
 		id,
@@ -18,7 +18,7 @@ export class User {
 		password: string;
 	}) {
 		this.id = id;
-		this.username = username;
+		this._username = username;
 		this.email = email;
 		this.password = password;
 	}
@@ -41,6 +41,10 @@ export class User {
 		return new User(data);
 	}
 
+	get username(): string {
+		return this._username;
+	}
+
 	toJson(): { id: string; username: string; email: string } {
 		return {
 			id: this.id,
@@ -60,5 +64,13 @@ export class User {
 			password,
 			email: this.email,
 		});
+	}
+
+	updateUsername(username: string): void {
+		if (username.length >= 14 || username.length <= 0) {
+			throw new InvalidArgumentError(`the username must contain between 1 and 14 characters`);
+		}
+
+		this._username = username;
 	}
 }

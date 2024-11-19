@@ -10,6 +10,7 @@ import { UserStatsFinder } from "../../modules/stats/application/UserStatsFinder
 import { UserStatsPostgresRepository } from "../../modules/stats/infrastructure/UserStatsPostgresRepository";
 import { UserPasswordUpdater } from "../../modules/user/application/UserPasswordUpdater";
 import { UserRegister } from "../../modules/user/application/UserRegister";
+import { UserUsernameUpdater } from "../../modules/user/application/UserUsernameUpdater";
 import { UserPostgresRepository } from "../../modules/user/infrastructure/UserPostgresRepository";
 import { SengridEmailSender } from "../../shared/email/infrastructure/SengridEmailSender";
 import { Hash } from "../../shared/Hash";
@@ -103,6 +104,20 @@ export const userRouter = new Elysia({ prefix: "/users" })
 			}),
 			params: t.Object({
 				userId: t.String(),
+			}),
+		},
+	)
+	.use(bearer())
+	.post(
+		"/change-username",
+		async ({ body, bearer }) => {
+			const { id } = jwt.decode(bearer as string) as { id: string };
+
+			return new UserUsernameUpdater(userRepository).updateUsername({ ...body, id });
+		},
+		{
+			body: t.Object({
+				username: t.String({ minLength: 1, maxLength: 14 }),
 			}),
 		},
 	);
