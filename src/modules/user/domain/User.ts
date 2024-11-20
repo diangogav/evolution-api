@@ -67,7 +67,7 @@ export class User {
 	}
 
 	updateUsername(username: string): void {
-		if (username.length >= 14 || username.length <= 0) {
+		if (username.length >= 15 || username.length <= 0) {
 			throw new InvalidArgumentError(`the username must contain between 1 and 14 characters`);
 		}
 
