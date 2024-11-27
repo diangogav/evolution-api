@@ -5,7 +5,7 @@ import { UserStats } from "../domain/UserStats";
 import { UserStatsRepository } from "../domain/UserStatsRepository";
 
 export class UserStatsPostgresRepository implements UserStatsRepository {
-	async find(userId: string, banListName: string, label?: string): Promise<UserStats | null> {
+	async find(userId: string, banListName: string, season: number, label?: string): Promise<UserStats | null> {
 		const subQuery = dataSource
 			.createQueryBuilder()
 			.select([
@@ -20,7 +20,8 @@ export class UserStatsPostgresRepository implements UserStatsRepository {
 			])
 			.from(PlayerStatsEntity, "player_stats")
 			.innerJoin("users", "users", "users.id = player_stats.user_id")
-			.where("player_stats.ban_list_name = :banListName", { banListName });
+			.where("player_stats.ban_list_name = :banListName", { banListName })
+			.andWhere("player_stats.season = :season", { season });
 
 		const response = await dataSource
 			.createQueryBuilder()

@@ -71,13 +71,15 @@ export const userRouter = new Elysia({ prefix: "/users" })
 		"/:userId/stats",
 		async ({ query, params }) => {
 			const banListName = query.banListName;
+			const season = query.season;
 			const userId = params.userId;
 
-			return new UserStatsFinder(userStatsRepository).find({ banListName, userId });
+			return new UserStatsFinder(userStatsRepository).find({ banListName, userId, season });
 		},
 		{
 			query: t.Object({
 				banListName: t.String({ default: "Global" }),
+				season: t.Number({ default: config.season }),
 			}),
 			params: t.Object({
 				userId: t.String(),

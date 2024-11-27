@@ -1,7 +1,7 @@
 import { UserStats } from "./UserStats";
 
 export interface UserStatsRepository {
-	find(userId: string, banListName: string): Promise<UserStats | null>;
+	find(userId: string, banListName: string, season: number): Promise<UserStats | null>;
 	leaderboard({
 		page,
 		limit,

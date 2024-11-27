@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "bun:test";
 import { mock, MockProxy } from "jest-mock-extended";
+import { config } from "src/config";
 
 import { UserStatsFinder } from "../../../../../src/modules/stats/application/UserStatsFinder";
 import { UserStats } from "../../../../../src/modules/stats/domain/UserStats";
@@ -20,23 +21,27 @@ describe("UserStatsFinder", () => {
 
 	it("Should return user stats when they exist for the given user and ban list", async () => {
 		repository.find.mockResolvedValue(userStats);
-		const response = await userStatsFinder.find({ userId: userStats.userId, banListName: "Global" });
+		const response = await userStatsFinder.find({
+			userId: userStats.userId,
+			banListName: "Global",
+			season: config.season,
+		});
 		expect(repository.find).toHaveBeenCalledTimes(1);
-		expect(repository.find).toHaveBeenCalledWith(userStats.userId, "Global");
+		expect(repository.find).toHaveBeenCalledWith(userStats.userId, "Global", config.season);
 		expect(response).toEqual(userStats.toJson());
 	});
 
 	it("Should default to the 'Global' ban list when none is specified", async () => {
 		repository.find.mockResolvedValue(userStats);
-		const response = await userStatsFinder.find({ userId: userStats.userId });
+		const response = await userStatsFinder.find({ userId: userStats.userId, season: config.season });
 		expect(repository.find).toHaveBeenCalledTimes(1);
-		expect(repository.find).toHaveBeenCalledWith(userStats.userId, "Global");
+		expect(repository.find).toHaveBeenCalledWith(userStats.userId, "Global", config.season);
 		expect(response).toEqual(userStats.toJson());
 	});
 
 	it("Should throw NotFoundError when stats are not found for the given user", async () => {
 		repository.find.mockResolvedValue(null);
-		expect(userStatsFinder.find({ userId: userStats.userId })).rejects.toThrow(
+		expect(userStatsFinder.find({ userId: userStats.userId, season: config.season })).rejects.toThrow(
 			new NotFoundError(`Stats for user with id ${userStats.userId} not found.`),
 		);
 	});
