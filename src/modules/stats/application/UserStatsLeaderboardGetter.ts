@@ -1,3 +1,5 @@
+import { config } from "src/config";
+
 import { UserStatsRepository } from "../domain/UserStatsRepository";
 
 export class UserStatsLeaderboardGetter {
@@ -7,12 +9,14 @@ export class UserStatsLeaderboardGetter {
 		page = 1,
 		limit = 100,
 		banListName = "Global",
+		season = config.season,
 	}: {
 		page: number;
 		limit: number;
 		banListName: string;
+		season: number;
 	}): Promise<unknown[]> {
-		const leaderboard = await this.repository.leaderboard({ page, limit, banListName });
+		const leaderboard = await this.repository.leaderboard({ page, limit, banListName, season });
 
 		return leaderboard.map((item) => item.toJson());
 	}

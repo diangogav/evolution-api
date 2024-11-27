@@ -64,10 +64,12 @@ export class UserStatsPostgresRepository implements UserStatsRepository {
 		page,
 		limit,
 		banListName,
+		season,
 	}: {
 		page: number;
 		limit: number;
 		banListName: string;
+		season: number;
 	}): Promise<UserStats[]> {
 		const leaderboard = await dataSource
 			.createQueryBuilder()
@@ -101,6 +103,7 @@ export class UserStatsPostgresRepository implements UserStatsRepository {
 			.leftJoin("user_achievements", "ua", "ua.user_id = users.id")
 			.leftJoin("achievements", "a", "a.id = ua.achievement_id")
 			.where("player_stats.ban_list_name = :banListName", { banListName })
+			.andWhere("player_stats.season = :season", { season })
 			.groupBy(
 				"users.id, users.username, player_stats.points, player_stats.wins, player_stats.losses, player_stats.ban_list_name",
 			)

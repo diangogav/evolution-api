@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "bun:test";
 import { mock, MockProxy } from "jest-mock-extended";
+import { config } from "src/config";
 
 import { UserStatsLeaderboardGetter } from "../../../../../src/modules/stats/application/UserStatsLeaderboardGetter";
 import { UserStats } from "../../../../../src/modules/stats/domain/UserStats";
@@ -18,7 +19,7 @@ describe("LeaderboardGetter", () => {
 	});
 
 	it("Should be able to get stats postgres", async () => {
-		const params = { page: 1, banListName: "Global", limit: 1 };
+		const params = { page: 1, banListName: "Global", limit: 1, season: config.season };
 		repository.leaderboard.mockResolvedValue(userStats);
 		const response = await leaderboardGetter.get(params);
 		expect(repository.leaderboard).toHaveBeenCalledTimes(1);

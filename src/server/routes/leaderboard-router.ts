@@ -3,6 +3,8 @@ import { Elysia, t } from "elysia";
 import { UserStatsLeaderboardGetter } from "../../modules/stats/application/UserStatsLeaderboardGetter";
 import { UserStatsPostgresRepository } from "../../modules/stats/infrastructure/UserStatsPostgresRepository";
 
+import { config } from "./../../config/index";
+
 const userStatsRepository = new UserStatsPostgresRepository();
 
 export const leaderboardRouter = new Elysia({ prefix: "/stats" }).get(
@@ -15,6 +17,7 @@ export const leaderboardRouter = new Elysia({ prefix: "/stats" }).get(
 			page: t.Number({ default: 1, minimum: 1 }),
 			limit: t.Number({ default: 100, maximum: 100 }),
 			banListName: t.String({ default: "Global" }),
+			season: t.Number({ default: config.season }),
 		}),
 	},
 );

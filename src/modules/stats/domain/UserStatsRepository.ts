@@ -6,9 +6,11 @@ export interface UserStatsRepository {
 		page,
 		limit,
 		banListName,
+		season,
 	}: {
 		page: number;
 		limit: number;
 		banListName: string;
+		season: number;
 	}): Promise<UserStats[]>;
 }
