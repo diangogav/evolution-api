@@ -100,7 +100,7 @@ export const userRouter = new Elysia({ prefix: "/users" })
 				page: t.Number({ default: 1, minimum: 1 }),
 				limit: t.Number({ default: 100, maximum: 100 }),
 				banListName: t.Optional(t.String()),
-				season: t.Number({ default: 3, minimum: 1 }),
+				season: t.Number({ default: config.season, minimum: 1 }),
 			}),
 			params: t.Object({
 				userId: t.String(),
