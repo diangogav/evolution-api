@@ -12,13 +12,13 @@ import { UserPasswordUpdater } from "../../modules/user/application/UserPassword
 import { UserRegister } from "../../modules/user/application/UserRegister";
 import { UserUsernameUpdater } from "../../modules/user/application/UserUsernameUpdater";
 import { UserPostgresRepository } from "../../modules/user/infrastructure/UserPostgresRepository";
-import { SengridEmailSender } from "../../shared/email/infrastructure/SengridEmailSender";
+import { ResendEmailSender } from "../../shared/email/infrastructure/ResendEmailSender";
 import { Hash } from "../../shared/Hash";
 import { JWT } from "../../shared/JWT";
 import { Pino } from "../../shared/logger/infrastructure/Pino";
 
 const logger = new Pino();
-const emailSender = new SengridEmailSender();
+const emailSender = new ResendEmailSender();
 const userRepository = new UserPostgresRepository();
 const userStatsRepository = new UserStatsPostgresRepository();
 const matchRepository = new MatchPostgresRepository();

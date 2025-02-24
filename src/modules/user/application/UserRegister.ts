@@ -30,7 +30,14 @@ export class UserRegister {
 
 		await this.repository.create(user);
 
-		this.emailSender.send(user.email, { username, password }).catch((error: Error) => {
+		const emailData = {
+			username,
+			password,
+			subject: "Welcome to Evolution YGO",
+			html: `<p>Welcome ${username}! Your password is ${password}</p>`,
+		};
+
+		this.emailSender.send(user.email, emailData).catch((error: Error) => {
 			this.logger.error(`Error sending email to ${email}`);
 			this.logger.error(error);
 		});
