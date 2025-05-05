@@ -8,11 +8,15 @@ import { MatchesGetter } from "../../modules/match/application/MatchesGetter";
 import { MatchPostgresRepository } from "../../modules/match/infrastructure/MatchPostgresRepository";
 import { UserStatsFinder } from "../../modules/stats/application/UserStatsFinder";
 import { UserStatsPostgresRepository } from "../../modules/stats/infrastructure/UserStatsPostgresRepository";
+import { UserForgotPassword } from "../../modules/user/application/UserForgotPassword";
+import { UserPasswordReset } from "../../modules/user/application/UserPasswordReset";
 import { UserPasswordUpdater } from "../../modules/user/application/UserPasswordUpdater";
 import { UserRegister } from "../../modules/user/application/UserRegister";
+import { UserTokenValidator } from "../../modules/user/application/UserTokenValidator";
 import { UserUsernameUpdater } from "../../modules/user/application/UserUsernameUpdater";
 import { UserPostgresRepository } from "../../modules/user/infrastructure/UserPostgresRepository";
 import { ResendEmailSender } from "../../shared/email/infrastructure/ResendEmailSender";
+import { AuthenticationError } from "../../shared/errors/AuthenticationError";
 import { Hash } from "../../shared/Hash";
 import { JWT } from "../../shared/JWT";
 import { Pino } from "../../shared/logger/infrastructure/Pino";
@@ -52,13 +56,61 @@ export const userRouter = new Elysia({ prefix: "/users" })
 			}),
 		},
 	)
-	.use(bearer())
+	.post(
+		"/forgot-password",
+		async ({ body, request }) => {
+			const baseUrl = request.headers.get("origin") || request.headers.get("referer") || "";
+
+			return new UserForgotPassword(userRepository, emailSender, jwt, logger, baseUrl).forgotPassword(body);
+		},
+		{
+			body: t.Object({
+				email: t.String(),
+			}),
+		},
+	)
+	.get(
+		"/validate-token",
+		async ({ query }) => {
+			return new UserTokenValidator(userRepository, jwt, logger).validateToken({
+				token: query.token,
+			});
+		},
+		{
+			query: t.Object({
+				token: t.String(),
+			}),
+		},
+	)
 	.post(
 		"/reset-password",
+		async ({ body, headers }) => {
+			const token = headers.authorization?.replace("Bearer ", "");
+			if (!token) {
+				throw new AuthenticationError("No token provided");
+			}
+
+			return new UserPasswordReset(userRepository, hash, emailSender, logger, jwt).resetPassword({
+				token,
+				newPassword: body.password,
+			});
+		},
+		{
+			body: t.Object({
+				password: t.String({ minLength: 4, maxLength: 4 }),
+			}),
+		},
+	)
+	.use(bearer())
+	.post(
+		"/change-password",
 		async ({ body, bearer }) => {
 			const decodedToken = jwt.decode(bearer as string) as { id: string };
 
-			return new UserPasswordUpdater(userRepository, hash).updatePassword({ ...body, id: decodedToken.id });
+			return new UserPasswordUpdater(userRepository, hash, logger, emailSender).updatePassword({
+				...body,
+				id: decodedToken.id,
+			});
 		},
 		{
 			body: t.Object({

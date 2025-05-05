@@ -34,7 +34,7 @@ export class UserRegister {
 			username,
 			password,
 			subject: "Welcome to Evolution YGO",
-			html: `<p>Welcome ${username}! Your password is ${password}</p>`,
+			html: `<p>Welcome ${username}, your password is ${password}</p>`,
 		};
 
 		this.emailSender.send(user.email, emailData).catch((error: Error) => {
