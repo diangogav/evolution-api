@@ -17,6 +17,9 @@ jobs:
       - name: Set up Bun
         uses: oven-sh/setup-bun@v1
 
+      - name: Ensure submodules are initialized
+        run: git submodule update --init --recursive
+
       - name: Install dependencies
         run: bun install
 
