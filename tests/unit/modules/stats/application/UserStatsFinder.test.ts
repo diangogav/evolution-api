@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it } from "bun:test";
 import { mock, MockProxy } from "jest-mock-extended";
-import { config } from "src/config";
 
 import { UserStatsFinder } from "../../../../../src/modules/stats/application/UserStatsFinder";
 import { UserStats } from "../../../../../src/modules/stats/domain/UserStats";
 import { UserStatsRepository } from "../../../../../src/modules/stats/domain/UserStatsRepository";
 import { NotFoundError } from "../../../../../src/shared/errors/NotFoundError";
 import { UserStatsMother } from "../mothers/UserStatsMother";
+import { config } from "src/config";
 
 describe("UserStatsFinder", () => {
 	let userStatsFinder: UserStatsFinder;

@@ -3,8 +3,8 @@
   "version": "1.0.50",
   "type": "module",
   "scripts": {
-    "test": "bun test",
-    "test:coverage": "bun test --coverage",
+    "test": "bun test --setup=test/setup.ts",
+    "test:coverage": "bun test --setup=test/setup.ts --coverage",
     "dev": "bun run --watch src/index.ts",
     "lint": "eslint --ignore-pattern .gitignore .",
     "lint:fix": "bun run lint -- --fix",
