@@ -4,7 +4,7 @@ import { UserStatsLeaderboardGetter } from "../../modules/stats/application/User
 import { UserStatsPostgresRepository } from "../../modules/stats/infrastructure/UserStatsPostgresRepository";
 
 import { config } from "./../../config/index";
-import { GetBestPlayerOfLastCompletedWeek } from "../../../modules/stats/application/GetBestPlayerOfLastCompletedWeek";
+import { GetBestPlayerOfLastCompletedWeek } from "../../modules/stats/application/GetBestPlayerOfLastCompletedWeek";
 
 const userStatsRepository = new UserStatsPostgresRepository();
 
