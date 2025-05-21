@@ -27,6 +27,7 @@ export class UserTokenValidator {
 				userId: user.id,
 			};
 		} catch (error) {
+			this.logger.error(error);
 			throw new AuthenticationError("Invalid or expired token");
 		}
 	}
