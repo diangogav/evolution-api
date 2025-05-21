@@ -4,6 +4,7 @@ import { UserStatsLeaderboardGetter } from "../../modules/stats/application/User
 import { UserStatsPostgresRepository } from "../../modules/stats/infrastructure/UserStatsPostgresRepository";
 
 import { config } from "./../../config/index";
+import { GetBestPlayerOfLastCompletedWeek } from "../../../modules/stats/application/GetBestPlayerOfLastCompletedWeek";
 
 const userStatsRepository = new UserStatsPostgresRepository();
 
@@ -19,5 +20,11 @@ export const leaderboardRouter = new Elysia({ prefix: "/stats" }).get(
 			banListName: t.String({ default: "Global" }),
 			season: t.Number({ default: config.season }),
 		}),
+	},
+)
+.get(
+	"/player-of-the-week",
+	async () => {
+		return new GetBestPlayerOfLastCompletedWeek(userStatsRepository).get();
 	},
 );

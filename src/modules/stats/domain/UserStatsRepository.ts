@@ -1,3 +1,4 @@
+import { PeriodUserStats } from "./PeriodUserStats";
 import { UserStats } from "./UserStats";
 
 export interface UserStatsRepository {
@@ -13,4 +14,5 @@ export interface UserStatsRepository {
 		banListName: string;
 		season: number;
 	}): Promise<UserStats[]>;
+	getBestPlayerOfLastCompletedWeek(): Promise<PeriodUserStats[]>;
 }

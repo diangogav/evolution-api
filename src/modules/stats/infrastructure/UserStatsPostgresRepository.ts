@@ -1,6 +1,7 @@
 import { dataSource } from "../../../evolution-types/src/data-source";
 import { PlayerStatsEntity } from "../../../evolution-types/src/entities/PlayerStatsEntity";
 import { UserProfileEntity } from "../../../evolution-types/src/entities/UserProfileEntity";
+import { PeriodUserStats } from "../domain/PeriodUserStats";
 import { UserStats } from "../domain/UserStats";
 import { UserStatsRepository } from "../domain/UserStatsRepository";
 
@@ -117,4 +118,71 @@ export class UserStatsPostgresRepository implements UserStatsRepository {
 
 		return leaderboard.map((item) => UserStats.from({ ...item, userId: item.userid, winRate: item.winrate }));
 	}
+
+	async getBestPlayerOfLastCompletedWeek(): Promise<PeriodUserStats[]> {
+		const response = await dataSource.query(`
+			WITH current_utc AS (
+				SELECT NOW() AT TIME ZONE 'UTC' AS now_utc
+			),
+			last_sunday AS (
+				SELECT DATE_TRUNC('week', now_utc)::date AS this_sunday
+				FROM current_utc
+			),
+			target_week AS (
+				SELECT
+					this_sunday - INTERVAL '7 days' AS week_start,
+					this_sunday - INTERVAL '1 day'  AS week_end
+				FROM last_sunday
+			),
+			week_matches AS (
+				SELECT
+					user_id,
+					DATE_TRUNC('week', date AT TIME ZONE 'UTC')::date AS match_week,
+					SUM(points) AS total_points,
+					COUNT(*) FILTER (WHERE winner = true) AS wins,
+					COUNT(*) FILTER (WHERE winner = false) AS losses
+				FROM matches
+				GROUP BY user_id, match_week
+			),
+			filtered_matches AS (
+				SELECT
+					wm.user_id,
+					tw.week_start,
+					tw.week_end,
+					wm.total_points,
+					wm.wins,
+					wm.losses
+				FROM week_matches wm
+				JOIN target_week tw ON wm.match_week = tw.week_start
+			),
+			ranked AS (
+				SELECT *,
+					DENSE_RANK() OVER (ORDER BY total_points DESC) AS rank
+				FROM filtered_matches
+			)
+			SELECT
+				r.user_id,
+				u.username,
+				r.week_start,
+				r.week_end,
+				r.total_points,
+				r.wins,
+				r.losses
+			FROM ranked r
+			JOIN users u ON u.id = r.user_id
+			WHERE r.rank = 1;
+		`);
+
+		return response.map((item) => PeriodUserStats.from({
+			userId: item?.user_id,
+			username: item?.username,
+			points: item?.total_points,
+			wins: item?.wins,
+			losses: item?.losses,
+			from: item?.week_start,
+			to: item?.week_end
+		}));
+
+	}
+
 }
