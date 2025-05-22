@@ -58,6 +58,13 @@ export class UserPasswordUpdater {
 				<p>Regards,</p>
 				<p>Evolution YGO Team</p>
 			`,
+			text: `
+				Hello ${user.username}!
+				Your password has been successfully changed.
+				If you didn't make this change, please contact support immediately.
+				Regards,
+				Evolution YGO Team
+			`,
 		};
 
 		await this.emailSender.send(user.email, emailData);

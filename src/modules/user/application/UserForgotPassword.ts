@@ -37,6 +37,12 @@ export class UserForgotPassword {
 				<p>Regards,</p>
 				<p>Evolution YGO Team</p>
 			`,
+			text: `
+				Hello ${user.username}!
+				You have requested to reset your password. Use the following link to reset your password:
+				${this.baseUrl}/reset-password?token=${token}
+				This link will expire in 1 hour.
+			`,
 		};
 
 		this.emailSender.send(user.email, emailData).catch((error: Error) => {

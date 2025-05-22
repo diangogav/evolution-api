@@ -14,7 +14,7 @@ export class UserPasswordReset {
 		private readonly emailSender: EmailSender,
 		private readonly logger: Logger,
 		private readonly jwt: JWT,
-	) {}
+	) { }
 
 	async resetPassword({ token, newPassword }: { token: string; newPassword: string }): Promise<void> {
 		if (!token) {
@@ -51,6 +51,13 @@ export class UserPasswordReset {
 					<p>If you didn't make this change, please contact support immediately.</p>
 					<p>Regards,</p>
 					<p>Evolution YGO Team</p>
+				`,
+				text: `
+					Hello ${user.username}!
+					Your password has been successfully changed.
+					If you didn't make this change, please contact support immediately.
+					Regards,
+					Evolution YGO Team
 				`,
 			};
 
