@@ -12,6 +12,7 @@ export class ResendEmailSender implements EmailSender {
 			to: [email],
 			subject: `${data.subject}`,
 			html: data.html,
+			text: data.text,
 		};
 
 		await resend.emails.send(message);
