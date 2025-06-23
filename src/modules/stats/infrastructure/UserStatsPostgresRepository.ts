@@ -136,13 +136,14 @@ export class UserStatsPostgresRepository implements UserStatsRepository {
 			),
 			week_matches AS (
 				SELECT
-					user_id,
-					DATE_TRUNC('week', date AT TIME ZONE 'UTC')::date AS match_week,
-					SUM(points) AS total_points,
-					COUNT(*) FILTER (WHERE winner = true) AS wins,
-					COUNT(*) FILTER (WHERE winner = false) AS losses
-				FROM matches
-				GROUP BY user_id, match_week
+					m.user_id,
+					DATE_TRUNC('week', m.date AT TIME ZONE 'UTC')::date AS match_week,
+					SUM(m.points) AS total_points,
+					COUNT(*) FILTER (WHERE m.winner = true) AS wins,
+					COUNT(*) FILTER (WHERE m.winner = false) AS losses
+				FROM matches m
+				JOIN users u ON u.id = m.user_id AND u.deleted_at IS NULL
+				GROUP BY m.user_id, match_week
 			),
 			filtered_matches AS (
 				SELECT

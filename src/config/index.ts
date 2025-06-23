@@ -24,5 +24,5 @@ export const config = {
 		secret: ensureEnvVariable(process.env.JWT_SECRET as string, "JWT_SECRET"),
 		issuer: ensureEnvVariable(process.env.JWT_ISSUER as string, "JWT_ISSUER"),
 	},
-	season: 4,
+	season: Number(ensureEnvVariable(process.env.SEASON as string, "SEASON")),
 };
