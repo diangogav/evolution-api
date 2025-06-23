@@ -4,13 +4,13 @@ import { PlayerStatsEntity } from "../../../evolution-types/src/entities/PlayerS
 import { BanListRepository } from "../domain/BanListRepository";
 
 export class BanListPostgresRepository implements BanListRepository {
-	async get(): Promise<string[]> {
+	async get(season?: number): Promise<string[]> {
 		const repository = dataSource.getRepository(PlayerStatsEntity);
 
 		const banListNames = await repository
 			.createQueryBuilder()
 			.select("ban_list_name")
-			.where("season = :season", { season: config.season })
+			.where("season = :season", { season: season ?? config.season })
 			.groupBy("ban_list_name")
 			.orderBy("ban_list_name", "ASC")
 			.getRawMany();

@@ -1,3 +1,3 @@
 export interface BanListRepository {
-	get(): Promise<string[]>;
+	get(season?: number): Promise<string[]>;
 }
