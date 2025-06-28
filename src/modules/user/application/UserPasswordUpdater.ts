@@ -37,6 +37,9 @@ export class UserPasswordUpdater {
 			throw new AuthenticationError("Wrong password");
 		}
 
+		if (!newPassword.trim()) {
+			throw new InvalidArgumentError(`password cannot be empty or only spaces`);
+		}
 		if (newPassword.length !== 4) {
 			throw new InvalidArgumentError(`password must have a length of 4`);
 		}

@@ -21,6 +21,10 @@ export class UserPasswordReset {
 			throw new AuthenticationError("No token provided");
 		}
 
+		if (!newPassword.trim()) {
+			throw new InvalidArgumentError("password cannot be empty or only spaces");
+		}
+
 		if (newPassword.length !== 4) {
 			throw new InvalidArgumentError("Password must be exactly 4 characters long");
 		}
