@@ -34,6 +34,18 @@ export class User {
 		email: string;
 		password: string;
 	}): User {
+		if (!username.trim()) {
+			throw new InvalidArgumentError(`username cannot be empty`);
+		}
+		if (username.length > 14) {
+			throw new InvalidArgumentError(`the username must contain between 1 and 14 characters`);
+		}
+		if (!email.trim()) {
+			throw new InvalidArgumentError(`email cannot be empty`);
+		}
+		if (!password.trim()) {
+			throw new InvalidArgumentError(`password cannot be empty`);
+		}
 		return new User({ id, username, email, password });
 	}
 
@@ -67,10 +79,12 @@ export class User {
 	}
 
 	updateUsername(username: string): void {
-		if (username.length >= 15 || username.length <= 0) {
+		if (!username.trim()) {
+			throw new InvalidArgumentError(`username cannot be empty`);
+		}
+		if (username.length > 14 || username.length <= 0) {
 			throw new InvalidArgumentError(`the username must contain between 1 and 14 characters`);
 		}
-
 		this._username = username;
 	}
 }

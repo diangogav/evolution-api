@@ -39,8 +39,8 @@ export const userRouter = new Elysia({ prefix: "/users" })
 		},
 		{
 			body: t.Object({
-				username: t.String(),
-				email: t.String(),
+				username: t.String({ minLength: 1, maxLength: 14, pattern: '^.*\\S.*$' }),
+				email: t.String({ minLength: 1, pattern: '^.*\\S.*$' }),
 			}),
 		},
 	)
@@ -51,8 +51,8 @@ export const userRouter = new Elysia({ prefix: "/users" })
 		},
 		{
 			body: t.Object({
-				email: t.String(),
-				password: t.String(),
+				email: t.String({ minLength: 1, pattern: '^.*\\S.*$' }),
+				password: t.String({ minLength: 1, pattern: '^.*\\S.*$' }),
 			}),
 		},
 	)
@@ -65,7 +65,7 @@ export const userRouter = new Elysia({ prefix: "/users" })
 		},
 		{
 			body: t.Object({
-				email: t.String(),
+				email: t.String({ minLength: 1, pattern: '^.*\\S.*$' }),
 			}),
 		},
 	)
@@ -97,7 +97,7 @@ export const userRouter = new Elysia({ prefix: "/users" })
 		},
 		{
 			body: t.Object({
-				password: t.String({ minLength: 4, maxLength: 4 }),
+				password: t.String({ minLength: 4, maxLength: 4, pattern: '^.*\\S.*$' }),
 			}),
 		},
 	)
@@ -114,8 +114,8 @@ export const userRouter = new Elysia({ prefix: "/users" })
 		},
 		{
 			body: t.Object({
-				password: t.String(),
-				newPassword: t.String({ minLength: 4, maxLength: 4 }),
+				password: t.String({ minLength: 1, pattern: '^.*\\S.*$' }),
+				newPassword: t.String({ minLength: 4, maxLength: 4, pattern: '^.*\\S.*$' }),
 			}),
 		},
 	)
@@ -171,7 +171,7 @@ export const userRouter = new Elysia({ prefix: "/users" })
 		},
 		{
 			body: t.Object({
-				username: t.String({ minLength: 1, maxLength: 14 }),
+				username: t.String({ minLength: 1, maxLength: 14, pattern: '^.*\\S.*$' }),
 			}),
 		},
 	);
