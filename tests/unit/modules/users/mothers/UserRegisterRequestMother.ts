@@ -9,7 +9,7 @@ export class UserRegisterRequestMother {
 		return {
 			id: faker.string.uuid(),
 			email: faker.internet.email(),
-			username: faker.internet.password(),
+			username: faker.internet.username().slice(0, 14),
 			...params,
 		};
 	}
