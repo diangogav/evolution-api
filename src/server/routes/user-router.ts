@@ -39,11 +39,11 @@ const jwt = new JWT(config.jwt);
 const userBanRepository = new UserBanPostgresRepository();
 
 export const userRouter = new Elysia({ prefix: "/users" })
+	// Public Endpoints
 	.post(
 		"/register",
 		async ({ body }) => {
 			const id = randomUUID();
-
 			return new UserRegister(userRepository, hash, logger, emailSender).register({ ...body, id });
 		},
 		{
@@ -69,7 +69,6 @@ export const userRouter = new Elysia({ prefix: "/users" })
 		"/forgot-password",
 		async ({ body, request }) => {
 			const baseUrl = request.headers.get("origin") || request.headers.get("referer") || "";
-
 			return new UserForgotPassword(userRepository, emailSender, jwt, logger, baseUrl).forgotPassword(body);
 		},
 		{
@@ -98,7 +97,6 @@ export const userRouter = new Elysia({ prefix: "/users" })
 			if (!token) {
 				throw new AuthenticationError("No token provided");
 			}
-
 			return new UserPasswordReset(userRepository, hash, emailSender, logger, jwt).resetPassword({
 				token,
 				newPassword: body.password,
@@ -110,81 +108,82 @@ export const userRouter = new Elysia({ prefix: "/users" })
 			}),
 		},
 	)
+
+	// Authenticated Endpoints protected by banGuard
 	.use(bearer())
 	.guard(banGuard, (app) =>
-		app.post(
-			"/change-password",
-			async ({ body, bearer }) => {
-				const decodedToken = jwt.decode(bearer as string) as { id: string };
-				return new UserPasswordUpdater(userRepository, hash, logger, emailSender).updatePassword({
-					...body,
-					id: decodedToken.id,
-				});
-			},
-			{
-				body: t.Object({
-					password: t.String({ minLength: 1, pattern: '^.*\\S.*$' }),
-					newPassword: t.String({ minLength: 4, maxLength: 4, pattern: '^.*\\S.*$' }),
-				}),
-			}
-		)
+		app
+			.post(
+				"/change-password",
+				async ({ body, bearer }) => {
+					const decodedToken = jwt.decode(bearer as string) as { id: string };
+					return new UserPasswordUpdater(userRepository, hash, logger, emailSender).updatePassword({
+						...body,
+						id: decodedToken.id,
+					});
+				},
+				{
+					body: t.Object({
+						password: t.String({ minLength: 1, pattern: '^.*\\S.*$' }),
+						newPassword: t.String({ minLength: 4, maxLength: 4, pattern: '^.*\\S.*$' }),
+					}),
+				},
+			)
+			.post(
+				"/change-username",
+				async ({ body, bearer }) => {
+					const { id } = jwt.decode(bearer as string) as { id: string };
+					return new UserUsernameUpdater(userRepository).updateUsername({ ...body, id });
+				},
+				{
+					body: t.Object({
+						username: t.String({ minLength: 1, maxLength: 14, pattern: '^.*\\S.*$' }),
+					}),
+				},
+			)
+			.get(
+				"/:userId/stats",
+				async ({ query, params }) => {
+					const banListName = query.banListName;
+					const season = query.season;
+					const userId = params.userId;
+					return new UserStatsFinder(userStatsRepository).find({ banListName, userId, season });
+				},
+				{
+					query: t.Object({
+						banListName: t.String({ default: "Global" }),
+						season: t.Number({ default: config.season }),
+					}),
+					params: t.Object({
+						userId: t.String(),
+					}),
+				},
+			)
+			.get(
+				"/:userId/matches",
+				async ({ query, params }) => {
+					const banListName = query.banListName;
+					const userId = params.userId;
+					const limit = query.limit;
+					const page = query.page;
+					const season = query.season;
+					return new MatchesGetter(matchRepository).get({ banListName, userId, limit, page, season });
+				},
+				{
+					query: t.Object({
+						page: t.Number({ default: 1, minimum: 1 }),
+						limit: t.Number({ default: 100, maximum: 100 }),
+						banListName: t.Optional(t.String()),
+						season: t.Number({ default: config.season, minimum: 1 }),
+					}),
+					params: t.Object({
+						userId: t.String(),
+					}),
+				},
+			)
 	)
-	.get(
-		"/:userId/stats",
-		async ({ query, params }) => {
-			const banListName = query.banListName;
-			const season = query.season;
-			const userId = params.userId;
 
-			return new UserStatsFinder(userStatsRepository).find({ banListName, userId, season });
-		},
-		{
-			query: t.Object({
-				banListName: t.String({ default: "Global" }),
-				season: t.Number({ default: config.season }),
-			}),
-			params: t.Object({
-				userId: t.String(),
-			}),
-		},
-	)
-	.get(
-		"/:userId/matches",
-		async ({ query, params }) => {
-			const banListName = query.banListName;
-			const userId = params.userId;
-			const limit = query.limit;
-			const page = query.page;
-			const season = query.season;
-
-			return new MatchesGetter(matchRepository).get({ banListName, userId, limit, page, season });
-		},
-		{
-			query: t.Object({
-				page: t.Number({ default: 1, minimum: 1 }),
-				limit: t.Number({ default: 100, maximum: 100 }),
-				banListName: t.Optional(t.String()),
-				season: t.Number({ default: config.season, minimum: 1 }),
-			}),
-			params: t.Object({
-				userId: t.String(),
-			}),
-		},
-	)
-	.use(bearer())
-	.post(
-		"/change-username",
-		async ({ body, bearer }) => {
-			const { id } = jwt.decode(bearer as string) as { id: string };
-
-			return new UserUsernameUpdater(userRepository).updateUsername({ ...body, id });
-		},
-		{
-			body: t.Object({
-				username: t.String({ minLength: 1, maxLength: 14, pattern: '^.*\\S.*$' }),
-			}),
-		},
-	)
+	// Admin Endpoints (NOT protected by banGuard)
 	.post(
 		"/:userId/ban",
 		async ({ params, body, bearer }) => {
@@ -210,22 +209,27 @@ export const userRouter = new Elysia({ prefix: "/users" })
 	)
 	.post(
 		"/:userId/unban",
-		async ({ body, bearer }) => {
+		async ({ params, bearer }) => {
 			const { role } = jwt.decode(bearer as string) as { id: string; role: string };
 			if (role !== UserProfileRole.ADMIN) {
 				throw new UnauthorizedError("You do not have permissions to unban users");
 			}
-			await new UserUnbanUser(userBanRepository).execute(body.banId);
+			await new UserUnbanUser(userBanRepository).execute(params.userId);
 			return { success: true };
 		},
 		{
 			params: t.Object({ userId: t.String() }),
-			body: t.Object({ banId: t.String() }),
 		},
 	)
+
+	// Query Endpoints (now ADMIN only)
 	.get(
 		"/:userId/ban/active",
-		async ({ params }) => {
+		async ({ params, bearer }) => {
+			const { role } = jwt.decode(bearer as string) as { id: string; role: string };
+			if (role !== UserProfileRole.ADMIN) {
+				throw new UnauthorizedError("You do not have permission to view bans");
+			}
 			const ban = await new UserGetActiveBan(userBanRepository).execute(params.userId);
 			return { activeBan: ban };
 		},
@@ -235,7 +239,11 @@ export const userRouter = new Elysia({ prefix: "/users" })
 	)
 	.get(
 		"/:userId/ban/history",
-		async ({ params }) => {
+		async ({ params, bearer }) => {
+			const { role } = jwt.decode(bearer as string) as { id: string; role: string };
+			if (role !== UserProfileRole.ADMIN) {
+				throw new UnauthorizedError("You do not have permission to view ban history");
+			}
 			const bans = await new UserGetBanHistory(userBanRepository).execute(params.userId);
 			return { history: bans };
 		},
