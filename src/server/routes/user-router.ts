@@ -27,6 +27,7 @@ import { UserGetActiveBan } from "../../modules/user/application/UserGetActiveBa
 import { UserGetBanHistory } from "../../modules/user/application/UserGetBanHistory";
 import { UnauthorizedError } from "../../shared/errors/UnauthorizedError";
 import { UserProfileRole } from "src/evolution-types/src/types/UserProfileRole";
+import { banGuard } from "../guards/bandGuard";
 
 const logger = new Pino();
 const emailSender = new ResendEmailSender();
@@ -110,22 +111,23 @@ export const userRouter = new Elysia({ prefix: "/users" })
 		},
 	)
 	.use(bearer())
-	.post(
-		"/change-password",
-		async ({ body, bearer }) => {
-			const decodedToken = jwt.decode(bearer as string) as { id: string };
-
-			return new UserPasswordUpdater(userRepository, hash, logger, emailSender).updatePassword({
-				...body,
-				id: decodedToken.id,
-			});
-		},
-		{
-			body: t.Object({
-				password: t.String({ minLength: 1, pattern: '^.*\\S.*$' }),
-				newPassword: t.String({ minLength: 4, maxLength: 4, pattern: '^.*\\S.*$' }),
-			}),
-		},
+	.guard(banGuard, (app) =>
+		app.post(
+			"/change-password",
+			async ({ body, bearer }) => {
+				const decodedToken = jwt.decode(bearer as string) as { id: string };
+				return new UserPasswordUpdater(userRepository, hash, logger, emailSender).updatePassword({
+					...body,
+					id: decodedToken.id,
+				});
+			},
+			{
+				body: t.Object({
+					password: t.String({ minLength: 1, pattern: '^.*\\S.*$' }),
+					newPassword: t.String({ minLength: 4, maxLength: 4, pattern: '^.*\\S.*$' }),
+				}),
+			}
+		)
 	)
 	.get(
 		"/:userId/stats",
