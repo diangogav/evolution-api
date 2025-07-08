@@ -26,6 +26,7 @@ import { UserUnbanUser } from "../../modules/user/application/UserUnbanUser";
 import { UserGetActiveBan } from "../../modules/user/application/UserGetActiveBan";
 import { UserGetBanHistory } from "../../modules/user/application/UserGetBanHistory";
 import { UnauthorizedError } from "../../shared/errors/UnauthorizedError";
+import { UserProfileRole } from "src/evolution-types/src/types/UserProfileRole";
 
 const logger = new Pino();
 const emailSender = new ResendEmailSender();
@@ -186,8 +187,8 @@ export const userRouter = new Elysia({ prefix: "/users" })
 		"/:userId/ban",
 		async ({ params, body, bearer }) => {
 			const { id: adminId, role } = jwt.decode(bearer as string) as { id: string; role: string };
-			if (role !== "admin" && role !== "moderator") {
-				throw new UnauthorizedError("No tienes permisos para banear usuarios");
+			if (role !== UserProfileRole.ADMIN) {
+				throw new UnauthorizedError("You do not have permission to ban users");
 			}
 			await new UserBanUser(userBanRepository).execute({
 				userId: params.userId,
@@ -209,8 +210,8 @@ export const userRouter = new Elysia({ prefix: "/users" })
 		"/:userId/unban",
 		async ({ body, bearer }) => {
 			const { role } = jwt.decode(bearer as string) as { id: string; role: string };
-			if (role !== "admin" && role !== "moderator") {
-				throw new UnauthorizedError("No tienes permisos para desbanear usuarios");
+			if (role !== UserProfileRole.ADMIN) {
+				throw new UnauthorizedError("You do not have permissions to unban users");
 			}
 			await new UserUnbanUser(userBanRepository).execute(body.banId);
 			return { success: true };
