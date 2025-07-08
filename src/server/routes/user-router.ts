@@ -20,6 +20,12 @@ import { AuthenticationError } from "../../shared/errors/AuthenticationError";
 import { Hash } from "../../shared/Hash";
 import { JWT } from "../../shared/JWT";
 import { Pino } from "../../shared/logger/infrastructure/Pino";
+import { UserBanPostgresRepository } from "../../modules/user/infrastructure/UserBanPostgresRepository";
+import { UserBanUser } from "../../modules/user/application/UserBanUser";
+import { UserUnbanUser } from "../../modules/user/application/UserUnbanUser";
+import { UserGetActiveBan } from "../../modules/user/application/UserGetActiveBan";
+import { UserGetBanHistory } from "../../modules/user/application/UserGetBanHistory";
+import { UnauthorizedError } from "../../shared/errors/UnauthorizedError";
 
 const logger = new Pino();
 const emailSender = new ResendEmailSender();
@@ -28,6 +34,7 @@ const userStatsRepository = new UserStatsPostgresRepository();
 const matchRepository = new MatchPostgresRepository();
 const hash = new Hash();
 const jwt = new JWT(config.jwt);
+const userBanRepository = new UserBanPostgresRepository();
 
 export const userRouter = new Elysia({ prefix: "/users" })
 	.post(
@@ -173,5 +180,63 @@ export const userRouter = new Elysia({ prefix: "/users" })
 			body: t.Object({
 				username: t.String({ minLength: 1, maxLength: 14, pattern: '^.*\\S.*$' }),
 			}),
+		},
+	)
+	.post(
+		"/:userId/ban",
+		async ({ params, body, bearer }) => {
+			const { id: adminId, role } = jwt.decode(bearer as string) as { id: string; role: string };
+			if (role !== "admin" && role !== "moderator") {
+				throw new UnauthorizedError("No tienes permisos para banear usuarios");
+			}
+			await new UserBanUser(userBanRepository).execute({
+				userId: params.userId,
+				reason: body.reason,
+				bannedBy: adminId,
+				expiresAt: body.expiresAt ? new Date(body.expiresAt) : undefined,
+			});
+			return { success: true };
+		},
+		{
+			params: t.Object({ userId: t.String() }),
+			body: t.Object({
+				reason: t.String({ minLength: 1 }),
+				expiresAt: t.Optional(t.String()),
+			}),
+		},
+	)
+	.post(
+		"/:userId/unban",
+		async ({ body, bearer }) => {
+			const { role } = jwt.decode(bearer as string) as { id: string; role: string };
+			if (role !== "admin" && role !== "moderator") {
+				throw new UnauthorizedError("No tienes permisos para desbanear usuarios");
+			}
+			await new UserUnbanUser(userBanRepository).execute(body.banId);
+			return { success: true };
+		},
+		{
+			params: t.Object({ userId: t.String() }),
+			body: t.Object({ banId: t.String() }),
+		},
+	)
+	.get(
+		"/:userId/ban/active",
+		async ({ params }) => {
+			const ban = await new UserGetActiveBan(userBanRepository).execute(params.userId);
+			return { activeBan: ban };
+		},
+		{
+			params: t.Object({ userId: t.String() }),
+		},
+	)
+	.get(
+		"/:userId/ban/history",
+		async ({ params }) => {
+			const bans = await new UserGetBanHistory(userBanRepository).execute(params.userId);
+			return { history: bans };
+		},
+		{
+			params: t.Object({ userId: t.String() }),
 		},
 	);
