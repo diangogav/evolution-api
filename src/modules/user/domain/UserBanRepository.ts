@@ -5,4 +5,5 @@ export interface UserBanRepository {
     findActiveBanByUserId(userId: string): Promise<UserBan | null>;
     unbanUser(banId: string): Promise<void>;
     getBansByUserId(userId: string): Promise<UserBan[]>;
+    finishActiveBan(userId: string, finishedAt: Date): Promise<void>;
 } 

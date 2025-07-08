@@ -12,6 +12,7 @@ export class UserBanUser {
         expiresAt?: Date;
     }): Promise<void> {
         const now = new Date();
+        await this.userBanRepository.finishActiveBan(params.userId, now);
         const ban = UserBan.create({
             id: uuidv4(),
             userId: params.userId,

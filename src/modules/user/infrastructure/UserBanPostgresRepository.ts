@@ -72,4 +72,20 @@ export class UserBanPostgresRepository implements UserBanRepository {
             updatedAt: userBan.updatedAt,
         }));
     }
+
+    async finishActiveBan(userId: string, finishedAt: Date): Promise<void> {
+        const repository = dataSource.getRepository(UserBanEntity);
+        const now = finishedAt;
+        const activeBan = await repository
+            .createQueryBuilder("ban")
+            .leftJoinAndSelect("ban.user", "user")
+            .where("ban.user = :userId", { userId })
+            .andWhere("(ban.expiresAt IS NULL OR ban.expiresAt > :now)", { now })
+            .orderBy("ban.bannedAt", "DESC")
+            .getOne();
+        if (activeBan) {
+            activeBan.expiresAt = finishedAt;
+            await repository.save(activeBan);
+        }
+    }
 } 
