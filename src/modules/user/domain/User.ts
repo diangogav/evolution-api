@@ -1,3 +1,4 @@
+import { UserProfileRole } from "src/evolution-types/src/types/UserProfileRole";
 import { InvalidArgumentError } from "../../../shared/errors/InvalidArgumentError";
 
 export class User {
@@ -5,22 +6,26 @@ export class User {
 	public readonly email: string;
 	public readonly password: string;
 	private _username: string;
+	public readonly role: UserProfileRole;
 
 	private constructor({
 		id,
 		username,
 		email,
 		password,
+		role,
 	}: {
 		id: string;
 		username: string;
 		email: string;
 		password: string;
+		role: UserProfileRole;
 	}) {
 		this.id = id;
 		this._username = username;
 		this.email = email;
 		this.password = password;
+		this.role = role;
 	}
 
 	static create({
@@ -28,11 +33,13 @@ export class User {
 		username,
 		email,
 		password,
+		role,
 	}: {
 		id: string;
 		username: string;
 		email: string;
 		password: string;
+		role: UserProfileRole;
 	}): User {
 		if (!username.trim()) {
 			throw new InvalidArgumentError(`username cannot be empty`);
@@ -46,10 +53,10 @@ export class User {
 		if (!password.trim()) {
 			throw new InvalidArgumentError(`password cannot be empty`);
 		}
-		return new User({ id, username, email, password });
+		return new User({ id, username, email, password, role });
 	}
 
-	static from(data: { id: string; username: string; password: string; email: string }): User {
+	static from(data: { id: string; username: string; password: string; email: string; role: UserProfileRole }): User {
 		return new User(data);
 	}
 
@@ -75,6 +82,7 @@ export class User {
 			username: this.username,
 			password,
 			email: this.email,
+			role: this.role,
 		});
 	}
 

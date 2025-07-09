@@ -16,7 +16,7 @@ export class UserAuth {
 	}: {
 		email: string;
 		password: string;
-	}): Promise<{ token: string; username: string; id: string }> {
+	}): Promise<{ token: string; username: string; id: string; }> {
 		const user = await this.userRepository.findByEmail(email);
 		if (!user) {
 			throw new AuthenticationError("Wrong email or password");
@@ -28,7 +28,7 @@ export class UserAuth {
 			throw new AuthenticationError("Wrong email or password");
 		}
 
-		const token = this.jwt.generate({ id: user.id });
+		const token = this.jwt.generate({ id: user.id, role: user.role });
 
 		return {
 			id: user.id,

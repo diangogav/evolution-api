@@ -1,3 +1,4 @@
+import { UserProfileRole } from "src/evolution-types/src/types/UserProfileRole";
 import { EmailSender } from "../../../shared/email/domain/EmailSender";
 import { ConflictError } from "../../../shared/errors/ConflictError";
 import { Hash } from "../../../shared/Hash";
@@ -26,7 +27,7 @@ export class UserRegister {
 		this.logger.debug(`Password generate for email ${email} is ${password}`);
 		const passwordHashed = await this.hash.hash(password);
 
-		const user = User.create({ id, email, username, password: passwordHashed });
+		const user = User.create({ id, email, username, password: passwordHashed, role: UserProfileRole.USER });
 
 		await this.repository.create(user);
 
