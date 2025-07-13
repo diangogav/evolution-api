@@ -108,6 +108,46 @@ export const userRouter = new Elysia({ prefix: "/users" })
 			}),
 		},
 	)
+	.get(
+		"/:userId/stats",
+		async ({ query, params }) => {
+			const banListName = query.banListName;
+			const season = query.season;
+			const userId = params.userId;
+			return new UserStatsFinder(userStatsRepository).find({ banListName, userId, season });
+		},
+		{
+			query: t.Object({
+				banListName: t.String({ default: "Global" }),
+				season: t.Number({ default: config.season }),
+			}),
+			params: t.Object({
+				userId: t.String(),
+			}),
+		},
+	)
+	.get(
+		"/:userId/matches",
+		async ({ query, params }) => {
+			const banListName = query.banListName;
+			const userId = params.userId;
+			const limit = query.limit;
+			const page = query.page;
+			const season = query.season;
+			return new MatchesGetter(matchRepository).get({ banListName, userId, limit, page, season });
+		},
+		{
+			query: t.Object({
+				page: t.Number({ default: 1, minimum: 1 }),
+				limit: t.Number({ default: 100, maximum: 100 }),
+				banListName: t.Optional(t.String()),
+				season: t.Number({ default: config.season, minimum: 1 }),
+			}),
+			params: t.Object({
+				userId: t.String(),
+			}),
+		},
+	)
 
 	// Authenticated Endpoints protected by banGuard
 	.use(bearer())
@@ -138,46 +178,6 @@ export const userRouter = new Elysia({ prefix: "/users" })
 				{
 					body: t.Object({
 						username: t.String({ minLength: 1, maxLength: 14, pattern: '^.*\\S.*$' }),
-					}),
-				},
-			)
-			.get(
-				"/:userId/stats",
-				async ({ query, params }) => {
-					const banListName = query.banListName;
-					const season = query.season;
-					const userId = params.userId;
-					return new UserStatsFinder(userStatsRepository).find({ banListName, userId, season });
-				},
-				{
-					query: t.Object({
-						banListName: t.String({ default: "Global" }),
-						season: t.Number({ default: config.season }),
-					}),
-					params: t.Object({
-						userId: t.String(),
-					}),
-				},
-			)
-			.get(
-				"/:userId/matches",
-				async ({ query, params }) => {
-					const banListName = query.banListName;
-					const userId = params.userId;
-					const limit = query.limit;
-					const page = query.page;
-					const season = query.season;
-					return new MatchesGetter(matchRepository).get({ banListName, userId, limit, page, season });
-				},
-				{
-					query: t.Object({
-						page: t.Number({ default: 1, minimum: 1 }),
-						limit: t.Number({ default: 100, maximum: 100 }),
-						banListName: t.Optional(t.String()),
-						season: t.Number({ default: config.season, minimum: 1 }),
-					}),
-					params: t.Object({
-						userId: t.String(),
 					}),
 				},
 			)
