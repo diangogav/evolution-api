@@ -39,9 +39,11 @@ describe("UserRegister", () => {
 	});
 
 	it("Should register an user correctly", async () => {
+		const repositoryCreateSpy = spyOn(repository, "create");
+		const emailSenderSendSpy = spyOn(emailSender, "send");
 		await userRegister.register(request);
-		expect(repository.create).toHaveBeenCalledTimes(1);
-		expect(emailSender.send).toHaveBeenCalledTimes(1);
+		expect(repositoryCreateSpy).toHaveBeenCalledTimes(1);
+		expect(emailSenderSendSpy).toHaveBeenCalledTimes(1);
 	});
 
 	it("Should should error if user register already exists", async () => {

@@ -27,10 +27,11 @@ describe("User UsernameUpdater", () => {
 	});
 
 	it("Should update user username correctly", async () => {
+		const repositoryUpdateSpy = spyOn(repository, "update");
 		await userUsernameUpdater.updateUsername(request);
-		expect(repository.update).toHaveBeenCalledTimes(1);
+		expect(repositoryUpdateSpy).toHaveBeenCalledTimes(1);
 		expect(user.username).toEqual(request.username);
-		expect(repository.update).toHaveBeenCalledWith(
+		expect(repositoryUpdateSpy).toHaveBeenCalledWith(
 			expect.objectContaining({
 				id: user.id,
 				username: request.username,
