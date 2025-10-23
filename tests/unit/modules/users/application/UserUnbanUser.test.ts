@@ -1,14 +1,19 @@
 import { describe, it, expect, beforeEach } from "bun:test";
-import { mock, MockProxy } from "jest-mock-extended";
 import { UserUnbanUser } from "../../../../../src/modules/user/application/UserUnbanUser";
 import { UserBanRepository } from "../../../../../src/modules/user/domain/UserBanRepository";
 
 describe("UserUnbanUser", () => {
-    let repository: MockProxy<UserBanRepository>;
+    let repository: UserBanRepository;
     let userUnbanUser: UserUnbanUser;
 
     beforeEach(() => {
-        repository = mock<UserBanRepository>();
+        repository = {
+            banUser: async () => undefined,
+            findActiveBanByUserId: async () => null,
+            unbanUser: async () => undefined,
+            getBansByUserId: async () => [],
+            finishActiveBan: async () => undefined,
+        } 
         userUnbanUser = new UserUnbanUser(repository);
     });
 
