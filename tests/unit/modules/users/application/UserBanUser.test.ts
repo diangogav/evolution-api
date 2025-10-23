@@ -1,16 +1,21 @@
-import { describe, it, expect, beforeEach } from "bun:test";
-import { mock, MockProxy } from "jest-mock-extended";
+import { describe, it, expect, beforeEach, spyOn } from "bun:test";
 import { UserBanUser } from "../../../../../src/modules/user/application/UserBanUser";
 import { UserBanRepository } from "../../../../../src/modules/user/domain/UserBanRepository";
 import { UserMother } from "../mothers/UserMother";
 
 
 describe("UserBanUser", () => {
-    let repository: MockProxy<UserBanRepository>;
+    let repository: UserBanRepository;
     let userBanUser: UserBanUser;
 
     beforeEach(() => {
-        repository = mock<UserBanRepository>();
+        repository = {
+            banUser: async () => undefined,
+            findActiveBanByUserId: async () => null,
+            unbanUser: async () => undefined,
+            getBansByUserId: async () => [],
+            finishActiveBan: async () => undefined,
+        } 
         userBanUser = new UserBanUser(repository);
     });
 
@@ -20,6 +25,8 @@ describe("UserBanUser", () => {
         const reason = "Inappropriate conduct";
         const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24); // 1 día
 
+		const banSpy = spyOn(repository, "banUser");
+
         await userBanUser.execute({
             userId: user.id,
             reason,
@@ -27,11 +34,13 @@ describe("UserBanUser", () => {
             expiresAt,
         });
 
-        expect(repository.banUser).toHaveBeenCalledTimes(1);
-        const calledWith = repository.banUser.mock.calls[0][0];
-        expect(calledWith.userId).toBe(user.id);
-        expect(calledWith.reason).toBe(reason);
-        expect(calledWith.bannedBy).toBe(admin.id);
-        expect(calledWith.expiresAt).toEqual(expiresAt);
+        expect(banSpy).toHaveBeenCalled();
+        expect(banSpy).toHaveBeenCalledTimes(1);
+        expect(banSpy).toHaveBeenCalledWith(expect.objectContaining({
+            userId: user.id,
+            reason,
+            bannedBy: admin.id,
+            expiresAt,
+        }));
     });
 }); 
