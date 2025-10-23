@@ -158,7 +158,7 @@ export const userRouter = new Elysia({ prefix: "/users" })
 				async ({ body, bearer }) => {
 					const decodedToken = jwt.decode(bearer as string) as { id: string };
 					return new UserPasswordUpdater(userRepository, hash, logger, emailSender).updatePassword({
-						...body,
+						...(body as { password: string; newPassword: string }),
 						id: decodedToken.id,
 					});
 				},
@@ -173,7 +173,7 @@ export const userRouter = new Elysia({ prefix: "/users" })
 				"/change-username",
 				async ({ body, bearer }) => {
 					const { id } = jwt.decode(bearer as string) as { id: string };
-					return new UserUsernameUpdater(userRepository).updateUsername({ ...body, id });
+					return new UserUsernameUpdater(userRepository).updateUsername({ ...(body as { username: string }), id });
 				},
 				{
 					body: t.Object({
