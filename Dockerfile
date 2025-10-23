@@ -3,7 +3,7 @@ FROM oven/bun
 WORKDIR /app
 
 COPY package.json .
-COPY bun.lockb .
+COPY bun.lock .
 COPY .env .
 ENV NODE_ENV production
 
