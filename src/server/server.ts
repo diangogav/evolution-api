@@ -36,8 +36,6 @@ export class Server {
 				if (error instanceof InvalidArgumentError) {
 					set.status = 400;
 				}
-
-				return error;
 			});
 
 		// @ts-expect-error linter not config correctly
