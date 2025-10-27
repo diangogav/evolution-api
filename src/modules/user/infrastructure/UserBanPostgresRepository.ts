@@ -21,6 +21,9 @@ export class UserBanPostgresRepository implements UserBanRepository {
             updatedAt: ban.updatedAt,
         });
         await repository.save(entity);
+
+        user.deletedAt = new Date();
+        await userRepository.save(user);
     }
 
     async findActiveBanByUserId(userId: string): Promise<UserBan | null> {
@@ -59,6 +62,13 @@ export class UserBanPostgresRepository implements UserBanRepository {
         if (activeBan) {
             activeBan.expiresAt = now;
             await repository.save(activeBan);
+        }
+
+        const userRepository = dataSource.getRepository(UserProfileEntity);
+        const user = await userRepository.findOne({ where: { id: userId } });
+        if (user) {
+            user.deletedAt = null;
+            await userRepository.save(user);
         }
     }
 
