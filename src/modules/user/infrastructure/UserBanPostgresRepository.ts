@@ -65,10 +65,9 @@ export class UserBanPostgresRepository implements UserBanRepository {
         }
 
         const userRepository = dataSource.getRepository(UserProfileEntity);
-        const user = await userRepository.findOne({ where: { id: userId } });
+        const user = await userRepository.findOne({ where: { id: userId }, withDeleted: true });
         if (user) {
-            user.deletedAt = null;
-            await userRepository.save(user);
+            await userRepository.restore(user.id);
         }
     }
 
