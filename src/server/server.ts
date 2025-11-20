@@ -10,6 +10,8 @@ import { Logger } from "../shared/logger/domain/Logger";
 
 import { banListRouter } from "./routes/ban-list-router";
 import { leaderboardRouter } from "./routes/leaderboard-router";
+import { lightningTournamentRouter } from "./routes/lightning-tournament-router";
+import { tournamentsProxyRouter } from "./routes/tournaments-proxy-router";
 import { userRouter } from "./routes/user-router";
 
 export class Server {
@@ -40,7 +42,12 @@ export class Server {
 
 		// @ts-expect-error linter not config correctly
 		this.app.group("/api/v1", (app: Elysia) => {
-			return app.use(userRouter).use(leaderboardRouter).use(banListRouter);
+			return app
+				.use(userRouter)
+				.use(leaderboardRouter)
+				.use(banListRouter)
+				.use(lightningTournamentRouter)
+				.use(tournamentsProxyRouter);
 		});
 		this.logger = logger;
 	}

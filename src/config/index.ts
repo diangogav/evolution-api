@@ -25,4 +25,8 @@ export const config = {
 		issuer: ensureEnvVariable(process.env.JWT_ISSUER as string, "JWT_ISSUER"),
 	},
 	season: Number(ensureEnvVariable(process.env.SEASON as string, "SEASON")),
+	tournaments: {
+		apiUrl: ensureEnvVariable(process.env.TOURNAMENTS_API_URL as string, "TOURNAMENTS_API_URL"),
+		webhookUrl: ensureEnvVariable(process.env.TOURNAMENTS_WEBHOOK_URL as string, "TOURNAMENTS_WEBHOOK_URL"),
+	}
 };
