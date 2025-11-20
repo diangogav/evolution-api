@@ -7,12 +7,16 @@ import { LightningRankingPostgresRepository } from "../../modules/lightning-tour
 import { UserPostgresRepository } from "../../modules/user/infrastructure/UserPostgresRepository";
 import { config } from "src/config";
 import { Pino } from "src/shared/logger/infrastructure/Pino";
+import { TournamentEnrollmentUseCase } from "src/modules/lightning-tournaments/application/TournamentEnrollmentUseCase";
+import { TournamentGateway } from "src/modules/lightning-tournaments/infrastructure/TournamentGateway";
 
 const logger = new Pino();
 const repository = new LightningRankingPostgresRepository();
 const userRepository = new UserPostgresRepository();
+const tournamentRepository = new TournamentGateway();
 const updateRanking = new UpdateRankingUseCase(repository, userRepository, logger);
 const getRanking = new GetRankingUseCase(repository);
+const tournamentEnrollmentUseCase = new TournamentEnrollmentUseCase(userRepository, tournamentRepository);
 
 // Webhook URL will be dynamically generated in the controller based on request origin
 const createTournament = new CreateTournamentProxyUseCase(
@@ -24,7 +28,8 @@ const controller = new LightningTournamentController(
     updateRanking,
     getRanking,
     createTournament,
-    userRepository
+    userRepository,
+    tournamentEnrollmentUseCase
 );
 
 export const lightningTournamentRouter = new Elysia().use(

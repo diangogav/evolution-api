@@ -6,27 +6,6 @@ export class TournamentsProxyController {
     routes(app: Elysia) {
         return app.group("/tournaments", (app) =>
             app
-                // Players endpoints
-                .post("/players", async ({ body }) => {
-                    const response = await fetch(`${this.tournamentsApiUrl}/players`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(body),
-                    });
-
-                    if (!response.ok) {
-                        const text = await response.text();
-                        throw new Error(`Failed to create player: ${response.status} ${text}`);
-                    }
-
-                    return response.json();
-                }, {
-                    body: t.Object({
-                        displayName: t.String(),
-                        email: t.String(),
-                        countryCode: t.Optional(t.String()),
-                    })
-                })
                 .get("/players/:id", async ({ params }) => {
                     const response = await fetch(`${this.tournamentsApiUrl}/players/${params.id}`);
 
@@ -36,29 +15,6 @@ export class TournamentsProxyController {
                     }
 
                     return response.json();
-                })
-
-                // Participants endpoints
-                .post("/participants", async ({ body }) => {
-                    const response = await fetch(`${this.tournamentsApiUrl}/participants`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(body),
-                    });
-
-                    if (!response.ok) {
-                        const text = await response.text();
-                        throw new Error(`Failed to create participant: ${response.status} ${text}`);
-                    }
-
-                    return response.json();
-                }, {
-                    body: t.Object({
-                        type: t.String(),
-                        referenceId: t.String(),
-                        displayName: t.String(),
-                        countryCode: t.Optional(t.String()),
-                    })
                 })
                 .get("/participants/:id", async ({ params }) => {
                     const response = await fetch(`${this.tournamentsApiUrl}/participants/${params.id}`);
@@ -70,28 +26,6 @@ export class TournamentsProxyController {
 
                     return response.json();
                 })
-
-                // Tournament entries endpoints
-                .post("/:tournamentId/entries", async ({ params, body }) => {
-                    const response = await fetch(`${this.tournamentsApiUrl}/tournaments/${params.tournamentId}/entries`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(body),
-                    });
-
-                    if (!response.ok) {
-                        const text = await response.text();
-                        throw new Error(`Failed to create entry: ${response.status} ${text}`);
-                    }
-
-                    return response.json();
-                }, {
-                    body: t.Object({
-                        participantId: t.String(),
-                        status: t.String(),
-                    })
-                })
-
                 // Bracket generation endpoint
                 .post("/:tournamentId/bracket/generate", async ({ params }) => {
                     const response = await fetch(`${this.tournamentsApiUrl}/tournaments/${params.tournamentId}/bracket/generate`, {

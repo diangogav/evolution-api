@@ -3,13 +3,15 @@ import { UpdateRankingUseCase } from "../application/UpdateRankingUseCase";
 import { GetRankingUseCase } from "../application/GetRankingUseCase";
 import { CreateTournamentInput, CreateTournamentProxyUseCase } from "../application/CreateTournamentProxyUseCase";
 import { UserRepository } from "../../user/domain/UserRepository";
+import { TournamentEnrollmentUseCase } from "../application/TournamentEnrollmentUseCase";
 
 export class LightningTournamentController {
     constructor(
         private readonly updateRanking: UpdateRankingUseCase,
         private readonly getRanking: GetRankingUseCase,
         private readonly createTournament: CreateTournamentProxyUseCase,
-        private readonly userRepository: UserRepository
+        private readonly userRepository: UserRepository,
+        private readonly tournamentEnrollmentUseCase: TournamentEnrollmentUseCase
     ) { }
 
     routes(app: Elysia) {
@@ -44,6 +46,16 @@ export class LightningTournamentController {
                     body: t.Object({
                         userId: t.String(),
                         participantId: t.String(),
+                    })
+                })
+                .post("/enroll", async ({ body }) => {
+                    const { userId, tournamentId } = body as { userId: string; tournamentId: string };
+                    await this.tournamentEnrollmentUseCase.execute({ userId, tournamentId });
+                    return { success: true };
+                }, {
+                    body: t.Object({
+                        userId: t.String(),
+                        tournamentId: t.String(),
                     })
                 })
         );

@@ -7,6 +7,7 @@ export class User {
 	public readonly password: string;
 	private _username: string;
 	public readonly role: UserProfileRole;
+	public participantId: string | null;
 
 	private constructor({
 		id,
@@ -14,18 +15,21 @@ export class User {
 		email,
 		password,
 		role,
+		participantId,
 	}: {
 		id: string;
 		username: string;
 		email: string;
 		password: string;
 		role: UserProfileRole;
+		participantId: string | null;
 	}) {
 		this.id = id;
 		this._username = username;
 		this.email = email;
 		this.password = password;
 		this.role = role;
+		this.participantId = participantId;
 	}
 
 	static create({
@@ -53,10 +57,10 @@ export class User {
 		if (!password.trim()) {
 			throw new InvalidArgumentError(`password cannot be empty`);
 		}
-		return new User({ id, username, email, password, role });
+		return new User({ id, username, email, password, role, participantId: null });
 	}
 
-	static from(data: { id: string; username: string; password: string; email: string; role: UserProfileRole }): User {
+	static from(data: { id: string; username: string; password: string; email: string; role: UserProfileRole; participantId: string | null }): User {
 		return new User(data);
 	}
 
@@ -83,6 +87,7 @@ export class User {
 			password,
 			email: this.email,
 			role: this.role,
+			participantId: this.participantId,
 		});
 	}
 
