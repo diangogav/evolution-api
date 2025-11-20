@@ -19,6 +19,8 @@ describe("User UsernameUpdater", () => {
 			findByEmail: async () => null,
 			findById: async () => null,
 			update: async () => undefined,
+			updateParticipantId: async () => undefined,
+			findByParticipantId: async () => null,
 		}
 		user = UserMother.create();
 		spyOn(repository, "findById").mockResolvedValue(user);
