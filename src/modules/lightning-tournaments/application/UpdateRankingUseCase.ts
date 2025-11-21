@@ -2,6 +2,7 @@ import { UserRepository } from "../../user/domain/UserRepository";
 import { TournamentRankingRepository } from "../domain/TournamentRankingRepository";
 import { TournamentRanking } from "../domain/TournamentRanking";
 import { Logger } from "src/shared/logger/domain/Logger";
+import { config } from "src/config";
 
 // Fixed points distribution by position
 const POINTS_BY_POSITION: Record<number, number> = {
@@ -77,7 +78,9 @@ export class UpdateRankingUseCase {
                     points,
                     tournamentsWon: isWinner ? 1 : 0,
                     tournamentsPlayed: 1,
+                    season: config.season.toString(),
                 });
+
             } else {
                 userRanking = userRanking.addPoints(points);
                 userRanking = userRanking.incrementTournamentsPlayed();

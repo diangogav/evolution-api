@@ -4,6 +4,7 @@ import { UpdateRankingUseCase } from "../application/UpdateRankingUseCase";
 import { GetRankingUseCase } from "../application/GetRankingUseCase";
 import { CreateTournamentInput, CreateTournamentProxyUseCase } from "../application/CreateTournamentProxyUseCase";
 import { TournamentEnrollmentUseCase } from "../application/TournamentEnrollmentUseCase";
+import { TournamentWithdrawalUseCase } from "../application/TournamentWithdrawalUseCase";
 import { JWT } from "src/shared/JWT";
 import { UserProfileRole } from "src/evolution-types/src/types/UserProfileRole";
 import { UnauthorizedError } from "src/shared/errors/UnauthorizedError";
@@ -14,6 +15,7 @@ export class LightningTournamentController {
         private readonly getRanking: GetRankingUseCase,
         private readonly createTournament: CreateTournamentProxyUseCase,
         private readonly tournamentEnrollmentUseCase: TournamentEnrollmentUseCase,
+        private readonly tournamentWithdrawalUseCase: TournamentWithdrawalUseCase,
         private readonly jwt: JWT
     ) { }
 
@@ -34,9 +36,9 @@ export class LightningTournamentController {
                     })
                 })
                 .get("/ranking", async ({ query }) => {
-                    const limit = query.limit ? parseInt(query.limit) : 10;
-                    const ranking = await this.getRanking.execute(limit);
-                    return ranking.map(r => r.toPrimitives());
+                    const limit = query.limit ? parseInt(query.limit as string) : 10;
+                    const rankings = await this.getRanking.execute(limit);
+                    return rankings; // Already plain objects with user data
                 })
                 .post("/", async ({ body, bearer }) => {
                     const { role } = this.jwt.decode(bearer as string) as { role: string };
@@ -49,6 +51,16 @@ export class LightningTournamentController {
                 .post("/enroll", async ({ body }) => {
                     const { userId, tournamentId } = body as { userId: string; tournamentId: string };
                     await this.tournamentEnrollmentUseCase.execute({ userId, tournamentId });
+                    return { success: true };
+                }, {
+                    body: t.Object({
+                        userId: t.String(),
+                        tournamentId: t.String(),
+                    })
+                })
+                .post("/withdraw", async ({ body }) => {
+                    const { userId, tournamentId } = body as { userId: string; tournamentId: string };
+                    await this.tournamentWithdrawalUseCase.execute({ userId, tournamentId });
                     return { success: true };
                 }, {
                     body: t.Object({

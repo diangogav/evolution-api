@@ -42,6 +42,7 @@ export class CreateTournamentProxyUseCase {
         const tournamentData = {
             ...tournamentFields,
             webhookUrl: this.webhookUrl,
+            status: "PUBLISHED",
             metadata: banlist ? { banlist } : {}
         };
 

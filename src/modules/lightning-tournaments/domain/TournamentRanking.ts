@@ -11,7 +11,8 @@ export class TournamentRanking {
         private readonly userId: string,
         private readonly _points: number,
         private readonly _tournamentsWon: number,
-        private readonly _tournamentsPlayed: number
+        private readonly _tournamentsPlayed: number,
+        private readonly _season: string
     ) { }
 
     static createNew(props: {
@@ -19,12 +20,14 @@ export class TournamentRanking {
         points: number;
         tournamentsWon: number;
         tournamentsPlayed: number;
+        season: string;
     }): TournamentRanking {
         return new TournamentRanking(
             props.userId,
             props.points,
             props.tournamentsWon,
-            props.tournamentsPlayed
+            props.tournamentsPlayed,
+            props.season,
         );
     }
 
@@ -33,12 +36,14 @@ export class TournamentRanking {
         points: number;
         tournamentsWon: number;
         tournamentsPlayed: number;
+        season: string;
     }): TournamentRanking {
         return new TournamentRanking(
             props.userId,
             props.points,
             props.tournamentsWon,
-            props.tournamentsPlayed
+            props.tournamentsPlayed,
+            props.season
         );
     }
 
@@ -47,7 +52,8 @@ export class TournamentRanking {
             this.userId,
             this._points + points,
             this._tournamentsWon,
-            this._tournamentsPlayed
+            this._tournamentsPlayed,
+            this._season
         );
     }
 
@@ -56,7 +62,8 @@ export class TournamentRanking {
             this.userId,
             this._points,
             this._tournamentsWon,
-            this._tournamentsPlayed + 1
+            this._tournamentsPlayed + 1,
+            this._season
         );
     }
 
@@ -65,7 +72,8 @@ export class TournamentRanking {
             this.userId,
             this._points,
             this._tournamentsWon + 1,
-            this._tournamentsPlayed
+            this._tournamentsPlayed,
+            this._season
         );
     }
 
@@ -79,6 +87,10 @@ export class TournamentRanking {
 
     get tournamentsPlayed(): number {
         return this._tournamentsPlayed;
+    }
+
+    get season(): string {
+        return this._season;
     }
 
     getUserId(): string {

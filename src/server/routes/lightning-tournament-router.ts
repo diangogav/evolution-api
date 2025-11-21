@@ -7,6 +7,7 @@ import { LightningRankingPostgresRepository } from "../../modules/lightning-tour
 import { UserPostgresRepository } from "../../modules/user/infrastructure/UserPostgresRepository";
 import { config } from "src/config";
 import { TournamentEnrollmentUseCase } from "src/modules/lightning-tournaments/application/TournamentEnrollmentUseCase";
+import { TournamentWithdrawalUseCase } from "src/modules/lightning-tournaments/application/TournamentWithdrawalUseCase";
 import { TournamentGateway } from "src/modules/lightning-tournaments/infrastructure/TournamentGateway";
 import { JWT } from "src/shared/JWT";
 import { Pino } from "src/shared/logger/infrastructure/Pino";
@@ -23,6 +24,7 @@ const updateRanking = new UpdateRankingUseCase(
 );
 const getRanking = new GetRankingUseCase(repository);
 const tournamentEnrollmentUseCase = new TournamentEnrollmentUseCase(userRepository, tournamentRepository);
+const tournamentWithdrawalUseCase = new TournamentWithdrawalUseCase(userRepository, tournamentRepository);
 const jwt = new JWT(config.jwt)
 
 // Webhook URL will be dynamically generated in the controller based on request origin
@@ -36,6 +38,7 @@ const controller = new LightningTournamentController(
     getRanking,
     createTournament,
     tournamentEnrollmentUseCase,
+    tournamentWithdrawalUseCase,
     jwt
 );
 
