@@ -21,11 +21,13 @@ describe("UserAuth", () => {
     jwt = new JWT({ issuer: "issuer", secret: "secret" });
 
     repository = {
-      create: async () => {},
+      create: async () => { },
       findByEmailOrUsername: async () => null,
       findByEmail: async () => null,
       findById: async () => null,
-      update: async () => {},
+      update: async () => { },
+      updateParticipantId: async () => { },
+      findByParticipantId: async () => null,
     };
 
     userAuth = new UserAuth(repository, hash, jwt);

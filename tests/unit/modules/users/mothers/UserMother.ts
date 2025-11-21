@@ -11,6 +11,7 @@ export class UserMother {
 			email: faker.internet.email(),
 			password: faker.internet.password(),
 			role: UserProfileRole.USER,
+			participantId: null,
 			...params,
 		});
 	}
