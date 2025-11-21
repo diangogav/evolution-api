@@ -9,6 +9,7 @@ import { config } from "src/config";
 import { Pino } from "src/shared/logger/infrastructure/Pino";
 import { TournamentEnrollmentUseCase } from "src/modules/lightning-tournaments/application/TournamentEnrollmentUseCase";
 import { TournamentGateway } from "src/modules/lightning-tournaments/infrastructure/TournamentGateway";
+import { JWT } from "src/shared/JWT";
 
 const logger = new Pino();
 const repository = new LightningRankingPostgresRepository();
@@ -17,6 +18,7 @@ const tournamentRepository = new TournamentGateway();
 const updateRanking = new UpdateRankingUseCase(repository, userRepository, logger);
 const getRanking = new GetRankingUseCase(repository);
 const tournamentEnrollmentUseCase = new TournamentEnrollmentUseCase(userRepository, tournamentRepository);
+const jwt = new JWT(config.jwt)
 
 // Webhook URL will be dynamically generated in the controller based on request origin
 const createTournament = new CreateTournamentProxyUseCase(
@@ -28,8 +30,8 @@ const controller = new LightningTournamentController(
     updateRanking,
     getRanking,
     createTournament,
-    userRepository,
-    tournamentEnrollmentUseCase
+    tournamentEnrollmentUseCase,
+    jwt
 );
 
 export const lightningTournamentRouter = new Elysia().use(

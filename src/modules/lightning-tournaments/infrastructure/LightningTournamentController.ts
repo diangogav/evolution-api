@@ -1,22 +1,26 @@
 import { Elysia, t } from "elysia";
+import { bearer } from "@elysiajs/bearer";
 import { UpdateRankingUseCase } from "../application/UpdateRankingUseCase";
 import { GetRankingUseCase } from "../application/GetRankingUseCase";
 import { CreateTournamentInput, CreateTournamentProxyUseCase } from "../application/CreateTournamentProxyUseCase";
-import { UserRepository } from "../../user/domain/UserRepository";
 import { TournamentEnrollmentUseCase } from "../application/TournamentEnrollmentUseCase";
+import { JWT } from "src/shared/JWT";
+import { UserProfileRole } from "src/evolution-types/src/types/UserProfileRole";
+import { UnauthorizedError } from "src/shared/errors/UnauthorizedError";
 
 export class LightningTournamentController {
     constructor(
         private readonly updateRanking: UpdateRankingUseCase,
         private readonly getRanking: GetRankingUseCase,
         private readonly createTournament: CreateTournamentProxyUseCase,
-        private readonly userRepository: UserRepository,
-        private readonly tournamentEnrollmentUseCase: TournamentEnrollmentUseCase
+        private readonly tournamentEnrollmentUseCase: TournamentEnrollmentUseCase,
+        private readonly jwt: JWT
     ) { }
 
     routes(app: Elysia) {
         return app.group("/lightning-tournaments", (app) =>
             app
+                .use(bearer())
                 .post("/webhook", async ({ body }) => {
                     const { winnerId: participantId } = body as { winnerId: string };
                     // Assign points (e.g., 10 points for a win)
@@ -34,19 +38,13 @@ export class LightningTournamentController {
                     const ranking = await this.getRanking.execute(limit);
                     return ranking.map(r => r.toPrimitives());
                 })
-                .post("/", async ({ body }) => {
+                .post("/", async ({ body, bearer }) => {
+                    const { role } = this.jwt.decode(bearer as string) as { role: string };
+                    if (role !== UserProfileRole.ADMIN) {
+                        throw new UnauthorizedError("You do not have permission to create tournaments");
+                    }
                     const tournament = await this.createTournament.execute(body as CreateTournamentInput);
                     return tournament;
-                })
-                .post("/link-participant", async ({ body }) => {
-                    const { userId, participantId } = body as { userId: string; participantId: string };
-                    await this.userRepository.updateParticipantId(userId, participantId);
-                    return { success: true };
-                }, {
-                    body: t.Object({
-                        userId: t.String(),
-                        participantId: t.String(),
-                    })
                 })
                 .post("/enroll", async ({ body }) => {
                     const { userId, tournamentId } = body as { userId: string; tournamentId: string };

@@ -10,6 +10,7 @@ export interface CreateTournamentInput {
     startAt?: string;
     endAt?: string;
     location?: string;
+    banlist?: string; // e.g., "Edison", "TCG", "OCG", "Goat"
 }
 
 interface Tournament {
@@ -36,9 +37,12 @@ export class CreateTournamentProxyUseCase {
     ) { }
 
     async execute(input: CreateTournamentInput): Promise<Tournament> {
+        const { banlist, ...tournamentFields } = input;
+
         const tournamentData = {
-            ...input,
+            ...tournamentFields,
             webhookUrl: this.webhookUrl,
+            metadata: banlist ? { banlist } : {}
         };
 
         const response = await fetch(`${this.tournamentsApiUrl}/tournaments`, {
