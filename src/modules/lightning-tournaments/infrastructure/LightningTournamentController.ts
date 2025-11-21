@@ -22,13 +22,13 @@ export class LightningTournamentController {
             app
                 .use(bearer())
                 .post("/webhook", async ({ body }) => {
-                    const { winnerId: participantId } = body as { winnerId: string };
-                    // Assign points (e.g., 10 points for a win)
-                    await this.updateRanking.execute({ participantId, points: 10 });
+                    const { tournamentId } = body as { tournamentId: string; winnerId: string; completedAt: string };
+                    // Process all participants' rankings based on final positions
+                    await this.updateRanking.execute({ tournamentId });
                     return { success: true };
                 }, {
                     body: t.Object({
-                        winnerId: t.String(), // This is actually participantId from tournaments
+                        winnerId: t.String(),
                         tournamentId: t.String(),
                         completedAt: t.String(),
                     })

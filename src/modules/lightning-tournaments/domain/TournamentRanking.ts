@@ -7,42 +7,90 @@ export interface TournamentRankingProps {
 }
 
 export class TournamentRanking {
-    private constructor(private props: TournamentRankingProps) { }
+    private constructor(
+        private readonly userId: string,
+        private readonly _points: number,
+        private readonly _tournamentsWon: number,
+        private readonly _tournamentsPlayed: number
+    ) { }
 
-    static create(props: TournamentRankingProps): TournamentRanking {
-        return new TournamentRanking(props);
+    static createNew(props: {
+        userId: string;
+        points: number;
+        tournamentsWon: number;
+        tournamentsPlayed: number;
+    }): TournamentRanking {
+        return new TournamentRanking(
+            props.userId,
+            props.points,
+            props.tournamentsWon,
+            props.tournamentsPlayed
+        );
     }
 
-    static createNew(userId: string): TournamentRanking {
-        return new TournamentRanking({
-            userId,
-            points: 0,
-            tournamentsWon: 0,
-            tournamentsPlayed: 0,
-            lastUpdated: new Date(),
-        });
+    static fromPrimitives(props: {
+        userId: string;
+        points: number;
+        tournamentsWon: number;
+        tournamentsPlayed: number;
+    }): TournamentRanking {
+        return new TournamentRanking(
+            props.userId,
+            props.points,
+            props.tournamentsWon,
+            props.tournamentsPlayed
+        );
     }
 
-    addWin(points: number) {
-        this.props.points += points;
-        this.props.tournamentsWon += 1;
-        this.props.tournamentsPlayed += 1;
-        this.props.lastUpdated = new Date();
+    addPoints(points: number): TournamentRanking {
+        return new TournamentRanking(
+            this.userId,
+            this._points + points,
+            this._tournamentsWon,
+            this._tournamentsPlayed
+        );
     }
 
-    addParticipation(points: number) {
-        this.props.points += points;
-        this.props.tournamentsPlayed += 1;
-        this.props.lastUpdated = new Date();
+    incrementTournamentsPlayed(): TournamentRanking {
+        return new TournamentRanking(
+            this.userId,
+            this._points,
+            this._tournamentsWon,
+            this._tournamentsPlayed + 1
+        );
     }
 
-    get userId() { return this.props.userId; }
-    get points() { return this.props.points; }
-    get tournamentsWon() { return this.props.tournamentsWon; }
-    get tournamentsPlayed() { return this.props.tournamentsPlayed; }
-    get lastUpdated() { return this.props.lastUpdated; }
+    incrementTournamentsWon(): TournamentRanking {
+        return new TournamentRanking(
+            this.userId,
+            this._points,
+            this._tournamentsWon + 1,
+            this._tournamentsPlayed
+        );
+    }
+
+    get points(): number {
+        return this._points;
+    }
+
+    get tournamentsWon(): number {
+        return this._tournamentsWon;
+    }
+
+    get tournamentsPlayed(): number {
+        return this._tournamentsPlayed;
+    }
+
+    getUserId(): string {
+        return this.userId;
+    }
 
     toPrimitives() {
-        return { ...this.props };
+        return {
+            userId: this.userId,
+            points: this._points,
+            tournamentsWon: this._tournamentsWon,
+            tournamentsPlayed: this._tournamentsPlayed,
+        };
     }
 }

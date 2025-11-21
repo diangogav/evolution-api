@@ -11,19 +11,18 @@ export class LightningRankingPostgresRepository implements TournamentRankingRepo
 
         if (!entity) return null;
 
-        return TournamentRanking.create({
+        return TournamentRanking.fromPrimitives({
             userId: entity.userId,
             points: entity.points,
             tournamentsWon: entity.tournamentsWon,
             tournamentsPlayed: entity.tournamentsPlayed,
-            lastUpdated: entity.updatedAt
         });
     }
 
     async save(ranking: TournamentRanking): Promise<void> {
         const repository = dataSource.getRepository(LightningRankingEntity);
 
-        const existing = await repository.findOne({ where: { userId: ranking.userId } });
+        const existing = await repository.findOne({ where: { userId: ranking.getUserId() } });
 
         if (existing) {
             existing.points = ranking.points;
@@ -32,7 +31,7 @@ export class LightningRankingPostgresRepository implements TournamentRankingRepo
             await repository.save(existing);
         } else {
             const newEntity = repository.create({
-                userId: ranking.userId,
+                userId: ranking.getUserId(),
                 points: ranking.points,
                 tournamentsWon: ranking.tournamentsWon,
                 tournamentsPlayed: ranking.tournamentsPlayed,
@@ -50,12 +49,11 @@ export class LightningRankingPostgresRepository implements TournamentRankingRepo
             relations: ["user"]
         });
 
-        return entities.map(entity => TournamentRanking.create({
+        return entities.map(entity => TournamentRanking.fromPrimitives({
             userId: entity.userId,
             points: entity.points,
             tournamentsWon: entity.tournamentsWon,
             tournamentsPlayed: entity.tournamentsPlayed,
-            lastUpdated: entity.updatedAt
         }));
     }
 }

@@ -6,16 +6,21 @@ import { LightningTournamentController } from "../../modules/lightning-tournamen
 import { LightningRankingPostgresRepository } from "../../modules/lightning-tournaments/infrastructure/LightningRankingPostgresRepository";
 import { UserPostgresRepository } from "../../modules/user/infrastructure/UserPostgresRepository";
 import { config } from "src/config";
-import { Pino } from "src/shared/logger/infrastructure/Pino";
 import { TournamentEnrollmentUseCase } from "src/modules/lightning-tournaments/application/TournamentEnrollmentUseCase";
 import { TournamentGateway } from "src/modules/lightning-tournaments/infrastructure/TournamentGateway";
 import { JWT } from "src/shared/JWT";
+import { Pino } from "src/shared/logger/infrastructure/Pino";
 
 const logger = new Pino();
 const repository = new LightningRankingPostgresRepository();
 const userRepository = new UserPostgresRepository();
 const tournamentRepository = new TournamentGateway();
-const updateRanking = new UpdateRankingUseCase(repository, userRepository, logger);
+const updateRanking = new UpdateRankingUseCase(
+    repository,
+    userRepository,
+    config.tournaments.apiUrl,
+    logger
+);
 const getRanking = new GetRankingUseCase(repository);
 const tournamentEnrollmentUseCase = new TournamentEnrollmentUseCase(userRepository, tournamentRepository);
 const jwt = new JWT(config.jwt)
