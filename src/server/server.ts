@@ -21,7 +21,71 @@ export class Server {
 	constructor(logger: Logger) {
 		this.app = new Elysia()
 			.use(cors())
-			.use(swagger())
+			.use(swagger({
+				documentation: {
+					info: {
+						title: 'Evolution API - Tournaments',
+						version: '1.0.0',
+						description: 'API for managing tournaments, matches, participants, and leaderboards'
+					},
+					tags: [
+						{
+							name: 'Authentication',
+							description: 'User authentication and registration endpoints'
+						},
+						{
+							name: 'User Management',
+							description: 'User profile and account management'
+						},
+						{
+							name: 'User Bans',
+							description: 'User ban management (Admin only)'
+						},
+						{
+							name: 'Leaderboard',
+							description: 'Rankings and statistics endpoints'
+						},
+						{
+							name: 'Ban Lists',
+							description: 'Game ban list information'
+						},
+						{
+							name: 'Lightning Tournaments',
+							description: 'Lightning tournament management and enrollment'
+						},
+						{
+							name: 'Players & Participants',
+							description: 'Endpoints for querying player and participant information'
+						},
+						{
+							name: 'Bracket Management',
+							description: 'Endpoints for generating and retrieving tournament brackets'
+						},
+						{
+							name: 'Match Management',
+							description: 'Endpoints for managing match results and match data'
+						},
+						{
+							name: 'Tournament Lifecycle',
+							description: 'Endpoints for managing tournament state transitions (publish, start, complete, cancel)'
+						},
+						{
+							name: 'Participant Management',
+							description: 'Endpoints for managing tournament participants and entries'
+						}
+					],
+					components: {
+						securitySchemes: {
+							bearerAuth: {
+								type: 'http',
+								scheme: 'bearer',
+								bearerFormat: 'JWT',
+								description: 'JWT token obtained from authentication endpoint'
+							}
+						}
+					}
+				}
+			}))
 			.onError(({ error, set }) => {
 				if (error instanceof ConflictError) {
 					set.status = 409;
