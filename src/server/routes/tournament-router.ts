@@ -1,19 +1,19 @@
 import { Elysia } from "elysia";
-import { CreateTournamentProxyUseCase } from "../../modules/lightning-tournaments/application/CreateTournamentProxyUseCase";
-import { GetRankingUseCase } from "../../modules/lightning-tournaments/application/GetRankingUseCase";
-import { UpdateRankingUseCase } from "../../modules/lightning-tournaments/application/UpdateRankingUseCase";
-import { LightningTournamentController } from "../../modules/lightning-tournaments/infrastructure/LightningTournamentController";
-import { LightningRankingPostgresRepository } from "../../modules/lightning-tournaments/infrastructure/LightningRankingPostgresRepository";
+import { CreateTournamentProxyUseCase } from "../../modules/tournaments/application/CreateTournamentProxyUseCase";
+import { GetRankingUseCase } from "../../modules/tournaments/application/GetRankingUseCase";
+import { UpdateRankingUseCase } from "../../modules/tournaments/application/UpdateRankingUseCase";
+import { TournamentController } from "../../modules/tournaments/infrastructure/TournamentController";
+import { TournamentRankingPostgresRepository } from "../../modules/tournaments/infrastructure/TournamentRankingPostgresRepository";
 import { UserPostgresRepository } from "../../modules/user/infrastructure/UserPostgresRepository";
 import { config } from "src/config";
-import { TournamentEnrollmentUseCase } from "src/modules/lightning-tournaments/application/TournamentEnrollmentUseCase";
-import { TournamentWithdrawalUseCase } from "src/modules/lightning-tournaments/application/TournamentWithdrawalUseCase";
-import { TournamentGateway } from "src/modules/lightning-tournaments/infrastructure/TournamentGateway";
+import { TournamentEnrollmentUseCase } from "src/modules/tournaments/application/TournamentEnrollmentUseCase";
+import { TournamentWithdrawalUseCase } from "src/modules/tournaments/application/TournamentWithdrawalUseCase";
+import { TournamentGateway } from "src/modules/tournaments/infrastructure/TournamentGateway";
 import { JWT } from "src/shared/JWT";
 import { Pino } from "src/shared/logger/infrastructure/Pino";
 
 const logger = new Pino();
-const repository = new LightningRankingPostgresRepository();
+const repository = new TournamentRankingPostgresRepository();
 const userRepository = new UserPostgresRepository();
 const tournamentRepository = new TournamentGateway();
 const updateRanking = new UpdateRankingUseCase(
@@ -33,7 +33,7 @@ const createTournament = new CreateTournamentProxyUseCase(
     config.tournaments.webhookUrl,
 );
 
-const controller = new LightningTournamentController(
+const controller = new TournamentController(
     updateRanking,
     getRanking,
     createTournament,
@@ -42,6 +42,6 @@ const controller = new LightningTournamentController(
     jwt
 );
 
-export const lightningTournamentRouter = new Elysia().use(
+export const tournamentRouter = new Elysia().use(
     controller.routes(new Elysia())
 );

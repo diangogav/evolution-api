@@ -23,7 +23,8 @@ export class UserRegister {
 			throw new ConflictError(`User with email ${email} or username ${username} already exists`);
 		}
 
-		const password = this.passwordGenerator(4);
+		// const password = this.passwordGenerator(4);
+		const password = "1234"
 		this.logger.debug(`Password generate for email ${email} is ${password}`);
 		const passwordHashed = await this.hash.hash(password);
 

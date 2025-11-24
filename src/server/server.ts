@@ -10,8 +10,7 @@ import { Logger } from "../shared/logger/domain/Logger";
 
 import { banListRouter } from "./routes/ban-list-router";
 import { leaderboardRouter } from "./routes/leaderboard-router";
-import { lightningTournamentRouter } from "./routes/lightning-tournament-router";
-import { tournamentsProxyRouter } from "./routes/tournaments-proxy-router";
+import { tournamentRouter } from "./routes/tournament-router";
 import { userRouter } from "./routes/user-router";
 
 export class Server {
@@ -50,8 +49,8 @@ export class Server {
 							description: 'Game ban list information'
 						},
 						{
-							name: 'Lightning Tournaments',
-							description: 'Lightning tournament management and enrollment'
+							name: 'Tournaments',
+							description: 'Tournament management and enrollment'
 						},
 						{
 							name: 'Players & Participants',
@@ -64,14 +63,6 @@ export class Server {
 						{
 							name: 'Match Management',
 							description: 'Endpoints for managing match results and match data'
-						},
-						{
-							name: 'Tournament Lifecycle',
-							description: 'Endpoints for managing tournament state transitions (publish, start, complete, cancel)'
-						},
-						{
-							name: 'Participant Management',
-							description: 'Endpoints for managing tournament participants and entries'
 						}
 					],
 					components: {
@@ -110,8 +101,7 @@ export class Server {
 				.use(userRouter)
 				.use(leaderboardRouter)
 				.use(banListRouter)
-				.use(lightningTournamentRouter)
-				.use(tournamentsProxyRouter);
+				.use(tournamentRouter)
 		});
 		this.logger = logger;
 	}

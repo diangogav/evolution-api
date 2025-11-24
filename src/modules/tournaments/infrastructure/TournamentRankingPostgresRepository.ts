@@ -4,7 +4,7 @@ import { TournamentRanking } from "../domain/TournamentRanking";
 import { TournamentRankingRepository } from "../domain/TournamentRankingRepository";
 import { RankingWithUser } from "../domain/RankingWithUser";
 
-export class LightningRankingPostgresRepository implements TournamentRankingRepository {
+export class TournamentRankingPostgresRepository implements TournamentRankingRepository {
     async findByUserId(userId: string): Promise<TournamentRanking | null> {
         const repository = dataSource.getRepository(LightningRankingEntity);
         const entity = await repository.findOne({
