@@ -12,7 +12,7 @@ export class UserRegister {
 		private readonly hash: Hash,
 		private readonly logger: Logger,
 		private readonly emailSender: EmailSender,
-	) {}
+	) { }
 
 	async register({ id, email, username }: { id: string; email: string; username: string }): Promise<unknown> {
 		this.logger.info(`Creating new user ${email}`);

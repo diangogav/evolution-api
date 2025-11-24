@@ -10,6 +10,7 @@ import { Logger } from "../shared/logger/domain/Logger";
 
 import { banListRouter } from "./routes/ban-list-router";
 import { leaderboardRouter } from "./routes/leaderboard-router";
+import { tournamentRouter } from "./routes/tournament-router";
 import { userRouter } from "./routes/user-router";
 
 export class Server {
@@ -19,7 +20,63 @@ export class Server {
 	constructor(logger: Logger) {
 		this.app = new Elysia()
 			.use(cors())
-			.use(swagger())
+			.use(swagger({
+				documentation: {
+					info: {
+						title: 'Evolution API - Tournaments',
+						version: '1.0.0',
+						description: 'API for managing tournaments, matches, participants, and leaderboards'
+					},
+					tags: [
+						{
+							name: 'Authentication',
+							description: 'User authentication and registration endpoints'
+						},
+						{
+							name: 'User Management',
+							description: 'User profile and account management'
+						},
+						{
+							name: 'User Bans',
+							description: 'User ban management (Admin only)'
+						},
+						{
+							name: 'Leaderboard',
+							description: 'Rankings and statistics endpoints'
+						},
+						{
+							name: 'Ban Lists',
+							description: 'Game ban list information'
+						},
+						{
+							name: 'Tournaments',
+							description: 'Tournament management and enrollment'
+						},
+						{
+							name: 'Players & Participants',
+							description: 'Endpoints for querying player and participant information'
+						},
+						{
+							name: 'Bracket Management',
+							description: 'Endpoints for generating and retrieving tournament brackets'
+						},
+						{
+							name: 'Match Management',
+							description: 'Endpoints for managing match results and match data'
+						}
+					],
+					components: {
+						securitySchemes: {
+							bearerAuth: {
+								type: 'http',
+								scheme: 'bearer',
+								bearerFormat: 'JWT',
+								description: 'JWT token obtained from authentication endpoint'
+							}
+						}
+					}
+				}
+			}))
 			.onError(({ error, set }) => {
 				if (error instanceof ConflictError) {
 					set.status = 409;
@@ -40,7 +97,11 @@ export class Server {
 
 		// @ts-expect-error linter not config correctly
 		this.app.group("/api/v1", (app: Elysia) => {
-			return app.use(userRouter).use(leaderboardRouter).use(banListRouter);
+			return app
+				.use(userRouter)
+				.use(leaderboardRouter)
+				.use(banListRouter)
+				.use(tournamentRouter)
 		});
 		this.logger = logger;
 	}
