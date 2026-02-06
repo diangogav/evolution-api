@@ -10,6 +10,7 @@ import { Logger } from "../shared/logger/domain/Logger";
 
 import { banListRouter } from "./routes/ban-list-router";
 import { leaderboardRouter } from "./routes/leaderboard-router";
+import { statsRouter } from "./routes/stats-router";
 import { tournamentRouter } from "./routes/tournament-router";
 import { userRouter } from "./routes/user-router";
 
@@ -102,6 +103,7 @@ export class Server {
 				.use(leaderboardRouter)
 				.use(banListRouter)
 				.use(tournamentRouter)
+				.use(statsRouter)
 		});
 		this.logger = logger;
 	}
