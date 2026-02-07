@@ -4,8 +4,8 @@ DECLARE
 BEGIN
     RAISE NOTICE 'Recalculando estadísticas para la Season %', season_number;
 
-    -- 1️⃣ Eliminar registros existentes de la season seleccionada
-    DELETE FROM player_stats WHERE season = season_number;
+    -- 1️⃣ Eliminar registros existentes de la season seleccionada (EXCEPTO Global)
+    DELETE FROM player_stats WHERE season = season_number AND ban_list_name != 'Global';
 
     -- 2️⃣ Insertar estadísticas de matches
     WITH wins AS (
@@ -69,7 +69,7 @@ BEGIN
         losses = EXCLUDED.losses,
         points = EXCLUDED.points;
 
-    -- 3️⃣ Insertar puntos por logros
+    -- 3️⃣ Insertar puntos por logros (Excluyendo Global)
     WITH achievement_points AS (
         SELECT 
             u.user_id, 
@@ -84,6 +84,7 @@ BEGIN
             achievements a ON u.achievement_id = a.id
         WHERE 
             u.season = season_number
+            AND label.value != 'Global' -- Protegemos estadísticas globales
         GROUP BY 
             u.user_id, label.value, u.season
     )

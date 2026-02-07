@@ -79,21 +79,22 @@ BEGIN
         losses = EXCLUDED.losses,
         points = EXCLUDED.points;
 
-    -- 3️⃣ Agregar puntos por logros globales
+    -- 3️⃣ Agregar puntos por logros globales (independientemente de la season en que se obtuvieron)
     WITH achievement_points AS (
         SELECT 
             u.user_id, 
             'Global' AS ban_list_name, 
-            u.season,
+            season_number AS season, -- Usamos la season actual para el registro
             SUM(a.earned_points)::int4 AS achievement_points
         FROM 
             user_achievements u
         INNER JOIN 
             achievements a ON u.achievement_id = a.id
         WHERE 
-            u.season = season_number
+            u.labels::jsonb @> '["Global"]'::jsonb -- Solo logros con label Global
+            AND u.season = season_number
         GROUP BY 
-            u.user_id, u.season
+            u.user_id
     )
     INSERT INTO player_stats (user_id, ban_list_name, season, wins, losses, points)
     SELECT 

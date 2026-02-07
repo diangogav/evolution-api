@@ -8,6 +8,7 @@ WITH wins AS (
         matches
     WHERE 
         winner = TRUE
+        AND ban_list_name != 'Global'
     GROUP BY 
         user_id, ban_list_name, season
 ),
@@ -19,6 +20,8 @@ losses AS (
         (COUNT(*) - SUM(CASE WHEN winner = TRUE THEN 1 ELSE 0 END))::int4 AS losses
     FROM 
         matches
+    WHERE 
+        ban_list_name != 'Global'
     GROUP BY 
         user_id, ban_list_name, season
 ),
@@ -30,6 +33,8 @@ points AS (
         SUM(points)::int4 AS total_points
     FROM 
         matches
+    WHERE 
+        ban_list_name != 'Global'
     GROUP BY 
         user_id, ban_list_name, season
 )
@@ -67,6 +72,8 @@ WITH achievement_points AS (
         json_array_elements_text(u.labels) AS label(value) ON true
     INNER JOIN 
         achievements a ON u.achievement_id = a.id
+    WHERE 
+        label.value != 'Global' -- Protegemos estadísticas globales
     GROUP BY 
         u.user_id, label.value, u.season
 )

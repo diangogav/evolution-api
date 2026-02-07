@@ -74,6 +74,8 @@ WITH achievement_points AS (
         user_achievements u
     INNER JOIN 
         achievements a ON u.achievement_id = a.id
+    WHERE
+        u.labels::jsonb @> '["Global"]'::jsonb -- Solo logros con label Global
     GROUP BY 
         u.user_id, u.season
 )
