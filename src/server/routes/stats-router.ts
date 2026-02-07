@@ -2,7 +2,7 @@ import { Elysia, t } from "elysia";
 import { StatsController } from "../../modules/stats/infrastructure/StatsController";
 
 export const statsRouter = new Elysia()
-    .group("/stats", (app) =>
+    .group("/historical-stats", (app) =>
         app.get("/", ({ query }) => new StatsController().getGlobalStats({ query: query as { season?: string } }), {
             detail: {
                 tags: ['Statistics'],
