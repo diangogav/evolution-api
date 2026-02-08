@@ -346,10 +346,11 @@ export class WrappedPostgresRepository implements WrappedRepository {
         // Get total points for this player
         const playerPoints = await dataSource.query(
             `
-			SELECT COALESCE(SUM(points), 0)::int AS total_points
+			SELECT points as total_points
 			FROM player_stats
 			WHERE user_id = $1
 				AND season = $2
+                AND ban_list_name = 'Global'
 		`,
             [playerId, seasonId],
         );
@@ -362,10 +363,10 @@ export class WrappedPostgresRepository implements WrappedRepository {
 			WITH player_totals AS (
 				SELECT
 					user_id,
-					SUM(points) AS total_points
+					points AS total_points
 				FROM player_stats
 				WHERE season = $1
-				GROUP BY user_id
+                AND ban_list_name = 'Global'
 			),
 			ranked AS (
 				SELECT

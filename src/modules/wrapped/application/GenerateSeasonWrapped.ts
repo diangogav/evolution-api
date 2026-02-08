@@ -1,5 +1,6 @@
 import type { WrappedRepository } from "../domain/WrappedRepository";
 import type { PdfGenerator } from "../infrastructure/PdfGenerator";
+import { config } from "../../../config";
 
 export interface GenerateOptions {
     locale?: string;
@@ -19,6 +20,10 @@ export class GenerateSeasonWrapped {
         playerId: string,
         options: GenerateOptions = {},
     ): Promise<{ pdf: Buffer; playerName: string }> {
+        // Prevent generating wrapped for the current/active season
+        if (seasonId >= config.season) {
+            throw new Error(`Season ${seasonId} Wrapped is not available yet.`);
+        }
         const data = await this.repository.getSeasonWrappedData(seasonId, playerId);
 
         if (!data) {
