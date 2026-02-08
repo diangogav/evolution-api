@@ -4,7 +4,7 @@
 
 - Start here for project norms and development patterns.
 - This project is the backend API (`evolution-api`) for the Evolution Yu-Gi-Oh! platform.
-- Consult specific skills in the `skills/` directory for detailed implementation guides.
+- Consult specific skills in the `.agent/skills/` directory for detailed implementation guides.
 
 ## Available Skills
 
@@ -13,13 +13,14 @@ Use these skills for detailed patterns on-demand:
 ### Generic Skills
 | Skill | Description | URL |
 |-------|-------------|-----|
-| `ddd-implementation` | Patterns for Entities, Value Objects, Aggregates, and Domain Services in TypeScript | [SKILL.md](skills/ddd-implementation/SKILL.md) |
-| `hexagonal-architecture` | Guide for Ports and Adapters, layer responsibilities, and dependency rules | [SKILL.md](skills/hexagonal-architecture/SKILL.md) |
+| `ddd-implementation` | Patterns for Entities, Value Objects, Aggregates, and Domain Services in TypeScript | [SKILL.md](.agent/skills/ddd-implementation/SKILL.md) |
+| `hexagonal-architecture` | Guide for Ports and Adapters, layer responsibilities, and dependency rules | [SKILL.md](.agent/skills/hexagonal-architecture/SKILL.md) |
+| `elysiajs` | ElysiaJS framework patterns, plugins, and integrations | [SKILL.md](.agent/skills/elysiajs/SKILL.md) |
 
 ### Project-Specific Skills
 | Skill | Description | URL |
 |-------|-------------|-----|
-| `evolution-server` | Reference to EDOpro-server-ts for stats calculation and game logic | [SKILL.md](skills/evolution-server/SKILL.md) |
+| `evolution-server` | Reference to EDOpro-server-ts for stats calculation and game logic | [SKILL.md](.agent/skills/evolution-server/SKILL.md) |
 
 ### Auto-invoke Skills
 
