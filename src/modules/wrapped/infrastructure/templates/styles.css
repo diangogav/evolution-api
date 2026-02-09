@@ -31,32 +31,31 @@
 	--radius-xl: 32px;
 	--radius-full: 9999px;
 
-	/* Modern Dark Theme */
-	--bg-base: #0B1120;
-	/* Very dark blue/slate */
-	--bg-card: #151e32;
-	/* Rich dark blue */
-	--bg-card-hover: #1e2942;
-	--bg-highlight: #1E293B;
+	/* Premium Dark Theme */
+	--bg-base: #010409;
+	/* Deep Black */
+	--bg-card: #0d1117;
+	/* GitHub Dark Card Style */
+	--bg-card-hover: #161b22;
+	--bg-highlight: #161b22;
 
-	--border-subtle: rgba(255, 255, 255, 0.05);
-	--border-medium: rgba(59, 130, 246, 0.2);
+	--border-subtle: rgba(255, 255, 255, 0.08);
+	--border-medium: rgba(255, 255, 255, 0.12);
 
-	--text-primary: #FFFFFF;
-	--text-secondary: #94A3B8;
-	--text-muted: #64748B;
+	--text-primary: #f0f6fc;
+	--text-secondary: #8b949e;
+	--text-muted: #484f58;
 
 	/* Semantic Colors */
-	--color-win: #3B82F6;
-	/* Blue for wins as per image */
-	--color-loss: #64748B;
-	/* Muted slate for losses */
-	--color-accent: #3B82F6;
-	/* Primary Blue */
-	--color-accent-glow: rgba(59, 130, 246, 0.5);
+	--color-win: var(--color-accent);
+	--color-loss: var(--text-muted);
+	--color-accent: #58a6ff;
+	--color-accent-glow: rgba(88, 166, 255, 0.4);
 
-	--gradient-primary: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
-	--gradient-dark: linear-gradient(180deg, rgba(15, 23, 42, 0) 0%, rgba(15, 23, 42, 0.8) 100%);
+	--gradient-primary: linear-gradient(135deg, var(--color-accent) 0%, var(--bg-card) 100%);
+	--gradient-dark: linear-gradient(180deg, rgba(1, 4, 9, 0) 0%, rgba(1, 4, 9, 0.8) 100%);
+
+	transition: all 0.3s ease;
 }
 
 * {
@@ -837,38 +836,39 @@ body {
 		grid-template-columns: 1fr !important;
 	}
 }
+
 /* Download Floating Action Button */
 .download-fab {
-    position: fixed;
-    bottom: 32px;
-    right: 32px;
-    width: 64px;
-    height: 64px;
-    background: var(--color-accent);
-    color: white;
-    border-radius: 50%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-    cursor: pointer;
-    z-index: 1000;
-    transition: transform 0.2s, background 0.2s;
-    text-decoration: none;
+	position: fixed;
+	bottom: 32px;
+	right: 32px;
+	width: 64px;
+	height: 64px;
+	background: var(--color-accent);
+	color: white;
+	border-radius: 50%;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+	cursor: pointer;
+	z-index: 1000;
+	transition: transform 0.2s, background 0.2s;
+	text-decoration: none;
 }
 
 .download-fab:hover {
-    transform: scale(1.1);
-    background: #2563EB;
+	transform: scale(1.1);
+	background: #2563EB;
 }
 
 .download-fab svg {
-    width: 32px;
-    height: 32px;
+	width: 32px;
+	height: 32px;
 }
 
 @media print {
-    .download-fab {
-        display: none !important;
-    }
+	.download-fab {
+		display: none !important;
+	}
 }

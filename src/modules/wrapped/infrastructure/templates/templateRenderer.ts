@@ -56,6 +56,35 @@ export function renderTemplate(data: SeasonWrapped, options: GenerateOptions, th
         ${styles}
         ${themeCss}
         ${themeStylesheet}
+        
+        /* Entrance Animations */
+        @keyframes fadeInScale {
+            from { opacity: 0; transform: scale(0.95) translateY(10px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        
+        .page {
+            animation: fadeInScale 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+        
+        /* Staggered animation for list items */
+        .achievement-card, .stat-box, .rival-card {
+            animation: fadeInScale 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+        
+        .achievement-card:nth-child(1) { animation-delay: 0.1s; }
+        .achievement-card:nth-child(2) { animation-delay: 0.2s; }
+        .achievement-card:nth-child(3) { animation-delay: 0.3s; }
+
+        @media print {
+            .print-button { display: none !important; }
+            .page { 
+                animation: none !important; 
+                break-after: page;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+        }
     </style>
 </head>
 <body>
@@ -65,17 +94,8 @@ export function renderTemplate(data: SeasonWrapped, options: GenerateOptions, th
 	${renderChartsPage(data, options, randomMonster, phrases)}
     ${(data.nemesis || data.victim) ? renderRivalsPage(data, options, randomMonster, phrases) : ""}
     ${specialSections}
-    ${data.achievements.length > 0 ? renderAchievementsPage(data, options, randomMonster, phrases) : ""}
 	${renderRankingPage(data, options, randomMonster, phrases)}
 	${renderSummaryPage(data, options, randomMonster, phrases)}
-    
-    <!-- PDF Download Button (Hidden in Print) -->
-    <a href="/api/v1/seasons/${data.seasonId}/wrapped/${data.playerId}/pdf?locale=${options.locale}&theme=${options.theme}" class="download-fab" title="Download PDF" target="_blank">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 16L7 11H10V4H14V11H17L12 16ZM12 18C7.58 18 4 14.42 4 10H2C2 15.52 6.48 20 12 20C17.52 20 22 15.52 22 10H20C20 14.42 16.42 18 12 18Z"/>
-            <path d="M5 20H19V22H5V20Z"/>
-        </svg>
-    </a>
 </body>
 </html>
 	`.trim();
@@ -598,29 +618,29 @@ function getBanListFlavor(winrate: number): string {
 
 function getSeasonTheme(seasonId: number): string {
     const themes: Record<number, { accent: string; bgBase: string; bgCard: string }> = {
-        // Season 3: Nature/Wind - Emerald/Green (Old S1 Theme)
+        // Season 3: Wind/Nature - Refined Teal/Forest
         3: {
-            accent: '#10B981',
-            bgBase: '#064E3B',
-            bgCard: '#065F46'
+            accent: '#2DD4BF',
+            bgBase: '#041010',
+            bgCard: '#0A1F1F'
         },
-        // Season 4: Fire/Invasion - Red/Orange (Old S2 Theme)
+        // Season 4: Fire/Invasion - Refined Muted Coral/Maroon
         4: {
-            accent: '#EF4444',
-            bgBase: '#450A0A',
-            bgCard: '#7F1D1D'
+            accent: '#F87171',
+            bgBase: '#110707',
+            bgCard: '#1F0D0D'
         },
-        // Season 5: Water/Abyss - Cyan/Blue
+        // Season 5: Water/Abyss - Refined Midnight/Cyan
         5: {
-            accent: '#06B6D4',
-            bgBase: '#083344',
-            bgCard: '#164E63'
+            accent: '#38BDF8',
+            bgBase: '#050C14',
+            bgCard: '#0D1B2A'
         },
-        // Season 6: Current/Tech - Blue (Default)
+        // Season 6: Current/Tech - Refined Indigo/Slate
         6: {
-            accent: '#3B82F6',
-            bgBase: '#0B1120',
-            bgCard: '#151e32'
+            accent: '#818CF8',
+            bgBase: '#0A0F1E',
+            bgCard: '#161B33'
         }
     };
 

@@ -121,8 +121,8 @@ export class Server {
 	}
 
 	start(): void {
-		this.app.listen(process.env.PORT ?? 3000, () =>
-			this.logger.info(`Server started on port ${process.env.PORT ?? 3000}`),
-		);
+		this.app.listen(process.env.PORT ?? 3000, () => {
+			this.logger.info(`Server started on port ${process.env.PORT ?? 3000}`);
+		});
 	}
 }

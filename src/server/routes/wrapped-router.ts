@@ -40,7 +40,7 @@ export const wrappedRouter = new Elysia()
             .use(
                 rateLimit({
                     duration: 60000,
-                    max: 10,
+                    max: 100,
                 })
             )
             // HTML endpoint
@@ -125,102 +125,6 @@ export const wrappedRouter = new Elysia()
                         tags: ["Wrapped"],
                         summary: "Get Season Wrapped HTML",
                         description: "Returns the HTML view of a player's season wrapped. Protected: Owner or Admin only.",
-                    }
-                }
-            )
-            // PDF endpoint
-            .get(
-                "/:seasonId/wrapped/:playerId/pdf",
-                async ({ params, query, bearer, set }) => {
-                    try {
-                        // Authorization: Only owner or admin can access
-                        authorizeWrappedAccess(bearer, params.playerId);
-
-                        const result = await controller.generatePdf({
-                            params: {
-                                seasonId: params.seasonId,
-                                playerId: params.playerId,
-                            },
-                            query: {
-                                locale: query.locale,
-                                theme: query.theme as "dark" | "light" | undefined,
-                                includeMatchList: query.includeMatchList,
-                                singlePage: query.singlePage,
-                            },
-                        });
-
-                        // Set proper headers for PDF response
-                        set.status = 200;
-                        set.headers["Content-Type"] = "application/pdf";
-
-                        // Sanitize filename to prevent header injection or filesystem issues
-                        const safePlayerName = result.playerName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-                        const filename = `${safePlayerName}-season-${result.seasonId}-wrapped.pdf`;
-
-                        set.headers["Content-Disposition"] = `inline; filename="${filename}"`;
-
-                        // Caching headers (1 hour cache)
-                        set.headers["Cache-Control"] = "public, max-age=3600";
-                        set.headers["Last-Modified"] = new Date().toUTCString();
-
-                        // ETag for conditional requests
-                        const etag = `"${result.seasonId}-${result.playerId}-${query.locale || 'es'}-${query.theme || 'dark'}"`;
-                        set.headers["ETag"] = etag;
-
-                        return result.pdf;
-                    } catch (error) {
-                        if (error instanceof UnauthorizedError) {
-                            set.status = 401;
-                            return {
-                                error: "UnauthorizedError",
-                                message: error.message
-                            };
-                        }
-
-                        if (error instanceof ValidationError) {
-                            set.status = 422;
-                            return {
-                                error: "ValidationError",
-                                message: error.message,
-                                details: {
-                                    seasonId: params.seasonId,
-                                    playerId: params.playerId
-                                }
-                            };
-                        }
-
-                        if (error instanceof NotFoundError) {
-                            set.status = 404;
-                            return {
-                                error: "NotFoundError",
-                                message: error.message
-                            };
-                        }
-
-                        // Internal server error
-                        console.error("PDF generation error:", error);
-                        set.status = 500;
-                        return {
-                            error: "InternalServerError",
-                            message: "Failed to generate PDF"
-                        };
-                    }
-                },
-                {
-                    params: t.Object({
-                        seasonId: t.String({ description: "ID of the season" }),
-                        playerId: t.String({ description: "UUID of the player" }),
-                    }),
-                    query: t.Object({
-                        locale: t.Optional(t.String({ description: "Language code (es, en)", default: "es" })),
-                        theme: t.Optional(t.String({ description: "Color theme (dark, light)", default: "dark" })),
-                        includeMatchList: t.Optional(t.String({ description: "Include match history? (true/false)", default: "false" })),
-                        singlePage: t.Optional(t.String({ description: "Render as single page for debugging?", default: "false" })),
-                    }),
-                    detail: {
-                        tags: ["Wrapped"],
-                        summary: "Download Season Wrapped PDF",
-                        description: "Generates and returns a PDF report of the player's season stats. Protected: Owner or Admin only.",
                     }
                 }
             )
