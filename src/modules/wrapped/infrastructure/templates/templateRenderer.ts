@@ -1,8 +1,8 @@
-import type { GenerateOptions } from "../PdfGenerator";
 import type { SeasonWrapped } from "../../domain/SeasonWrapped";
 import { readFileSync, existsSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
+import type { IThemeStrategy, ThemePhrases, GenerateOptions } from "../../domain/IThemeStrategy";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -30,13 +30,20 @@ const images = {
     icon: getImageAsBase64('yugioh_chapter_icon.png'),                  // Small chapter icon
 };
 
-export function renderTemplate(data: SeasonWrapped, options: GenerateOptions): string {
+export function renderTemplate(data: SeasonWrapped, options: GenerateOptions, themeStrategy: IThemeStrategy): string {
     const styles = readFileSync(join(__dirname, "styles.css"), "utf-8");
     const themeCss = getSeasonTheme(data.seasonId);
+    const themeStylesheet = themeStrategy.getStylesheet();
+    const phrases = themeStrategy.getPhrases(data);
 
-    // Select one random monster image to use as background for ALL pages
-    const monsterImages = [images.decorative1, images.decorative2].filter(Boolean);
-    const randomMonster = monsterImages[Math.floor(Math.random() * monsterImages.length)] || images.decorative1;
+    // Select theme background or random monster
+    let randomMonster = themeStrategy.getBackground();
+    if (!randomMonster) {
+        const monsterImages = [images.decorative1, images.decorative2].filter(Boolean);
+        randomMonster = monsterImages[Math.floor(Math.random() * monsterImages.length)] || images.decorative1;
+    }
+
+    const specialSections = themeStrategy.renderSpecialSections(data, options, randomMonster);
 
     return `
 <!DOCTYPE html>
@@ -48,17 +55,19 @@ export function renderTemplate(data: SeasonWrapped, options: GenerateOptions): s
 	<style>
         ${styles}
         ${themeCss}
+        ${themeStylesheet}
     </style>
 </head>
 <body>
-	${renderCoverPage(data, options, randomMonster)}
-	${renderGlobalStatsPage(data, options, randomMonster)}
-	${renderBanListPages(data, options, randomMonster)}
-	${renderChartsPage(data, options, randomMonster)}
-    ${(data.nemesis || data.victim) ? renderRivalsPage(data, options, randomMonster) : ""}
-    ${data.achievements.length > 0 ? renderAchievementsPage(data, options, randomMonster) : ""}
-	${renderRankingPage(data, options, randomMonster)}
-	${renderSummaryPage(data, options, randomMonster)}
+	${renderCoverPage(data, options, randomMonster, phrases)}
+	${renderGlobalStatsPage(data, options, randomMonster, phrases)}
+	${renderBanListPages(data, options, randomMonster, phrases)}
+	${renderChartsPage(data, options, randomMonster, phrases)}
+    ${(data.nemesis || data.victim) ? renderRivalsPage(data, options, randomMonster, phrases) : ""}
+    ${specialSections}
+    ${data.achievements.length > 0 ? renderAchievementsPage(data, options, randomMonster, phrases) : ""}
+	${renderRankingPage(data, options, randomMonster, phrases)}
+	${renderSummaryPage(data, options, randomMonster, phrases)}
     
     <!-- PDF Download Button (Hidden in Print) -->
     <a href="/api/v1/seasons/${data.seasonId}/wrapped/${data.playerId}/pdf?locale=${options.locale}&theme=${options.theme}" class="download-fab" title="Download PDF" target="_blank">
@@ -73,14 +82,19 @@ export function renderTemplate(data: SeasonWrapped, options: GenerateOptions): s
 }
 
 // Single-page compact version for evaluation
-export function renderSinglePageTemplate(data: SeasonWrapped, options: GenerateOptions): string {
+export function renderSinglePageTemplate(data: SeasonWrapped, options: GenerateOptions, themeStrategy: IThemeStrategy): string {
     const styles = readFileSync(join(__dirname, "styles.css"), "utf-8");
     const singlePageStyles = readFileSync(join(__dirname, "styles_single_page.css"), "utf-8");
     const themeCss = getSeasonTheme(data.seasonId);
+    const themeStylesheet = themeStrategy.getStylesheet();
+    const phrases = themeStrategy.getPhrases(data);
 
-    // Select one random monster image to use as background for ALL pages
-    const monsterImages = [images.decorative1, images.decorative2].filter(Boolean);
-    const randomMonster = monsterImages[Math.floor(Math.random() * monsterImages.length)] || images.decorative1;
+    // Select theme background or random monster
+    let randomMonster = themeStrategy.getBackground();
+    if (!randomMonster) {
+        const monsterImages = [images.decorative1, images.decorative2].filter(Boolean);
+        randomMonster = monsterImages[Math.floor(Math.random() * monsterImages.length)] || images.decorative1;
+    }
 
     return `
 <!DOCTYPE html>
@@ -93,34 +107,35 @@ export function renderSinglePageTemplate(data: SeasonWrapped, options: GenerateO
         ${styles}
         ${singlePageStyles}
         ${themeCss}
+        ${themeStylesheet}
     </style>
 </head>
 <body>
-	${renderCoverPage(data, options, randomMonster)}
-	${renderGlobalStatsPage(data, options, randomMonster)}
-	${renderBanListPages(data, options, randomMonster)}
-	${renderChartsPage(data, options, randomMonster)}
-    ${(data.nemesis || data.victim) ? renderRivalsPage(data, options, randomMonster) : ""}
-    ${data.achievements.length > 0 ? renderAchievementsPage(data, options, randomMonster) : ""}
-    ${renderRankingPage(data, options, randomMonster)}
+	${renderCoverPage(data, options, randomMonster, phrases)}
+	${renderGlobalStatsPage(data, options, randomMonster, phrases)}
+	${renderBanListPages(data, options, randomMonster, phrases)}
+	${renderChartsPage(data, options, randomMonster, phrases)}
+    ${(data.nemesis || data.victim) ? renderRivalsPage(data, options, randomMonster, phrases) : ""}
+    ${data.achievements.length > 0 ? renderAchievementsPage(data, options, randomMonster, phrases) : ""}
+    ${renderRankingPage(data, options, randomMonster, phrases)}
 </body>
 </html>
 	`.trim();
 }
 
-function renderHeader(title: string, seasonName: string): string {
+function renderHeader(title: string, seasonName: string, phrases: ThemePhrases): string {
     return `
     <div class="header-bar">
         <div class="brand">
             <span class="brand-icon">◆</span>
-            DUELIST WRAPPED
+            ${phrases.brandName || "DUELIST WRAPPED"}
         </div>
         <div class="season-tag">${seasonName}</div>
     </div>
     `;
 }
 
-function renderCoverPage(data: SeasonWrapped, options: GenerateOptions, randomMonster: string): string {
+function renderCoverPage(data: SeasonWrapped, options: GenerateOptions, randomMonster: string, phrases: ThemePhrases): string {
 
 
     return `
@@ -133,7 +148,7 @@ function renderCoverPage(data: SeasonWrapped, options: GenerateOptions, randomMo
         </div>
     </div>
 	
-	<h1 class="cover-title">${options.locale === "es" ? "TU TEMPORADA EN DUELOS" : "YOUR DUELING SEASON"}</h1>
+	<h1 class="cover-title">${phrases.coverTitle}</h1>
 	
 	<div class="subtitle-container" style="margin-top: 20px;">
         <h2 style="font-size: 32px; color: #FFFFFF; margin-bottom: 8px; text-shadow: 0 2px 10px rgba(0,0,0,0.5);">${escapeHtml(data.playerName)}</h2>
@@ -149,19 +164,22 @@ function renderCoverPage(data: SeasonWrapped, options: GenerateOptions, randomMo
 	`;
 }
 
-function renderGlobalStatsPage(data: SeasonWrapped, options: GenerateOptions, randomMonster: string): string {
+function renderGlobalStatsPage(data: SeasonWrapped, options: GenerateOptions, randomMonster: string, phrases: ThemePhrases): string {
     const stats = data.globalStats;
 
     return `
 <div class="page">
     ${randomMonster ? `<div class="page-bg-decoration"><img src="${randomMonster}" alt="" /></div>` : ''}
-    ${renderHeader("Season Overview", data.seasonName)}
+    ${renderHeader("Season Overview", data.seasonName, phrases)}
 
 	<div class="chapter-super">
 		${images.icon ? `<img src="${images.icon}" class="chapter-icon" alt="" />` : ''}
-		${options.locale === "es" ? "CAPÍTULO 1" : "CHAPTER 1"}
+		${phrases.chapter1 || (options.locale === "es" ? "CAPÍTULO 1" : "CHAPTER 1")}
 	</div>
-	<h2 class="page-title">${options.locale === "es" ? "Resumen de Temporada" : "Season Overview"}</h2>
+	<h2 class="page-title">${phrases.statsTitle}</h2>
+    <p class="page-subtitle" style="text-align: center; color: var(--text-muted); margin-top: -10px; margin-bottom: 20px; font-style: italic;">
+        ${phrases.statsSubtitle}
+    </p>
 	
     <div class="main-stats-card">
         <div class="tag-badge">
@@ -208,7 +226,7 @@ function renderGlobalStatsPage(data: SeasonWrapped, options: GenerateOptions, ra
 	`;
 }
 
-function renderBanListPages(data: SeasonWrapped, options: GenerateOptions, randomMonster: string): string {
+function renderBanListPages(data: SeasonWrapped, options: GenerateOptions, randomMonster: string, phrases: ThemePhrases): string {
     if (data.banListStats.length === 0) return "";
 
     // Take top 3 banlists to fit on one page if possible, or paginate
@@ -217,13 +235,13 @@ function renderBanListPages(data: SeasonWrapped, options: GenerateOptions, rando
     return `
 <div class="page">
     ${randomMonster ? `<div class="page-bg-decoration"><img src="${randomMonster}" alt="" /></div>` : ''}
-    ${renderHeader("Formats", data.seasonName)}
+    ${renderHeader("Formats", data.seasonName, phrases)}
     
 	<div class="chapter-super">
 		${images.icon ? `<img src="${images.icon}" class="chapter-icon" alt="" />` : ''}
-		${options.locale === "es" ? "CAPÍTULO 2" : "CHAPTER 2"}
+		${phrases.chapter2 || (options.locale === "es" ? "CAPÍTULO 2" : "CHAPTER 2")}
 	</div>
-	<h2 class="page-title">${options.locale === "es" ? "Formatos Dominados" : "Mastered Formats"}</h2>
+	<h2 class="page-title">${phrases.statsTitle}</h2>
 	
 	<div class="card-container">
         <div class="tag-badge">MAIN FORMAT</div>
@@ -255,56 +273,65 @@ function renderBanListPages(data: SeasonWrapped, options: GenerateOptions, rando
 	`;
 }
 
-function renderRivalsPage(data: SeasonWrapped, options: GenerateOptions, randomMonster: string): string {
+function renderRivalsPage(data: SeasonWrapped, options: GenerateOptions, randomMonster: string, phrases: ThemePhrases): string {
     return `
 <div class="page">
     ${randomMonster ? `<div class="page-bg-decoration"><img src="${randomMonster}" alt="" /></div>` : ''}
-    ${renderHeader("Rivals", data.seasonName)}
+    ${renderHeader("Rivals", data.seasonName, phrases)}
 
     <div class="chapter-super">
 		${images.icon ? `<img src="${images.icon}" class="chapter-icon" alt="" />` : ''}
 		${options.locale === "es" ? "CAPÍTULO 3" : "CHAPTER 3"}
 	</div>
-    <h2 class="page-title">${options.locale === "es" ? "Tus Rivales" : "Your Rivals"}</h2>
+    <h2 class="page-title">${phrases.rivalsTitle}</h2>
+    <p class="page-subtitle" style="text-align: center; color: var(--text-muted); margin-top: -10px; margin-bottom: 20px; font-style: italic;">
+        ${phrases.rivalsSubtitle}
+    </p>
 
 
     <div class="rivals-grid" style="display: flex; flex-direction: column; gap: 16px; margin-top: 20px;">
         ${data.nemesis ? `
-        <div class="card-container" style="padding: 20px; display: flex; align-items: center; gap: 20px;">
+        <div class="card-container rival-card" style="padding: 20px; display: flex; align-items: center; gap: 20px;">
             <div style="flex-shrink: 0;">
                 <img src="${data.nemesis.playerAvatar || getInitialsAvatar(data.nemesis.playerName)}" class="profile-avatar" style="width: 80px; height: 80px; border-color: #ef4444;" />
             </div>
             
             <div style="flex-grow: 1;">
                 <div class="tag-badge" style="display: inline-block; margin-bottom: 8px; font-size: 12px; padding: 4px 12px; color: #ef4444; background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.2);">
-                    👻 SEASON NEMESIS
+                    👻 ${options.locale === "es" ? "EL ROMPECORAZONES (NÉMESIS)" : "THE HEARTBREAKER (NEMESIS)"}
                 </div>
                 <h3 style="color: #ef4444; margin: 0; font-size: 24px;">${escapeHtml(data.nemesis.playerName)}</h3>
+                <p style="color: var(--text-secondary); font-size: 12px; margin-top: 4px;">
+                    ${options.locale === "es" ? "Te robó los Life Points... y la dignidad." : "Stole your Life Points... and your pride."}
+                </p>
             </div>
 
             <div style="display: flex; flex-direction: column; gap: 8px; align-items: flex-end;">
                 <span class="pill" style="margin: 0;">${data.nemesis.totalMatches} matches</span>
-                <span class="pill" style="margin: 0; background: rgba(239, 68, 68, 0.2); color: #ef4444;">${data.nemesis.losses} losses</span>
+                <span class="pill" style="margin: 0; background: rgba(239, 68, 68, 0.3); color: #ef4444; font-weight: bold;">${data.nemesis.losses} ${options.locale === "es" ? "derrotas" : "losses"}</span>
             </div>
         </div>
         ` : ""}
 
         ${data.victim ? `
-        <div class="card-container" style="padding: 20px; display: flex; align-items: center; gap: 20px;">
+        <div class="card-container rival-card" style="padding: 20px; display: flex; align-items: center; gap: 20px;">
             <div style="flex-shrink: 0;">
                 <img src="${data.victim.playerAvatar || getInitialsAvatar(data.victim.playerName)}" class="profile-avatar" style="width: 80px; height: 80px; border-color: #10b981;" />
             </div>
             
             <div style="flex-grow: 1;">
                 <div class="tag-badge" style="display: inline-block; margin-bottom: 8px; font-size: 12px; padding: 4px 12px; color: #10b981; background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.2);">
-                    🎯 SEASON VICTIM
+                    🎯 ${options.locale === "es" ? "TU ADMIRADOR SECRETO (VÍCTIMA)" : "YOUR SECRET ADMIRER (VICTIM)"}
                 </div>
                 <h3 style="color: #10b981; margin: 0; font-size: 24px;">${escapeHtml(data.victim.playerName)}</h3>
+                <p style="color: var(--text-secondary); font-size: 12px; margin-top: 4px;">
+                    ${options.locale === "es" ? "Te quiere tanto que te deja ganar (o eso dices)." : "They love you so much they let you win (or so you say)."}
+                </p>
             </div>
 
             <div style="display: flex; flex-direction: column; gap: 8px; align-items: flex-end;">
                 <span class="pill" style="margin: 0;">${data.victim.totalMatches} matches</span>
-                <span class="pill" style="margin: 0; background: rgba(16, 185, 129, 0.2); color: #10b981;">${data.victim.wins} wins</span>
+                <span class="pill" style="margin: 0; background: rgba(16, 185, 129, 0.3); color: #10b981; font-weight: bold;">${data.victim.wins} ${options.locale === "es" ? "victorias" : "wins"}</span>
             </div>
         </div>
         ` : ""}
@@ -318,18 +345,18 @@ function renderRivalsPage(data: SeasonWrapped, options: GenerateOptions, randomM
             if (!archRival) return "";
 
             return `
-        <div class="card-container" style="padding: 20px; display: flex; align-items: center; gap: 20px; border: 1px solid rgba(168, 85, 247, 0.3); background: rgba(168, 85, 247, 0.05);">
+        <div class="card-container rival-card" style="padding: 20px; display: flex; align-items: center; gap: 20px;">
             <div style="flex-shrink: 0;">
                 <img src="${archRival.playerAvatar || getInitialsAvatar(archRival.playerName)}" class="profile-avatar" style="width: 80px; height: 80px; border-color: #a855f7;" />
             </div>
             
             <div style="flex-grow: 1;">
                 <div class="tag-badge" style="display: inline-block; margin-bottom: 8px; font-size: 12px; padding: 4px 12px; color: #a855f7; background: rgba(168, 85, 247, 0.1); border-color: rgba(168, 85, 247, 0.2);">
-                    ⚔️ ${options.locale === "es" ? "ARCHIENEMIGO" : "ARCH-RIVAL"}
+                    ⚔️ ${options.locale === "es" ? "MEDIA NARANJA (ARCHIENEMIGO)" : "BETTER HALF (ARCH-RIVAL)"}
                 </div>
                 <h3 style="color: #a855f7; margin: 0; font-size: 24px;">${escapeHtml(archRival.playerName)}</h3>
-                <p style="color: var(--text-secondary); font-size: 12px; margin: 4px 0 0 0;">
-                    ${options.locale === "es" ? "Máximo rival de la temporada" : "Top rival of the season"}
+                <p style="color: var(--text-secondary); font-size: 12px; margin-top: 4px;">
+                    ${options.locale === "es" ? "No pueden vivir el uno sin el otro... en el campo." : "Can't live without each other... on the field."}
                 </p>
             </div>
 
@@ -344,7 +371,7 @@ function renderRivalsPage(data: SeasonWrapped, options: GenerateOptions, randomM
     `;
 }
 
-function renderChartsPage(data: SeasonWrapped, options: GenerateOptions, randomMonster: string): string {
+function renderChartsPage(data: SeasonWrapped, options: GenerateOptions, randomMonster: string, phrases: ThemePhrases): string {
     if (data.banListStats.length === 0) return "";
 
     // Calculate max matches for scaling
@@ -353,7 +380,7 @@ function renderChartsPage(data: SeasonWrapped, options: GenerateOptions, randomM
     return `
 <div class="page">
     ${randomMonster ? `<div class="page-bg-decoration"><img src="${randomMonster}" alt="" /></div>` : ''}
-    ${renderHeader("Evolution", data.seasonName)}
+    ${renderHeader("Evolution", data.seasonName, phrases)}
     
     <div class="chapter-super">${options.locale === "es" ? "CAPÍTULO 4" : "CHAPTER 4"}</div>
     <h2 class="page-title">${options.locale === "es" ? "Evolución" : "Evolution"}</h2>
@@ -377,16 +404,16 @@ function renderChartsPage(data: SeasonWrapped, options: GenerateOptions, randomM
     `;
 }
 
-function renderAchievementsPage(data: SeasonWrapped, options: GenerateOptions, randomMonster: string): string {
+function renderAchievementsPage(data: SeasonWrapped, options: GenerateOptions, randomMonster: string, phrases: ThemePhrases): string {
     if (data.achievements.length === 0) return "";
 
     return `
 <div class="page">
     ${randomMonster ? `<div class="page-bg-decoration"><img src="${randomMonster}" alt="" /></div>` : ''}
-    ${renderHeader("Logros", data.seasonName)}
+    ${renderHeader("Logros", data.seasonName, phrases)}
     
     <div class="chapter-super">${options.locale === "es" ? "CAPÍTULO 5" : "CHAPTER 5"}</div>
-    <h2 class="page-title">${options.locale === "es" ? "Logros" : "Achievements"}</h2>
+    <h2 class="page-title">${phrases.achievementsTitle}</h2>
     
     <div class="achievements-list">
         ${data.achievements.map(ach => `
@@ -417,11 +444,11 @@ function renderAchievementsPage(data: SeasonWrapped, options: GenerateOptions, r
     `;
 }
 
-function renderRankingPage(data: SeasonWrapped, options: GenerateOptions, randomMonster: string): string {
+function renderRankingPage(data: SeasonWrapped, options: GenerateOptions, randomMonster: string, phrases: ThemePhrases): string {
     return `
 <div class="page">
     ${randomMonster ? `<div class="page-bg-decoration"><img src="${randomMonster}" alt="" /></div>` : ''}
-    ${renderHeader("Ranking", data.seasonName)}
+    ${renderHeader("Ranking", data.seasonName, phrases)}
     
     <div class="chapter-super">${options.locale === "es" ? "FINAL" : "FINALE"}</div>
     <h2 class="page-title">${options.locale === "es" ? "Posición" : "Ranking"}</h2>
@@ -463,15 +490,15 @@ function renderRankingPage(data: SeasonWrapped, options: GenerateOptions, random
     `;
 }
 
-function renderSummaryPage(data: SeasonWrapped, options: GenerateOptions, randomMonster: string): string {
+function renderSummaryPage(data: SeasonWrapped, options: GenerateOptions, randomMonster: string, phrases: ThemePhrases): string {
     return `
 <div class="page summary-page">
     ${randomMonster ? `<div class="page-bg-decoration"><img src="${randomMonster}" alt="" /></div>` : ''}
     
     
     <div class="cover-container">
-        <h1 class="cover-title" style="font-size: 48px; margin-bottom: 16px;">${escapeHtml(data.playerName)}</h1>
-        <div class="subtitle" style="margin-top: 0;">${data.seasonName}</div>
+        <h1 class="cover-title" style="font-size: 48px; margin-bottom: 16px;">${phrases.summaryTitle || escapeHtml(data.playerName)}</h1>
+        <div class="subtitle" style="margin-top: 0;">${phrases.summarySubtitle || data.seasonName}</div>
     </div>
         
         <div class="summary-stats-grid">

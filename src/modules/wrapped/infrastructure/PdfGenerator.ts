@@ -1,19 +1,13 @@
 import { chromium } from "playwright";
 import type { SeasonWrapped } from "../domain/SeasonWrapped";
+import type { IThemeStrategy, GenerateOptions } from "../domain/IThemeStrategy";
 import { renderTemplate, renderSinglePageTemplate } from "./templates/templateRenderer";
 
-export interface GenerateOptions {
-    locale: string;
-    theme: "dark" | "light";
-    includeMatchList: boolean;
-    singlePage?: boolean;
-}
-
 export class PdfGenerator {
-    async generate(data: SeasonWrapped, options: GenerateOptions): Promise<Buffer> {
+    async generate(data: SeasonWrapped, options: GenerateOptions, themeStrategy: IThemeStrategy): Promise<Buffer> {
         const html = options.singlePage
-            ? renderSinglePageTemplate(data, options)
-            : renderTemplate(data, options);
+            ? renderSinglePageTemplate(data, options, themeStrategy)
+            : renderTemplate(data, options, themeStrategy);
 
         const browser = await chromium.launch({
             headless: true,

@@ -14,7 +14,7 @@ import { statsRouter } from "./routes/stats-router";
 import { tournamentRouter } from "./routes/tournament-router";
 import { userRouter } from "./routes/user-router";
 import { wrappedRouter } from "./routes/wrapped-router";
-import { reportsRouter } from "./routes/reports-router";
+
 
 export class Server {
 	private readonly app: Elysia;
@@ -115,7 +115,7 @@ export class Server {
 				.use(tournamentRouter)
 				.use(statsRouter)
 				.use(wrappedRouter)
-				.use(reportsRouter);
+
 		});
 		this.logger = logger;
 	}

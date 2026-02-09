@@ -59,13 +59,24 @@ export const wrappedRouter = new Elysia()
                         });
 
                         const { renderTemplate } = await import("../../modules/wrapped/infrastructure/templates/templateRenderer");
+                        const { ThemeStrategyFactory } = await import("../../modules/wrapped/application/ThemeStrategyFactory");
+                        const { DarkThemeStrategy } = await import("../../modules/wrapped/infrastructure/themes/DarkThemeStrategy");
+                        const { LightThemeStrategy } = await import("../../modules/wrapped/infrastructure/themes/LightThemeStrategy");
+                        const { ValentineThemeStrategy } = await import("../../modules/wrapped/infrastructure/themes/ValentineThemeStrategy");
+
+                        const themeFactory = new ThemeStrategyFactory();
+                        themeFactory.register("dark", new DarkThemeStrategy());
+                        themeFactory.register("light", new LightThemeStrategy());
+                        themeFactory.register("valentines", new ValentineThemeStrategy());
+
+                        const strategy = themeFactory.get(query.theme || "dark");
+
                         const locale = (query.locale || "es") as string;
-                        const theme = (query.theme === "light" ? "light" : "dark") as "dark" | "light";
                         const html = renderTemplate(result, {
                             locale,
-                            theme,
+                            theme: query.theme || "dark",
                             includeMatchList: false,
-                        });
+                        }, strategy);
 
                         set.headers["Content-Type"] = "text/html";
                         return html;

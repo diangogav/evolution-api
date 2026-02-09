@@ -2,6 +2,10 @@ import { GenerateSeasonWrapped } from "../application/GenerateSeasonWrapped";
 import { GetSeasonWrappedData } from "../application/GetSeasonWrappedData";
 import { PdfGenerator } from "./PdfGenerator";
 import { WrappedPostgresRepository } from "./WrappedPostgresRepository";
+import { ThemeStrategyFactory } from "../application/ThemeStrategyFactory";
+import { DarkThemeStrategy } from "./themes/DarkThemeStrategy";
+import { LightThemeStrategy } from "./themes/LightThemeStrategy";
+import { ValentineThemeStrategy } from "./themes/ValentineThemeStrategy";
 
 // Domain errors
 export class NotFoundError extends Error {
@@ -37,7 +41,14 @@ export class WrappedController {
 
         const repository = new WrappedPostgresRepository();
         const pdfGenerator = new PdfGenerator();
-        const useCase = new GenerateSeasonWrapped(repository, pdfGenerator);
+        const themeFactory = new ThemeStrategyFactory();
+
+        // Register themes
+        themeFactory.register("dark", new DarkThemeStrategy());
+        themeFactory.register("light", new LightThemeStrategy());
+        themeFactory.register("valentines", new ValentineThemeStrategy());
+
+        const useCase = new GenerateSeasonWrapped(repository, pdfGenerator, themeFactory);
 
         const { pdf, playerName } = await useCase.execute(seasonId, playerId, {
             locale: context.query.locale || "es",
