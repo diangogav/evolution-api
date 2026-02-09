@@ -1,6 +1,4 @@
-import { GenerateSeasonWrapped } from "../application/GenerateSeasonWrapped";
 import { GetSeasonWrappedData } from "../application/GetSeasonWrappedData";
-import { PdfGenerator } from "./PdfGenerator";
 import { WrappedPostgresRepository } from "./WrappedPostgresRepository";
 
 // Domain errors
@@ -19,36 +17,6 @@ export class ValidationError extends Error {
 }
 
 export class WrappedController {
-    async generatePdf(context: {
-        params: { seasonId: string; playerId: string };
-        query: { locale?: string; theme?: "dark" | "light"; includeMatchList?: string; singlePage?: string };
-    }): Promise<{ pdf: Buffer; seasonId: number; playerId: string; playerName: string }> {
-        const seasonId = parseInt(context.params.seasonId, 10);
-        const { playerId } = context.params;
-
-        // Validation
-        if (isNaN(seasonId) || seasonId < 1) {
-            throw new ValidationError("Season ID must be a valid positive integer");
-        }
-
-        if (!playerId || !/^[a-f0-9-]{36}$/i.test(playerId)) {
-            throw new ValidationError("Player ID must be a valid UUID");
-        }
-
-        const repository = new WrappedPostgresRepository();
-        const pdfGenerator = new PdfGenerator();
-        const useCase = new GenerateSeasonWrapped(repository, pdfGenerator);
-
-        const { pdf, playerName } = await useCase.execute(seasonId, playerId, {
-            locale: context.query.locale || "es",
-            theme: context.query.theme || "dark",
-            includeMatchList: context.query.includeMatchList === "true",
-            singlePage: context.query.singlePage === "true",
-        });
-
-        return { pdf, seasonId, playerId, playerName };
-    }
-
     async getData(context: { params: { seasonId: string; playerId: string } }) {
         const seasonId = parseInt(context.params.seasonId, 10);
         const { playerId } = context.params;

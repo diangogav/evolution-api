@@ -38,7 +38,8 @@ export class WrappedPostgresRepository implements WrappedRepository {
                 [],
                 null,
                 null,
-                [],
+                null, // mostPlayedOpponent
+                [], // achievements
                 { position: 0, totalPlayers: 0, points: 0, rankBadge: "Challenger" },
                 { mostPlayedBanList: null, uniqueOpponents: 0, bestDay: null },
             );
@@ -74,6 +75,7 @@ export class WrappedPostgresRepository implements WrappedRepository {
             banListStats,
             nemesis,
             victim,
+            null, // mostPlayedOpponent
             achievements,
             ranking,
             extraStats,
@@ -81,7 +83,7 @@ export class WrappedPostgresRepository implements WrappedRepository {
     }
 
     private async getGlobalStats(seasonId: number, playerId: string): Promise<PlayerSeasonStats> {
-         
+
         const result = await dataSource.query(
             `
 			SELECT

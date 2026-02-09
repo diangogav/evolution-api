@@ -17,6 +17,7 @@ export class SeasonWrapped {
         public readonly banListStats: BanListStats[],
         public readonly nemesis: Nemesis | null,
         public readonly victim: Victim | null,
+        public readonly mostPlayedOpponent: Nemesis | null,
         public readonly achievements: Achievement[],
         public readonly ranking: PlayerRanking,
         public readonly extraStats: ExtraStats,
