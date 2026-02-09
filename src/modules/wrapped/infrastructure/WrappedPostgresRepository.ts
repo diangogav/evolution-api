@@ -81,7 +81,7 @@ export class WrappedPostgresRepository implements WrappedRepository {
     }
 
     private async getGlobalStats(seasonId: number, playerId: string): Promise<PlayerSeasonStats> {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         const result = await dataSource.query(
             `
 			SELECT

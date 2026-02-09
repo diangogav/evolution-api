@@ -43,11 +43,14 @@ export const wrappedRouter = new Elysia()
                     max: 10,
                 })
             )
-            // DEBUG: HTML endpoint (temporary)
+            // HTML endpoint
             .get(
                 "/:seasonId/wrapped/:playerId/html",
-                async ({ params, query, set }) => {
+                async ({ params, query, bearer, set }) => {
                     try {
+                        // Authorization: Only owner or admin can access
+                        authorizeWrappedAccess(bearer, params.playerId);
+
                         const result = await controller.getData({
                             params: {
                                 seasonId: params.seasonId,
@@ -67,11 +70,50 @@ export const wrappedRouter = new Elysia()
                         set.headers["Content-Type"] = "text/html";
                         return html;
                     } catch (error) {
+                        if (error instanceof UnauthorizedError) {
+                            set.status = 401;
+                            return {
+                                error: "UnauthorizedError",
+                                message: error.message
+                            };
+                        }
+
+                        if (error instanceof ValidationError) {
+                            set.status = 422;
+                            return {
+                                error: "ValidationError",
+                                message: error.message
+                            };
+                        }
+
+                        if (error instanceof NotFoundError) {
+                            set.status = 404;
+                            return {
+                                error: "NotFoundError",
+                                message: error.message
+                            };
+                        }
+
                         set.status = 500;
                         return {
                             error: "Failed to generate HTML",
                             details: error instanceof Error ? error.message : "Unknown error"
                         };
+                    }
+                },
+                {
+                    params: t.Object({
+                        seasonId: t.String({ description: "ID of the season (e.g., 6)" }),
+                        playerId: t.String({ description: "UUID of the player" }),
+                    }),
+                    query: t.Object({
+                        locale: t.Optional(t.String({ description: "Language code (es, en)", default: "es" })),
+                        theme: t.Optional(t.String({ description: "Color theme (dark, light)", default: "dark" })),
+                    }),
+                    detail: {
+                        tags: ["Wrapped"],
+                        summary: "Get Season Wrapped HTML",
+                        description: "Returns the HTML view of a player's season wrapped. Protected: Owner or Admin only.",
                     }
                 }
             )
@@ -90,7 +132,7 @@ export const wrappedRouter = new Elysia()
                             },
                             query: {
                                 locale: query.locale,
-                                theme: query.theme,
+                                theme: query.theme as "dark" | "light" | undefined,
                                 includeMatchList: query.includeMatchList,
                                 singlePage: query.singlePage,
                             },
@@ -107,7 +149,6 @@ export const wrappedRouter = new Elysia()
                         set.headers["Content-Disposition"] = `inline; filename="${filename}"`;
 
                         // Caching headers (1 hour cache)
-
                         set.headers["Cache-Control"] = "public, max-age=3600";
                         set.headers["Last-Modified"] = new Date().toUTCString();
 
@@ -126,7 +167,7 @@ export const wrappedRouter = new Elysia()
                         }
 
                         if (error instanceof ValidationError) {
-                            set.status = 422; // Unprocessable Entity
+                            set.status = 422;
                             return {
                                 error: "ValidationError",
                                 message: error.message,
@@ -138,7 +179,7 @@ export const wrappedRouter = new Elysia()
                         }
 
                         if (error instanceof NotFoundError) {
-                            set.status = 404; // Not Found
+                            set.status = 404;
                             return {
                                 error: "NotFoundError",
                                 message: error.message
@@ -150,87 +191,27 @@ export const wrappedRouter = new Elysia()
                         set.status = 500;
                         return {
                             error: "InternalServerError",
-                            message: "Failed to generate PDF",
-                            details: error instanceof Error ? error.message : "Unknown error"
+                            message: "Failed to generate PDF"
                         };
                     }
                 },
                 {
-                    detail: {
-                        tags: ["Season Wrapped"],
-                        summary: "Generate season wrapped PDF",
-                        description:
-                            "Generates a beautiful PDF report with player statistics for a specific season",
-                        responses: {
-                            200: {
-                                description: "PDF generated successfully",
-                                content: {
-                                    "application/pdf": {
-                                        schema: {
-                                            type: "string",
-                                            format: "binary",
-                                        },
-                                    },
-                                },
-                            },
-                            401: {
-                                description: "Unauthorized - Authentication required or insufficient permissions",
-                            },
-                            404: {
-                                description: "Player or season not found",
-                            },
-                            422: {
-                                description: "Validation error - Invalid season ID or player ID format",
-                            },
-                            500: {
-                                description: "Server error",
-                            },
-                        },
-                        security: [{ bearerAuth: [] }],
-                    },
                     params: t.Object({
-                        seasonId: t.String({
-                            description: "Season ID",
-                            examples: ["5"],
-                        }),
-                        playerId: t.String({
-                            description: "Player UUID",
-                            examples: ["e3b02258-4c7c-41d6-b317-bc78f52a7e84"],
-                        }),
+                        seasonId: t.String({ description: "ID of the season" }),
+                        playerId: t.String({ description: "UUID of the player" }),
                     }),
                     query: t.Object({
-                        locale: t.Optional(
-                            t.String({
-                                description: "Language code (es or en)",
-                                default: "es",
-                                examples: ["es", "en"],
-                            }),
-                        ),
-                        theme: t.Optional(
-                            t.Union([t.Literal("dark"), t.Literal("light")], {
-                                description: "PDF theme",
-                                default: "dark",
-                                examples: ["dark", "light"],
-                            }),
-                        ),
-                        includeMatchList: t.Optional(
-                            t.String({
-                                description:
-                                    "Include detailed match list (not yet implemented)",
-                                default: "false",
-                                examples: ["true", "false"],
-                            }),
-                        ),
-                        singlePage: t.Optional(
-                            t.String({
-                                description:
-                                    "Generate single-page compact version (experimental)",
-                                default: "false",
-                                examples: ["true", "false"],
-                            }),
-                        ),
+                        locale: t.Optional(t.String({ description: "Language code (es, en)", default: "es" })),
+                        theme: t.Optional(t.String({ description: "Color theme (dark, light)", default: "dark" })),
+                        includeMatchList: t.Optional(t.String({ description: "Include match history? (true/false)", default: "false" })),
+                        singlePage: t.Optional(t.String({ description: "Render as single page for debugging?", default: "false" })),
                     }),
-                },
+                    detail: {
+                        tags: ["Wrapped"],
+                        summary: "Download Season Wrapped PDF",
+                        description: "Generates and returns a PDF report of the player's season stats. Protected: Owner or Admin only.",
+                    }
+                }
             )
 
             // JSON endpoint (for debugging)

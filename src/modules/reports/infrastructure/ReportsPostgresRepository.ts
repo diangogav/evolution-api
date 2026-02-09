@@ -1,12 +1,14 @@
 
-import { Repository } from "typeorm";
+
 import { dataSource } from "../../../evolution-types/src/data-source";
 import { PlayerStatsEntity } from "../../../evolution-types/src/entities/PlayerStatsEntity";
 import { MatchResumeEntity } from "../../../evolution-types/src/entities/MatchResumeEntity";
 import { IReportsRepository, PlayerRival, PlayerSeasonStats } from "../domain/IReportsRepository";
 
 export class ReportsPostgresRepository implements IReportsRepository {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private playerStatsRepository: any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private matchRepository: any;
 
     constructor() {
