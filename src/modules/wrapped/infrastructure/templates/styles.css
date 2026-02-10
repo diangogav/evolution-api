@@ -815,7 +815,9 @@ body {
 	}
 
 	.cover-title {
-		font-size: 48px !important;
+		font-size: clamp(32px, 10vw, 48px) !important;
+		word-wrap: break-word;
+		max-width: 100%;
 	}
 
 	.cover-avatar {
@@ -830,10 +832,53 @@ body {
 
 	.grid-2 {
 		grid-template-columns: 1fr !important;
+		gap: 16px !important;
+	}
+
+	.big-stats-row {
+		flex-direction: column !important;
+		gap: 24px !important;
+	}
+
+	.page-title {
+		font-size: 28px !important;
+		margin-bottom: 24px !important;
 	}
 
 	.charts-container {
 		grid-template-columns: 1fr !important;
+	}
+
+	.rival-card {
+		flex-direction: column !important;
+		align-items: flex-start !important;
+		gap: 12px !important;
+		padding: 16px !important;
+	}
+
+	.rival-card>div:last-child {
+		flex-direction: row !important;
+		width: 100%;
+		justify-content: flex-start;
+		gap: 8px;
+	}
+
+	.summary-rival {
+		padding: 12px !important;
+		gap: 12px !important;
+	}
+
+	.summary-rival-name {
+		font-size: 16px !important;
+	}
+
+	.summary-rivals {
+		grid-template-columns: 1fr !important;
+		gap: 16px !important;
+	}
+
+	.stat-box-value {
+		font-size: 28px !important;
 	}
 }
 

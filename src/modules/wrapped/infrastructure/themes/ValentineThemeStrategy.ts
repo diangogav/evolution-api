@@ -42,7 +42,6 @@ export class ValentineThemeStrategy extends AbstractThemeStrategy {
             .rival-card {
                 background: linear-gradient(135deg, rgba(26, 10, 11, 0.9) 0%, rgba(31, 12, 13, 0.9) 100%) !important;
                 border: 2px solid rgba(225, 29, 72, 0.4) !important;
-                /* Removed backdrop-filter due to PDF generation issues */
             }
 
             .page-title::after {
