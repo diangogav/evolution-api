@@ -106,6 +106,22 @@ export class User {
 		});
 	}
 
+	updateSecurePassword(securePassword: string): User {
+		if (!securePassword) {
+			throw new InvalidArgumentError(`secure password cannot be empty`);
+		}
+
+		return new User({
+			id: this.id,
+			username: this.username,
+			password: this.password,
+			securePassword,
+			email: this.email,
+			role: this.role,
+			participantId: this.participantId,
+		});
+	}
+
 	updateUsername(username: string): void {
 		if (!username.trim()) {
 			throw new InvalidArgumentError(`username cannot be empty`);

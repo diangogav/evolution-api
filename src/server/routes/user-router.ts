@@ -13,6 +13,7 @@ import { UserPasswordReset } from "../../modules/user/application/UserPasswordRe
 import { UserPasswordUpdater } from "../../modules/user/application/UserPasswordUpdater";
 import { UserGamePasswordGenerator } from "../../modules/user/application/UserGamePasswordGenerator";
 import { UserRegister } from "../../modules/user/application/UserRegister";
+import { UserUpgradePassword } from "../../modules/user/application/UserUpgradePassword";
 import { UserTokenValidator } from "../../modules/user/application/UserTokenValidator";
 import { UserUsernameUpdater } from "../../modules/user/application/UserUsernameUpdater";
 import { UserPostgresRepository } from "../../modules/user/infrastructure/UserPostgresRepository";
@@ -383,6 +384,32 @@ export const userRouter = new Elysia({ prefix: "/users" })
 							404: { description: 'User not found' }
 						}
 					},
+				},
+			)
+			.post(
+				"/upgrade-password",
+				async ({ body, bearer }) => {
+					const { id } = jwt.decode(bearer as string) as { id: string };
+					return new UserUpgradePassword(userRepository, hash, jwt).upgrade({
+						...(body as { password: string }),
+						userId: id,
+					});
+				},
+				{
+					detail: {
+						tags: ['Authentication'],
+						summary: 'Set account password (upgrade)',
+						description: 'Sets the strong account password for a user that signed in with mustUpgrade, and returns a fresh token',
+						security: [{ bearerAuth: [] }],
+						responses: {
+							200: { description: 'Account password set successfully' },
+							400: { description: 'Password does not meet the policy' },
+							409: { description: 'User already has an account password' }
+						}
+					},
+					body: t.Object({
+						password: t.String({ minLength: 1 }),
+					}),
 				},
 			)
 	)

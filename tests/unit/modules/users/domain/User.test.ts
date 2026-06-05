@@ -43,4 +43,20 @@ describe("User", () => {
 
 		expect(updated.securePassword).toBe("hashed-secure-password");
 	});
+
+	it("sets the secure password when upgrading and preserves the rest", () => {
+		const user = User.create({
+			id: "a-user-id",
+			username: "player",
+			email: "player@evolution.com",
+			password: "hashed-game-password",
+			role: UserProfileRole.USER,
+		});
+
+		const upgraded = user.updateSecurePassword("hashed-account-password");
+
+		expect(upgraded.securePassword).toBe("hashed-account-password");
+		expect(upgraded.password).toBe(user.password);
+		expect(upgraded.username).toBe(user.username);
+	});
 });
