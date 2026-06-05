@@ -11,6 +11,7 @@ import { UserStatsPostgresRepository } from "../../modules/stats/infrastructure/
 import { UserForgotPassword } from "../../modules/user/application/UserForgotPassword";
 import { UserPasswordReset } from "../../modules/user/application/UserPasswordReset";
 import { UserPasswordUpdater } from "../../modules/user/application/UserPasswordUpdater";
+import { UserGamePasswordGenerator } from "../../modules/user/application/UserGamePasswordGenerator";
 import { UserRegister } from "../../modules/user/application/UserRegister";
 import { UserTokenValidator } from "../../modules/user/application/UserTokenValidator";
 import { UserUsernameUpdater } from "../../modules/user/application/UserUsernameUpdater";
@@ -356,6 +357,32 @@ export const userRouter = new Elysia({ prefix: "/users" })
 					body: t.Object({
 						username: t.String({ minLength: 1, maxLength: 14, pattern: '^.*\\S.*$' }),
 					}),
+				},
+			)
+			.post(
+				"/game-password",
+				async ({ bearer }) => {
+					const { id } = jwt.decode(bearer as string) as { id: string };
+					return new UserGamePasswordGenerator(userRepository, hash).generate({ userId: id });
+				},
+				{
+					detail: {
+						tags: ['User Management'],
+						summary: 'Generate game password',
+						description: 'Regenerates the 4-character game password used to connect through other ygopro clients and returns it once',
+						security: [{ bearerAuth: [] }],
+						responses: {
+							200: {
+								description: 'Game password generated successfully',
+								content: {
+									'application/json': {
+										example: { gamePassword: 'Xy3z' }
+									}
+								}
+							},
+							404: { description: 'User not found' }
+						}
+					},
 				},
 			)
 	)
