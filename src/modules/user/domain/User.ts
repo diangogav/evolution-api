@@ -5,6 +5,7 @@ export class User {
 	public readonly id: string;
 	public readonly email: string;
 	public readonly password: string;
+	public readonly securePassword: string | null;
 	private _username: string;
 	public readonly role: UserProfileRole;
 	public participantId: string | null;
@@ -14,6 +15,7 @@ export class User {
 		username,
 		email,
 		password,
+		securePassword,
 		role,
 		participantId,
 	}: {
@@ -21,6 +23,7 @@ export class User {
 		username: string;
 		email: string;
 		password: string;
+		securePassword: string | null;
 		role: UserProfileRole;
 		participantId: string | null;
 	}) {
@@ -28,6 +31,7 @@ export class User {
 		this._username = username;
 		this.email = email;
 		this.password = password;
+		this.securePassword = securePassword;
 		this.role = role;
 		this.participantId = participantId;
 	}
@@ -37,12 +41,14 @@ export class User {
 		username,
 		email,
 		password,
+		securePassword,
 		role,
 	}: {
 		id: string;
 		username: string;
 		email: string;
 		password: string;
+		securePassword?: string | null;
 		role: UserProfileRole;
 	}): User {
 		if (!username.trim()) {
@@ -57,10 +63,18 @@ export class User {
 		if (!password.trim()) {
 			throw new InvalidArgumentError(`password cannot be empty`);
 		}
-		return new User({ id, username, email, password, role, participantId: null });
+		return new User({ id, username, email, password, securePassword: securePassword ?? null, role, participantId: null });
 	}
 
-	static from(data: { id: string; username: string; password: string; email: string; role: UserProfileRole; participantId: string | null }): User {
+	static from(data: {
+		id: string;
+		username: string;
+		password: string;
+		securePassword: string | null;
+		email: string;
+		role: UserProfileRole;
+		participantId: string | null;
+	}): User {
 		return new User(data);
 	}
 
@@ -85,6 +99,7 @@ export class User {
 			id: this.id,
 			username: this.username,
 			password,
+			securePassword: this.securePassword,
 			email: this.email,
 			role: this.role,
 			participantId: this.participantId,

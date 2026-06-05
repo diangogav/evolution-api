@@ -10,6 +10,7 @@ export class UserMother {
 			username: faker.internet.username(),
 			email: faker.internet.email(),
 			password: faker.internet.password(),
+			securePassword: null,
 			role: UserProfileRole.USER,
 			participantId: null,
 			...params,
