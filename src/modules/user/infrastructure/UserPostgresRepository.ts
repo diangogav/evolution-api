@@ -23,6 +23,7 @@ export class UserPostgresRepository implements UserRepository {
 			id: user.id,
 			username: user.username,
 			password: user.password,
+			securePassword: user.securePassword,
 			email: user.email,
 		});
 		await repository.save(userProfileEntity);
@@ -66,6 +67,7 @@ export class UserPostgresRepository implements UserRepository {
 			username: user.username,
 			email: user.email,
 			password: user.password,
+			securePassword: user.securePassword,
 		});
 
 		await repository.save(updatedUserProfileEntity);

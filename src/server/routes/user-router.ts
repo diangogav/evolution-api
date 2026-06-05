@@ -44,7 +44,7 @@ export const userRouter = new Elysia({ prefix: "/users" })
 		"/register",
 		async ({ body }) => {
 			const id = randomUUID();
-			return new UserRegister(userRepository, hash, logger, emailSender).register({ ...body, id });
+			return new UserRegister(userRepository, hash, logger, emailSender, jwt).register({ ...body, id });
 		},
 		{
 			detail: {
@@ -70,6 +70,7 @@ export const userRouter = new Elysia({ prefix: "/users" })
 			body: t.Object({
 				username: t.String({ minLength: 1, maxLength: 14, pattern: '^.*\\S.*$' }),
 				email: t.String({ minLength: 1, pattern: '^.*\\S.*$' }),
+				password: t.Optional(t.String({ minLength: 1, pattern: '^.*\\S.*$' })),
 			}),
 		},
 	)
