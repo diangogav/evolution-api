@@ -13,6 +13,8 @@ import { UserPasswordReset } from "../../modules/user/application/UserPasswordRe
 import { UserPasswordUpdater } from "../../modules/user/application/UserPasswordUpdater";
 import { UserGamePasswordGenerator } from "../../modules/user/application/UserGamePasswordGenerator";
 import { UserRegister } from "../../modules/user/application/UserRegister";
+import { UserAccountPasswordReset } from "../../modules/user/application/UserAccountPasswordReset";
+import { UserAccountPasswordUpdater } from "../../modules/user/application/UserAccountPasswordUpdater";
 import { UserUpgradePassword } from "../../modules/user/application/UserUpgradePassword";
 import { UserTokenValidator } from "../../modules/user/application/UserTokenValidator";
 import { UserUsernameUpdater } from "../../modules/user/application/UserUsernameUpdater";
@@ -200,6 +202,35 @@ export const userRouter = new Elysia({ prefix: "/users" })
 			},
 			body: t.Object({
 				password: t.String({ minLength: 4, maxLength: 4, pattern: '^.*\\S.*$' }),
+			}),
+		},
+	)
+	.post(
+		"/reset-account-password",
+		async ({ body, headers }) => {
+			const token = headers.authorization?.replace("Bearer ", "");
+			if (!token) {
+				throw new AuthenticationError("No token provided");
+			}
+			return new UserAccountPasswordReset(userRepository, hash, emailSender, logger, jwt).resetPassword({
+				token,
+				newPassword: body.password,
+			});
+		},
+		{
+			detail: {
+				tags: ['Authentication'],
+				summary: 'Reset account password',
+				description: 'Resets the strong account password using a valid reset token',
+				security: [{ bearerAuth: [] }],
+				responses: {
+					200: { description: 'Account password reset successfully' },
+					400: { description: 'Password does not meet the policy' },
+					401: { description: 'Invalid or expired token' }
+				}
+			},
+			body: t.Object({
+				password: t.String({ minLength: 1 }),
 			}),
 		},
 	)
@@ -409,6 +440,33 @@ export const userRouter = new Elysia({ prefix: "/users" })
 					},
 					body: t.Object({
 						password: t.String({ minLength: 1 }),
+					}),
+				},
+			)
+			.post(
+				"/change-account-password",
+				async ({ body, bearer }) => {
+					const { id } = jwt.decode(bearer as string) as { id: string };
+					return new UserAccountPasswordUpdater(userRepository, hash, logger, emailSender).updatePassword({
+						...(body as { currentPassword: string; newPassword: string }),
+						id,
+					});
+				},
+				{
+					detail: {
+						tags: ['Authentication'],
+						summary: 'Change account password',
+						description: 'Changes the strong account password of the authenticated user, verifying the current one',
+						security: [{ bearerAuth: [] }],
+						responses: {
+							200: { description: 'Account password changed successfully' },
+							400: { description: 'Password does not meet the policy' },
+							401: { description: 'Wrong current password' }
+						}
+					},
+					body: t.Object({
+						currentPassword: t.String({ minLength: 1 }),
+						newPassword: t.String({ minLength: 1 }),
 					}),
 				},
 			)
