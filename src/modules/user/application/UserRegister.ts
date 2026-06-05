@@ -4,6 +4,7 @@ import { ConflictError } from "../../../shared/errors/ConflictError";
 import { Hash } from "../../../shared/Hash";
 import { JWT } from "../../../shared/JWT";
 import { Logger } from "../../../shared/logger/domain/Logger";
+import { GamePassword } from "../domain/GamePassword";
 import { SecurePassword } from "../domain/SecurePassword";
 import { User } from "../domain/User";
 import { UserRepository } from "../domain/UserRepository";
@@ -27,14 +28,14 @@ export class UserRegister {
 		}
 
 		// Every account always gets a 4-char game password so it can connect through other ygopro clients.
-		const gamePassword = this.passwordGenerator(4);
-		const gamePasswordHashed = await this.hash.hash(gamePassword);
+		const gamePassword = GamePassword.generate();
+		const gamePasswordHashed = await this.hash.hash(gamePassword.value);
 
 		if (password) {
 			return this.registerWithSecurePassword({ id, email, username, password, gamePasswordHashed });
 		}
 
-		return this.registerWithGamePassword({ id, email, username, gamePassword, gamePasswordHashed });
+		return this.registerWithGamePassword({ id, email, username, gamePassword: gamePassword.value, gamePasswordHashed });
 	}
 
 	private async registerWithSecurePassword({
@@ -115,15 +116,4 @@ export class UserRegister {
 
 		return user.toJson();
 	}
-
-	private readonly passwordGenerator = (length: number) => {
-		const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-		let password = "";
-		for (let i = 0; i < length; i++) {
-			const randomIndex = Math.floor(Math.random() * charset.length);
-			password += charset.charAt(randomIndex);
-		}
-
-		return password;
-	};
 }
