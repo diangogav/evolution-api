@@ -16,24 +16,27 @@ export class UserAuth {
 	}: {
 		email: string;
 		password: string;
-	}): Promise<{ token: string; username: string; id: string; }> {
+	}): Promise<{ token: string; username: string; id: string; mustUpgrade: boolean }> {
 		const user = await this.userRepository.findByEmail(email);
 		if (!user) {
 			throw new AuthenticationError("Wrong email or password");
 		}
 
-		const isCorrectPassword = await this.hash.compare(password, user.password);
+		// Primary credential: the account password (strong, set through the new client).
+		if (user.securePassword && (await this.hash.compare(password, user.securePassword))) {
+			const token = this.jwt.generate({ id: user.id, role: user.role });
 
-		if (!isCorrectPassword) {
-			throw new AuthenticationError("Wrong email or password");
+			return { id: user.id, token, username: user.username, mustUpgrade: false };
 		}
 
-		const token = this.jwt.generate({ id: user.id, role: user.role });
+		// Fallback: the 4-char game password, only while the user has not set an account password yet.
+		// Once migrated, the weak game password no longer grants API access.
+		if (!user.securePassword && (await this.hash.compare(password, user.password))) {
+			const token = this.jwt.generate({ id: user.id, role: user.role, mustUpgrade: true });
 
-		return {
-			id: user.id,
-			token,
-			username: user.username,
-		};
+			return { id: user.id, token, username: user.username, mustUpgrade: true };
+		}
+
+		throw new AuthenticationError("Wrong email or password");
 	}
 }

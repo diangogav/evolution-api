@@ -50,6 +50,44 @@ describe("UserAuth", () => {
     expect(response).toHaveProperty("id", user.id);
   });
 
+  it("logs in a user that has not migrated yet with the game password and flags mustUpgrade", async () => {
+    // user from beforeEach has no account password (securePassword null) and a game password.
+    spyOn(repository, "findByEmail").mockResolvedValue(user);
+
+    const response = await userAuth.login(request);
+
+    expect(response).toHaveProperty("token");
+    expect(response).toHaveProperty("mustUpgrade", true);
+  });
+
+  it("logs in a migrated user with the account password and does not require an upgrade", async () => {
+    const accountPassword = "BlueEyes7";
+    const migratedUser = UserMother.create({
+      email: request.email,
+      securePassword: await hash.hash(accountPassword),
+    });
+    spyOn(repository, "findByEmail").mockResolvedValue(migratedUser);
+
+    const response = await userAuth.login({ email: request.email, password: accountPassword });
+
+    expect(response).toHaveProperty("token");
+    expect(response).toHaveProperty("mustUpgrade", false);
+  });
+
+  it("rejects the game password once the user has an account password", async () => {
+    const gamePassword = "ab12";
+    const migratedUser = UserMother.create({
+      email: request.email,
+      password: await hash.hash(gamePassword),
+      securePassword: await hash.hash("StrongPass1"),
+    });
+    spyOn(repository, "findByEmail").mockResolvedValue(migratedUser);
+
+    await expect(userAuth.login({ email: request.email, password: gamePassword })).rejects.toThrowError(
+      new AuthenticationError("Wrong email or password"),
+    );
+  });
+
   it("Should throw an AuthenticationError if user does not exist", async () => {
     spyOn(repository, "findByEmail").mockResolvedValue(null);
 
