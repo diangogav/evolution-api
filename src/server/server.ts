@@ -11,6 +11,7 @@ import { Logger } from "../shared/logger/domain/Logger";
 import { banListRouter } from "./routes/ban-list-router";
 import { leaderboardRouter } from "./routes/leaderboard-router";
 import { statsRouter } from "./routes/stats-router";
+import { ticketRouter } from "./routes/ticket-router";
 import { tournamentRouter } from "./routes/tournament-router";
 import { userRouter } from "./routes/user-router";
 import { wrappedRouter } from "./routes/wrapped-router";
@@ -115,6 +116,7 @@ export class Server {
 				.use(tournamentRouter)
 				.use(statsRouter)
 				.use(wrappedRouter)
+				.use(ticketRouter)
 
 		});
 		this.logger = logger;
