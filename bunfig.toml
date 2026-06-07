@@ -1,5 +1,8 @@
 [test]
 
+# load test environment variables before any test runs
+preload = ["./tests/setup.ts"]
+
 # always enable coverage
 coverage = true
 coverageReporter  = ["text"]
