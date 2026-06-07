@@ -27,6 +27,13 @@ export const config = {
 	redis: {
 		url: ensureEnvVariable(process.env.REDIS_URL as string, "REDIS_URL"),
 	},
+	r2: {
+		accessKeyId: ensureEnvVariable(process.env.R2_ACCESS_KEY_ID as string, "R2_ACCESS_KEY_ID"),
+		secretAccessKey: ensureEnvVariable(process.env.R2_SECRET_ACCESS_KEY as string, "R2_SECRET_ACCESS_KEY"),
+		bucket: ensureEnvVariable(process.env.R2_BUCKET as string, "R2_BUCKET"),
+		endpoint: ensureEnvVariable(process.env.R2_ENDPOINT as string, "R2_ENDPOINT"),
+		signedUrlTtlSeconds: Number(process.env.R2_SIGNED_URL_TTL ?? "600"),
+	},
 	season: Number(ensureEnvVariable(process.env.SEASON as string, "SEASON")),
 	tournaments: {
 		apiUrl: ensureEnvVariable(process.env.TOURNAMENTS_API_URL as string, "TOURNAMENTS_API_URL"),
