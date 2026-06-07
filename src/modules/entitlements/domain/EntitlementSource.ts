@@ -1,0 +1,6 @@
+export enum EntitlementSource {
+	REGISTRATION = "REGISTRATION",
+	DONATION = "DONATION",
+	PURCHASE = "PURCHASE",
+	CAMPAIGN = "CAMPAIGN",
+}
