@@ -22,4 +22,20 @@ export class R2AssetUrlSigner implements AssetUrlSigner {
 	signMany(assetRefs: string[]): Record<string, string> {
 		return Object.fromEntries(assetRefs.map((ref) => [ref, this.sign(ref)]));
 	}
+
+	async signManifest(prefix: string): Promise<Record<string, string>> {
+		const listed = await this.client.list({ prefix });
+
+		const manifest: Record<string, string> = {};
+		for (const object of listed.contents ?? []) {
+			const key = object.key;
+			// Skip the folder placeholder some tools create for an empty prefix.
+			if (!key || key.endsWith("/")) {
+				continue;
+			}
+			manifest[key.slice(prefix.length)] = this.sign(key);
+		}
+
+		return manifest;
+	}
 }
