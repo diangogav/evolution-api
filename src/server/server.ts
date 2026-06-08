@@ -9,6 +9,7 @@ import { NotFoundError } from "../shared/errors/NotFoundError";
 import { Logger } from "../shared/logger/domain/Logger";
 
 import { banListRouter } from "./routes/ban-list-router";
+import { cosmeticsRouter } from "./routes/cosmetics-router";
 import { leaderboardRouter } from "./routes/leaderboard-router";
 import { statsRouter } from "./routes/stats-router";
 import { ticketRouter } from "./routes/ticket-router";
@@ -75,6 +76,10 @@ export class Server {
 						{
 							name: 'Statistics',
 							description: 'Global statistics and historical data'
+						},
+						{
+							name: 'Cosmetics',
+							description: 'Cosmetics catalog and customization'
 						}
 					],
 					components: {
@@ -117,6 +122,7 @@ export class Server {
 				.use(statsRouter)
 				.use(wrappedRouter)
 				.use(ticketRouter)
+				.use(cosmeticsRouter)
 
 		});
 		this.logger = logger;
