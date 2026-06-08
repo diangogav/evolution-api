@@ -13,6 +13,7 @@ import { banListRouter } from "./routes/ban-list-router";
 import { cosmeticsRouter } from "./routes/cosmetics-router";
 import { leaderboardRouter } from "./routes/leaderboard-router";
 import { loadoutRouter } from "./routes/loadout-router";
+import { publicLoadoutRouter } from "./routes/public-loadout-router";
 import { statsRouter } from "./routes/stats-router";
 import { ticketRouter } from "./routes/ticket-router";
 import { tournamentRouter } from "./routes/tournament-router";
@@ -130,6 +131,7 @@ export class Server {
 				.use(ticketRouter)
 				.use(cosmeticsRouter)
 				.use(loadoutRouter)
+				.use(publicLoadoutRouter)
 
 		});
 		this.logger = logger;
