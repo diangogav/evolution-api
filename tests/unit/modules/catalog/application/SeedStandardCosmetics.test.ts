@@ -9,6 +9,7 @@ function fakeRepository(existing: Cosmetic[]): { repository: CosmeticRepository;
 	const saved: Cosmetic[] = [];
 	const repository: CosmeticRepository = {
 		findAll: async () => existing,
+		findById: async () => null,
 		save: async (cosmetic) => {
 			saved.push(cosmetic);
 		},

@@ -20,6 +20,24 @@ export class CosmeticPostgresRepository implements CosmeticRepository {
 		);
 	}
 
+	async findById(id: string): Promise<Cosmetic | null> {
+		const repository = cosmeticsDataSource.getRepository(CosmeticEntity);
+		const entity = await repository.findOne({ where: { id } });
+
+		if (!entity) {
+			return null;
+		}
+
+		return Cosmetic.from({
+			id: entity.id,
+			type: entity.type,
+			tier: entity.tier,
+			assetRef: entity.assetRef,
+			displayName: entity.displayName,
+			active: entity.active,
+		});
+	}
+
 	async save(cosmetic: Cosmetic): Promise<void> {
 		const repository = cosmeticsDataSource.getRepository(CosmeticEntity);
 		const data = cosmetic.toPrimitives();
