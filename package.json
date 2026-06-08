@@ -8,6 +8,7 @@
     "dev": "bun run --watch src/index.ts",
     "migration:cosmetics:run": "bun run src/scripts/run-cosmetics-migrations.ts",
     "migration:cosmetics:revert": "bun run src/scripts/run-cosmetics-migrations.ts --revert",
+    "seed:cosmetics": "bun run src/scripts/seed-cosmetics.ts",
     "lint": "eslint --ignore-pattern .gitignore .",
     "lint:fix": "bun run lint -- --fix",
     "prepare": "if [ \"$NODE_ENV\" != \"production\" ]; then husky install; fi",
