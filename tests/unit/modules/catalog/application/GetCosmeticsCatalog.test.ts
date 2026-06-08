@@ -35,6 +35,7 @@ const inactive = Cosmetic.from({
 function catalogOf(cosmetics: Cosmetic[]): GetCosmeticsCatalog {
 	const repository: CosmeticRepository = {
 		findAll: async () => cosmetics,
+		findById: async () => null,
 		save: async () => undefined,
 	};
 	const signer: AssetUrlSigner = {

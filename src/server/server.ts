@@ -4,6 +4,7 @@ import { Elysia } from "elysia";
 
 import { AuthenticationError } from "../shared/errors/AuthenticationError";
 import { ConflictError } from "../shared/errors/ConflictError";
+import { ForbiddenError } from "../shared/errors/ForbiddenError";
 import { InvalidArgumentError } from "../shared/errors/InvalidArgumentError";
 import { NotFoundError } from "../shared/errors/NotFoundError";
 import { Logger } from "../shared/logger/domain/Logger";
@@ -11,6 +12,7 @@ import { Logger } from "../shared/logger/domain/Logger";
 import { banListRouter } from "./routes/ban-list-router";
 import { cosmeticsRouter } from "./routes/cosmetics-router";
 import { leaderboardRouter } from "./routes/leaderboard-router";
+import { loadoutRouter } from "./routes/loadout-router";
 import { statsRouter } from "./routes/stats-router";
 import { ticketRouter } from "./routes/ticket-router";
 import { tournamentRouter } from "./routes/tournament-router";
@@ -110,6 +112,10 @@ export class Server {
 				if (error instanceof InvalidArgumentError) {
 					set.status = 400;
 				}
+
+				if (error instanceof ForbiddenError) {
+					set.status = 403;
+				}
 			});
 
 		// @ts-expect-error linter not config correctly
@@ -123,6 +129,7 @@ export class Server {
 				.use(wrappedRouter)
 				.use(ticketRouter)
 				.use(cosmeticsRouter)
+				.use(loadoutRouter)
 
 		});
 		this.logger = logger;
