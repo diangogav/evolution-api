@@ -6,6 +6,8 @@ import { CosmeticTier } from "../../../../../src/modules/catalog/domain/Cosmetic
 import { CosmeticType } from "../../../../../src/modules/catalog/domain/CosmeticType";
 import { EntitlementsGatekeeper } from "../../../../../src/modules/entitlements/application/EntitlementsGatekeeper";
 import { Entitlement } from "../../../../../src/modules/entitlements/domain/Entitlement";
+import { EntitlementSource } from "../../../../../src/modules/entitlements/domain/EntitlementSource";
+import { GrantType } from "../../../../../src/modules/entitlements/domain/GrantType";
 import { EquipCosmetic } from "../../../../../src/modules/loadout/application/EquipCosmetic";
 import { Loadout } from "../../../../../src/modules/loadout/domain/Loadout";
 import { LoadoutRepository } from "../../../../../src/modules/loadout/domain/LoadoutRepository";
@@ -81,5 +83,24 @@ describe("EquipCosmetic", () => {
 		await expect(
 			equip.run({ userId: "user-1", cosmeticType: CosmeticType.PLAYMAT, cosmeticId: "cosmetic-1" }),
 		).rejects.toBeInstanceOf(InvalidArgumentError);
+	});
+
+	// --- COSMETIC grant regression (spec: catalog scenario 6) ---
+
+	it("allows equipping a DONOR cosmetic when user holds a COSMETIC grant for it", async () => {
+		const cosmeticGrant = Entitlement.create({
+			id: "e-grant",
+			userId: "user-1",
+			grantType: GrantType.COSMETIC,
+			grantValue: "cosmetic-1",
+			source: EntitlementSource.PURCHASE,
+			expiresAt: null,
+		});
+		const { equip, saved } = build({ found: cosmetic(CosmeticTier.DONOR), entitlements: [cosmeticGrant] });
+
+		await equip.run({ userId: "user-1", cosmeticType: CosmeticType.SLEEVE, cosmeticId: "cosmetic-1" });
+
+		expect(saved).toHaveLength(1);
+		expect(saved[0].equippedCosmeticId(CosmeticType.SLEEVE)).toBe("cosmetic-1");
 	});
 });
