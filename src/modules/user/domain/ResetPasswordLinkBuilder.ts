@@ -1,19 +1,10 @@
 export interface FrontendResetEntry {
-	/** Canonical origin (scheme + host[:port]) used to match the request. */
 	origin: string;
-	/** Reset page URL for that frontend. Must contain the `{token}` placeholder. */
 	template: string;
 }
 
-/**
- * Builds the password-recovery link that goes into the email.
- *
- * Each frontend (e.g. evolutionygo.com, evoduel.com) is a different app with its
- * own routing, so the link is picked from a per-origin registry. The request
- * Origin/Referer is used ONLY to SELECT which frontend; the URL itself always
- * comes from the registry (config), never from the raw header — that is what
- * prevents password-reset poisoning (host/origin header injection).
- */
+// The request origin only SELECTS the frontend; the URL always comes from the
+// registry, never from the raw header — this prevents reset-link poisoning.
 export class ResetPasswordLinkBuilder {
 	private readonly entries: FrontendResetEntry[];
 

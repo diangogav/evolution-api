@@ -27,8 +27,7 @@ export class UserForgotPassword {
 		const user = await this.repository.findByEmail(email);
 
 		if (!user) {
-			// Return the same response whether or not the email exists, so this endpoint
-			// cannot be used to enumerate registered accounts.
+			// Same response whether or not the email exists, to prevent account enumeration.
 			this.logger.info("Forgot password requested for an unregistered email");
 
 			return { message: "Email sent successfully" };
