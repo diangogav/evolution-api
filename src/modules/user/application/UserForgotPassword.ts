@@ -1,5 +1,4 @@
 import { EmailSender } from "../../../shared/email/domain/EmailSender";
-import { NotFoundError } from "../../../shared/errors/NotFoundError";
 import { JWT } from "../../../shared/JWT";
 import { Logger } from "../../../shared/logger/domain/Logger";
 import { ResetPasswordLinkBuilder } from "../domain/ResetPasswordLinkBuilder";
@@ -28,7 +27,11 @@ export class UserForgotPassword {
 		const user = await this.repository.findByEmail(email);
 
 		if (!user) {
-			throw new NotFoundError(`User with email ${email} not found`);
+			// Return the same response whether or not the email exists, so this endpoint
+			// cannot be used to enumerate registered accounts.
+			this.logger.info("Forgot password requested for an unregistered email");
+
+			return { message: "Email sent successfully" };
 		}
 
 		const token = this.jwt.generate({ id: user.id }, { expiresIn: "1h" });

@@ -5,7 +5,6 @@ import { ResetPasswordLinkBuilder } from "../../../../../src/modules/user/domain
 import { User } from "../../../../../src/modules/user/domain/User";
 import { UserRepository } from "../../../../../src/modules/user/domain/UserRepository";
 import { EmailSender } from "../../../../../src/shared/email/domain/EmailSender";
-import { NotFoundError } from "../../../../../src/shared/errors/NotFoundError";
 import { JWT } from "../../../../../src/shared/JWT";
 import { Logger } from "../../../../../src/shared/logger/domain/Logger";
 import { Pino } from "../../../../../src/shared/logger/infrastructure/Pino";
@@ -67,10 +66,14 @@ describe("UserForgotPassword", () => {
 		expect(emailData.html).toContain("https://evolutionygo.com/reset-password?token=");
 	});
 
-	it("throws NotFoundError when the email is not registered", async () => {
+	it("does not reveal whether the email exists and skips sending when it is not registered", async () => {
 		spyOn(repository, "findByEmail").mockResolvedValue(null);
+		const sendSpy = spyOn(emailSender, "send").mockResolvedValue();
 
-		expect(forgot.forgotPassword({ email: "ghost@example.com" })).rejects.toThrow(NotFoundError);
+		const result = await forgot.forgotPassword({ email: "ghost@example.com" });
+
+		expect(result.message).toBe("Email sent successfully");
+		expect(sendSpy).not.toHaveBeenCalled();
 	});
 
 	it("propagates an error when the email fails to send", async () => {
