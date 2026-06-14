@@ -18,6 +18,7 @@ import { UserAccountPasswordUpdater } from "../../modules/user/application/UserA
 import { UserUpgradePassword } from "../../modules/user/application/UserUpgradePassword";
 import { UserTokenValidator } from "../../modules/user/application/UserTokenValidator";
 import { UserUsernameUpdater } from "../../modules/user/application/UserUsernameUpdater";
+import { ResetPasswordLinkBuilder } from "../../modules/user/domain/ResetPasswordLinkBuilder";
 import { UserPostgresRepository } from "../../modules/user/infrastructure/UserPostgresRepository";
 import { ResendEmailSender } from "../../shared/email/infrastructure/ResendEmailSender";
 import { AuthenticationError } from "../../shared/errors/AuthenticationError";
@@ -41,6 +42,10 @@ const matchRepository = new MatchPostgresRepository();
 const hash = new Hash();
 const jwt = new JWT(config.jwt);
 const userBanRepository = new UserBanPostgresRepository();
+const resetPasswordLinkBuilder = new ResetPasswordLinkBuilder(
+	config.passwordRecovery.frontends,
+	config.passwordRecovery.defaultResetUrl,
+);
 
 export const userRouter = new Elysia({ prefix: "/users" })
 	// Public Endpoints
@@ -116,8 +121,11 @@ export const userRouter = new Elysia({ prefix: "/users" })
 	.post(
 		"/forgot-password",
 		async ({ body, request }) => {
-			const baseUrl = request.headers.get("origin") || request.headers.get("referer") || "";
-			return new UserForgotPassword(userRepository, emailSender, jwt, logger, baseUrl).forgotPassword(body);
+			return new UserForgotPassword(userRepository, emailSender, jwt, logger, resetPasswordLinkBuilder).forgotPassword({
+				...body,
+				origin: request.headers.get("origin"),
+				referer: request.headers.get("referer"),
+			});
 		},
 		{
 			detail: {

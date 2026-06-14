@@ -2,6 +2,7 @@ import { EmailSender } from "../../../shared/email/domain/EmailSender";
 import { NotFoundError } from "../../../shared/errors/NotFoundError";
 import { JWT } from "../../../shared/JWT";
 import { Logger } from "../../../shared/logger/domain/Logger";
+import { ResetPasswordLinkBuilder } from "../domain/ResetPasswordLinkBuilder";
 import { UserRepository } from "../domain/UserRepository";
 
 export class UserForgotPassword {
@@ -10,10 +11,18 @@ export class UserForgotPassword {
 		private readonly emailSender: EmailSender,
 		private readonly jwt: JWT,
 		private readonly logger: Logger,
-		private readonly baseUrl: string,
+		private readonly resetLinkBuilder: ResetPasswordLinkBuilder,
 	) {}
 
-	async forgotPassword({ email }: { email: string }): Promise<{ message: string }> {
+	async forgotPassword({
+		email,
+		origin,
+		referer,
+	}: {
+		email: string;
+		origin?: string | null;
+		referer?: string | null;
+	}): Promise<{ message: string }> {
 		this.logger.info(`Forgot password for email ${email}`);
 
 		const user = await this.repository.findByEmail(email);
@@ -23,6 +32,7 @@ export class UserForgotPassword {
 		}
 
 		const token = this.jwt.generate({ id: user.id }, { expiresIn: "1h" });
+		const resetLink = this.resetLinkBuilder.build({ origin, referer, token });
 
 		const emailData = {
 			username: user.username,
@@ -31,7 +41,7 @@ export class UserForgotPassword {
 			html: `
 				<p>Hello ${user.username}!</p>
 				<p>You have requested to reset your password. Use the following link to reset your password:</p>
-				<p><strong>${this.baseUrl}/reset-password?token=${token}</strong></p>
+				<p><strong>${resetLink}</strong></p>
 				<p>This link will expire in 1 hour.</p>
 				<p>If you didn't request this, please ignore this email.</p>
 				<p>Regards,</p>
@@ -40,16 +50,18 @@ export class UserForgotPassword {
 			text: `
 				Hello ${user.username}!
 				You have requested to reset your password. Use the following link to reset your password:
-				${this.baseUrl}/reset-password?token=${token}
+				${resetLink}
 				This link will expire in 1 hour.
 			`,
 		};
 
-		this.emailSender.send(user.email, emailData).catch((error: Error) => {
+		try {
+			await this.emailSender.send(user.email, emailData);
+		} catch (error) {
 			this.logger.error(`Error sending email to ${email}`);
-			this.logger.error(error);
+			this.logger.error(error as Error);
 			throw new Error("Error sending email");
-		});
+		}
 
 		return {
 			message: "Email sent successfully",

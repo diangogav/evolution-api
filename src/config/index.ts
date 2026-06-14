@@ -10,6 +10,8 @@ function ensureEnvVariable(variable: string, variableName: string): string {
 	return variable;
 }
 
+const isProduction = process.env.NODE_ENV === "production";
+
 export const config = {
 	sendgrid: {
 		apiKey: ensureEnvVariable(process.env.SENDGRID_API_KEY as string, "SENDGRID_API_KEY"),
@@ -38,5 +40,28 @@ export const config = {
 	tournaments: {
 		apiUrl: ensureEnvVariable(process.env.TOURNAMENTS_API_URL as string, "TOURNAMENTS_API_URL"),
 		webhookUrl: ensureEnvVariable(process.env.TOURNAMENTS_WEBHOOK_URL as string, "TOURNAMENTS_WEBHOOK_URL"),
-	}
+	},
+	// Per-frontend password-recovery links. Each frontend is a different app with its
+	// own routing, so the email link is selected by the request origin (NOT trusted to
+	// build the URL — the URL always comes from here). Add a new frontend by adding an
+	// entry; the client contract never changes.
+	passwordRecovery: {
+		// Used when the request origin matches no known frontend.
+		defaultResetUrl: "https://evolutionygo.com/reset-password?token={token}",
+		frontends: [
+			// evolutionygo.com — existing app in production, preserved exactly as-is.
+			{ origin: "https://evolutionygo.com", template: "https://evolutionygo.com/reset-password?token={token}" },
+			// evoduel.com — new SPA (hash-routed), recovers the strong account password.
+			{ origin: "https://evoduel.com", template: "https://evoduel.com/#/reset-account-password?token={token}" },
+			// Local development (Vite). Never exposed in production.
+			...(isProduction
+				? []
+				: [
+						{
+							origin: "http://localhost:5173",
+							template: "http://localhost:5173/#/reset-account-password?token={token}",
+						},
+					]),
+		],
+	},
 };
