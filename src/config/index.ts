@@ -10,6 +10,8 @@ function ensureEnvVariable(variable: string, variableName: string): string {
 	return variable;
 }
 
+const isProduction = process.env.NODE_ENV === "production";
+
 export const config = {
 	sendgrid: {
 		apiKey: ensureEnvVariable(process.env.SENDGRID_API_KEY as string, "SENDGRID_API_KEY"),
@@ -38,5 +40,20 @@ export const config = {
 	tournaments: {
 		apiUrl: ensureEnvVariable(process.env.TOURNAMENTS_API_URL as string, "TOURNAMENTS_API_URL"),
 		webhookUrl: ensureEnvVariable(process.env.TOURNAMENTS_WEBHOOK_URL as string, "TOURNAMENTS_WEBHOOK_URL"),
-	}
+	},
+	passwordRecovery: {
+		defaultResetUrl: "https://evolutionygo.com/reset-password?token={token}",
+		frontends: [
+			{ origin: "https://evolutionygo.com", template: "https://evolutionygo.com/reset-password?token={token}" },
+			{ origin: "https://evoduel.com", template: "https://evoduel.com/#/reset-account-password?token={token}" },
+			...(isProduction
+				? []
+				: [
+						{
+							origin: "http://localhost:5173",
+							template: "http://localhost:5173/#/reset-account-password?token={token}",
+						},
+					]),
+		],
+	},
 };
