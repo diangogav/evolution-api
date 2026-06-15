@@ -16,7 +16,13 @@ export class UserAccountPasswordReset {
 		private readonly jwt: JWT,
 	) {}
 
-	async resetPassword({ token, newPassword }: { token: string; newPassword: string }): Promise<void> {
+	async resetPassword({
+		token,
+		newPassword,
+	}: {
+		token: string;
+		newPassword: string;
+	}): Promise<{ id: string; username: string; token: string }> {
 		if (!token) {
 			throw new AuthenticationError("No token provided");
 		}
@@ -31,7 +37,8 @@ export class UserAccountPasswordReset {
 		const securePassword = SecurePassword.create(newPassword);
 		const securePasswordHashed = await this.hash.hash(securePassword.value);
 
-		await this.repository.update(user.updateSecurePassword(securePasswordHashed));
+		const updatedUser = user.updateSecurePassword(securePasswordHashed);
+		await this.repository.update(updatedUser);
 		this.logger.info(`Account password reset for user: ${user.id}`);
 
 		const emailData = {
@@ -42,5 +49,9 @@ export class UserAccountPasswordReset {
 		};
 
 		await this.emailSender.send(user.email, emailData);
+
+		const sessionToken = this.jwt.generate({ id: updatedUser.id, role: updatedUser.role });
+
+		return { id: updatedUser.id, token: sessionToken, username: updatedUser.username };
 	}
 }
