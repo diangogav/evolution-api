@@ -239,7 +239,8 @@ export const userRouter = new Elysia({ prefix: "/users" })
 								example: {
 									id: 'user-123',
 									username: 'player1',
-									token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
+									token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+									migrated: true
 								}
 							}
 						}

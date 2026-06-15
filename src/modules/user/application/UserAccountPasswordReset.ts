@@ -22,7 +22,7 @@ export class UserAccountPasswordReset {
 	}: {
 		token: string;
 		newPassword: string;
-	}): Promise<{ id: string; username: string; token: string }> {
+	}): Promise<{ id: string; username: string; token: string; migrated: boolean }> {
 		if (!token) {
 			throw new AuthenticationError("No token provided");
 		}
@@ -33,6 +33,9 @@ export class UserAccountPasswordReset {
 			this.logger.error(`User not found for account password reset: ${decoded.id}`);
 			throw new NotFoundError("User not found");
 		}
+
+		// null = the user never had an account password, so this reset is their first migration.
+		const migrated = user.securePassword === null;
 
 		const securePassword = SecurePassword.create(newPassword);
 		const securePasswordHashed = await this.hash.hash(securePassword.value);
@@ -52,6 +55,6 @@ export class UserAccountPasswordReset {
 
 		const sessionToken = this.jwt.generate({ id: updatedUser.id, role: updatedUser.role });
 
-		return { id: updatedUser.id, token: sessionToken, username: updatedUser.username };
+		return { id: updatedUser.id, token: sessionToken, username: updatedUser.username, migrated };
 	}
 }
