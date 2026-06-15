@@ -67,6 +67,24 @@ describe("UserAccountPasswordReset", () => {
 		expect(decoded.role).toBe(user.role);
 	});
 
+	it("flags migrated=true when the user had no account password yet (first migration)", async () => {
+		spyOn(repository, "findById").mockResolvedValue(user);
+
+		const session = await reset.resetPassword({ token, newPassword: "NewPass2024" });
+
+		expect(session.migrated).toBe(true);
+	});
+
+	it("flags migrated=false when the user already had an account password", async () => {
+		const existingUser = UserMother.create({ securePassword: await hash.hash("OldPass2024") });
+		const existingUserToken = jwt.generate({ id: existingUser.id });
+		spyOn(repository, "findById").mockResolvedValue(existingUser);
+
+		const session = await reset.resetPassword({ token: existingUserToken, newPassword: "NewPass2024" });
+
+		expect(session.migrated).toBe(false);
+	});
+
 	it("throws when no token is provided", async () => {
 		expect(reset.resetPassword({ token: "", newPassword: "NewPass2024" })).rejects.toThrow(AuthenticationError);
 	});
