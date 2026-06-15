@@ -55,6 +55,18 @@ describe("UserAccountPasswordReset", () => {
 		expect(await hash.compare("NewPass2024", updatedUser.securePassword as string)).toBe(true);
 	});
 
+	it("returns a fresh session so the client can auto-login", async () => {
+		spyOn(repository, "findById").mockResolvedValue(user);
+
+		const session = await reset.resetPassword({ token, newPassword: "NewPass2024" });
+
+		expect(session.id).toBe(user.id);
+		expect(session.username).toBe(user.username);
+		const decoded = jwt.decode(session.token) as { id: string; role: string };
+		expect(decoded.id).toBe(user.id);
+		expect(decoded.role).toBe(user.role);
+	});
+
 	it("throws when no token is provided", async () => {
 		expect(reset.resetPassword({ token: "", newPassword: "NewPass2024" })).rejects.toThrow(AuthenticationError);
 	});

@@ -232,7 +232,18 @@ export const userRouter = new Elysia({ prefix: "/users" })
 				description: 'Resets the strong account password using a valid reset token',
 				security: [{ bearerAuth: [] }],
 				responses: {
-					200: { description: 'Account password reset successfully' },
+					200: {
+						description: 'Account password reset successfully; returns a fresh session for auto-login',
+						content: {
+							'application/json': {
+								example: {
+									id: 'user-123',
+									username: 'player1',
+									token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
+								}
+							}
+						}
+					},
 					400: { description: 'Password does not meet the policy' },
 					401: { description: 'Invalid or expired token' }
 				}
