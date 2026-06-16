@@ -9,8 +9,6 @@ import { MatchPostgresRepository } from "../../modules/match/infrastructure/Matc
 import { UserStatsFinder } from "../../modules/stats/application/UserStatsFinder";
 import { UserStatsPostgresRepository } from "../../modules/stats/infrastructure/UserStatsPostgresRepository";
 import { UserForgotPassword } from "../../modules/user/application/UserForgotPassword";
-import { UserPasswordReset } from "../../modules/user/application/UserPasswordReset";
-import { UserPasswordUpdater } from "../../modules/user/application/UserPasswordUpdater";
 import { UserGamePasswordGenerator } from "../../modules/user/application/UserGamePasswordGenerator";
 import { UserRegister } from "../../modules/user/application/UserRegister";
 import { UserAccountPasswordReset } from "../../modules/user/application/UserAccountPasswordReset";
@@ -180,41 +178,6 @@ export const userRouter = new Elysia({ prefix: "/users" })
 		},
 	)
 	.post(
-		"/reset-password",
-		async ({ body, headers }) => {
-			const token = headers.authorization?.replace("Bearer ", "");
-			if (!token) {
-				throw new AuthenticationError("No token provided");
-			}
-			return new UserPasswordReset(userRepository, hash, emailSender, logger, jwt).resetPassword({
-				token,
-				newPassword: body.password,
-			});
-		},
-		{
-			detail: {
-				tags: ['Authentication'],
-				summary: 'Reset password',
-				description: 'Resets user password using a valid reset token',
-				security: [{ bearerAuth: [] }],
-				responses: {
-					200: {
-						description: 'Password reset successfully',
-						content: {
-							'application/json': {
-								example: { message: 'Password reset successfully' }
-							}
-						}
-					},
-					401: { description: 'Invalid or expired token' }
-				}
-			},
-			body: t.Object({
-				password: t.String({ minLength: 4, maxLength: 4, pattern: '^.*\\S.*$' }),
-			}),
-		},
-	)
-	.post(
 		"/reset-account-password",
 		async ({ body, headers }) => {
 			const token = headers.authorization?.replace("Bearer ", "");
@@ -350,39 +313,6 @@ export const userRouter = new Elysia({ prefix: "/users" })
 	.use(bearer())
 	.guard(banGuard, (app) =>
 		app
-			.post(
-				"/change-password",
-				async ({ body, bearer }) => {
-					const decodedToken = jwt.decode(bearer as string) as { id: string };
-					return new UserPasswordUpdater(userRepository, hash, logger, emailSender).updatePassword({
-						...(body as { password: string; newPassword: string }),
-						id: decodedToken.id,
-					});
-				},
-				{
-					detail: {
-						tags: ['User Management'],
-						summary: 'Change password',
-						description: 'Changes the password for the authenticated user',
-						security: [{ bearerAuth: [] }],
-						responses: {
-							200: {
-								description: 'Password changed successfully',
-								content: {
-									'application/json': {
-										example: { message: 'Password updated successfully' }
-									}
-								}
-							},
-							401: { description: 'Invalid current password' }
-						}
-					},
-					body: t.Object({
-						password: t.String({ minLength: 1, pattern: '^.*\\S.*$' }),
-						newPassword: t.String({ minLength: 4, maxLength: 4, pattern: '^.*\\S.*$' }),
-					}),
-				},
-			)
 			.post(
 				"/change-username",
 				async ({ body, bearer }) => {
