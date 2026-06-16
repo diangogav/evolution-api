@@ -1,5 +1,6 @@
 import { UserProfileRole } from "src/evolution-types/src/types/UserProfileRole";
 import { EmailSender } from "../../../shared/email/domain/EmailSender";
+import { renderBrandedEmail } from "../../../shared/email/EmailTemplate";
 import { ConflictError } from "../../../shared/errors/ConflictError";
 import { Hash } from "../../../shared/Hash";
 import { JWT } from "../../../shared/JWT";
@@ -61,11 +62,21 @@ export class UserRegister {
 
 		await this.repository.create(user);
 
+		const { html, text } = renderBrandedEmail({
+			heading: `Welcome to Evolution, ${username}!`,
+			paragraphs: [
+				"Your account is ready. Log in to the website anytime with your email and the password you just created.",
+				"To play from external clients like EDOpro, generate your dueling PIN from your profile settings and use it to connect to the server. You can regenerate it whenever you need a new one.",
+				"See you in the arena!",
+			],
+			cta: { label: "Open Evolution", url: "https://evolutionygo.com" },
+		});
+
 		const emailData = {
 			username,
-			subject: "Welcome to Evolution YGO",
-			html: `<p>Welcome to Evolution YGO, ${username}!</p><p>Your account is ready. Log in to the website anytime with your email and the password you just created.</p><p>To play from external clients like EDOpro, generate your dueling PIN from your profile settings and use it to connect to the server. You can regenerate it whenever you need a new one.</p><p>See you in the arena!</p><p>— Evolution YGO Team</p>`,
-			text: `Welcome to Evolution YGO, ${username}! Your account is ready. Log in to the website anytime with your email and the password you just created. To play from external clients like EDOpro, generate your dueling PIN from your profile settings and use it to connect to the server. You can regenerate it whenever you need a new one. See you in the arena! — Evolution YGO Team`,
+			subject: "Welcome to Evolution",
+			html,
+			text,
 		};
 
 		this.emailSender.send(user.email, emailData).catch((error: Error) => {
