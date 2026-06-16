@@ -1,4 +1,5 @@
 import { EmailSender } from "../../../shared/email/domain/EmailSender";
+import { renderBrandedEmail } from "../../../shared/email/EmailTemplate";
 import { JWT } from "../../../shared/JWT";
 import { Logger } from "../../../shared/logger/domain/Logger";
 import { ResetPasswordLinkBuilder } from "../domain/ResetPasswordLinkBuilder";
@@ -11,7 +12,7 @@ export class UserForgotPassword {
 		private readonly jwt: JWT,
 		private readonly logger: Logger,
 		private readonly resetLinkBuilder: ResetPasswordLinkBuilder,
-	) {}
+	) { }
 
 	async forgotPassword({
 		email,
@@ -36,25 +37,21 @@ export class UserForgotPassword {
 		const token = this.jwt.generate({ id: user.id }, { expiresIn: "1h" });
 		const resetLink = this.resetLinkBuilder.build({ origin, referer, token });
 
+		const { html, text } = renderBrandedEmail({
+			heading: "Reset your password",
+			paragraphs: [
+				"We received a request to reset your Evolution account password. Click the button below to choose a new one. This link expires in 1 hour.",
+				"If you didn't request this, you can safely ignore this email.",
+			],
+			cta: { label: "Reset password", url: resetLink },
+		});
+
 		const emailData = {
 			username: user.username,
 			token,
-			subject: "Password Recovery - Evolution YGO",
-			html: `
-				<p>Hello ${user.username}!</p>
-				<p>You have requested to reset your password. Use the following link to reset your password:</p>
-				<p><strong>${resetLink}</strong></p>
-				<p>This link will expire in 1 hour.</p>
-				<p>If you didn't request this, please ignore this email.</p>
-				<p>Regards,</p>
-				<p>Evolution YGO Team</p>
-			`,
-			text: `
-				Hello ${user.username}!
-				You have requested to reset your password. Use the following link to reset your password:
-				${resetLink}
-				This link will expire in 1 hour.
-			`,
+			subject: "Reset your Evolution password",
+			html,
+			text,
 		};
 
 		try {

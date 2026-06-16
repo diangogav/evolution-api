@@ -1,4 +1,5 @@
 import { EmailSender } from "../../../shared/email/domain/EmailSender";
+import { renderBrandedEmail } from "../../../shared/email/EmailTemplate";
 import { AuthenticationError } from "../../../shared/errors/AuthenticationError";
 import { NotFoundError } from "../../../shared/errors/NotFoundError";
 import { Hash } from "../../../shared/Hash";
@@ -44,11 +45,20 @@ export class UserAccountPasswordReset {
 		await this.repository.update(updatedUser);
 		this.logger.info(`Account password reset for user: ${user.id}`);
 
+		const { html, text } = renderBrandedEmail({
+			heading: "Your password was reset",
+			paragraphs: [
+				"Your Evolution account password has been reset successfully. You can now log in with your new password.",
+				"If this wasn't you, contact support right away.",
+			],
+			cta: { label: "Go to Evolution", url: "https://evolutionygo.com" },
+		});
+
 		const emailData = {
 			username: user.username,
-			subject: "Password Changed - Evolution YGO",
-			html: `<p>Hello ${user.username}! Your account password has been reset. If this wasn't you, contact support immediately.</p>`,
-			text: `Hello ${user.username}! Your account password has been reset. If this wasn't you, contact support immediately.`,
+			subject: "Your Evolution password was reset",
+			html,
+			text,
 		};
 
 		await this.emailSender.send(user.email, emailData);

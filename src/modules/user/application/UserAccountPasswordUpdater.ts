@@ -1,4 +1,5 @@
 import { EmailSender } from "../../../shared/email/domain/EmailSender";
+import { renderBrandedEmail } from "../../../shared/email/EmailTemplate";
 import { AuthenticationError } from "../../../shared/errors/AuthenticationError";
 import { NotFoundError } from "../../../shared/errors/NotFoundError";
 import { Hash } from "../../../shared/Hash";
@@ -39,11 +40,20 @@ export class UserAccountPasswordUpdater {
 		await this.repository.update(user.updateSecurePassword(securePasswordHashed));
 		this.logger.info(`Account password updated for user: ${user.id}`);
 
+		const { html, text } = renderBrandedEmail({
+			heading: "Your password was changed",
+			paragraphs: [
+				"Your Evolution account password was just changed. For security, you'll need to log in again with your new password.",
+				"If this wasn't you, contact support right away.",
+			],
+			cta: { label: "Go to Evolution", url: "https://evolutionygo.com" },
+		});
+
 		const emailData = {
 			username: user.username,
-			subject: "Password Changed - Evolution YGO",
-			html: `<p>Hello ${user.username}! Your account password has been changed. If this wasn't you, contact support immediately.</p>`,
-			text: `Hello ${user.username}! Your account password has been changed. If this wasn't you, contact support immediately.`,
+			subject: "Your Evolution password was changed",
+			html,
+			text,
 		};
 
 		await this.emailSender.send(user.email, emailData);

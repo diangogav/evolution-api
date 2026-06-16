@@ -20,7 +20,7 @@ describe("UserRegister", () => {
 	let emailSender: EmailSender;
 	let jwt: JWT;
 	let userRegister: UserRegister;
-	let request: { id: string; email: string; username: string };
+	let request: { id: string; email: string; username: string; password: string };
 
 	beforeEach(() => {
 		repository = {
@@ -45,41 +45,40 @@ describe("UserRegister", () => {
 		spyOn(repository, "findByEmailOrUsername").mockResolvedValue(null);
 	});
 
-	it("registers a user with only a game password when no account password is provided", async () => {
-		const repositoryCreateSpy = spyOn(repository, "create");
-		const emailSenderSendSpy = spyOn(emailSender, "send");
-
-		const result = await userRegister.register(request);
-
-		expect(repositoryCreateSpy).toHaveBeenCalledTimes(1);
-		expect(emailSenderSendSpy).toHaveBeenCalledTimes(1);
-		expect(result).toEqual({ id: request.id, username: request.username, email: request.email });
-
-		const createdUser = repositoryCreateSpy.mock.calls[0][0] as User;
-		expect(createdUser.securePassword).toBeNull();
-	});
-
-	it("registers a new user with a chosen strong password and returns a token", async () => {
+	it("registers a new user with a strong password and returns a token", async () => {
 		const repositoryCreateSpy = spyOn(repository, "create");
 
-		const result = (await userRegister.register({ ...request, password: "yugi2024" })) as { token: string };
+		const result = (await userRegister.register(request)) as { token: string; gamePassword: string };
 
 		const createdUser = repositoryCreateSpy.mock.calls[0][0] as User;
 		expect(typeof createdUser.securePassword).toBe("string");
-		expect(createdUser.securePassword).not.toBe("yugi2024"); // stored hashed, never plaintext
+		expect(createdUser.securePassword).not.toBe(request.password); // stored hashed, never plaintext
 		expect(typeof createdUser.password).toBe("string"); // 4-char game password still provisioned
 		expect(typeof result.token).toBe("string");
 		expect(result.token.length).toBeGreaterThan(0);
+		expect(typeof result.gamePassword).toBe("string"); // plaintext PIN returned once for onboarding
+		expect(result.gamePassword.length).toBe(4);
 	});
 
-	it("does not email the plaintext password on the strong-password flow", async () => {
+	it("sends a welcome email without exposing the plaintext password or game PIN", async () => {
 		const emailSenderSendSpy = spyOn(emailSender, "send");
 
-		await userRegister.register({ ...request, password: "yugi2024" });
+		await userRegister.register(request);
 
 		const emailData = emailSenderSendSpy.mock.calls[0]?.[1] as Record<string, unknown>;
 		expect(emailData?.password).toBeUndefined();
-		expect(JSON.stringify(emailData ?? {})).not.toContain("yugi2024");
+		expect(JSON.stringify(emailData ?? {})).not.toContain(request.password);
+	});
+
+	it("sends a welcome email that instructs on the dueling PIN flow", async () => {
+		const emailSenderSendSpy = spyOn(emailSender, "send");
+
+		await userRegister.register(request);
+
+		const emailData = emailSenderSendSpy.mock.calls[0]?.[1] as Record<string, unknown>;
+		const html = emailData?.html as string;
+		expect(html).toContain("dueling PIN");
+		expect(html).toContain("profile settings");
 	});
 
 	it("rejects a weak password that does not meet the policy", async () => {
