@@ -42,9 +42,9 @@ export const config = {
 		webhookUrl: ensureEnvVariable(process.env.TOURNAMENTS_WEBHOOK_URL as string, "TOURNAMENTS_WEBHOOK_URL"),
 	},
 	passwordRecovery: {
-		defaultResetUrl: "https://evolutionygo.com/reset-password?token={token}",
+		defaultResetUrl: "https://evolutionygo.com/reset-account-password?token={token}",
 		frontends: [
-			{ origin: "https://evolutionygo.com", template: "https://evolutionygo.com/reset-password?token={token}" },
+			{ origin: "https://evolutionygo.com", template: "https://evolutionygo.com/reset-account-password?token={token}" },
 			{ origin: "https://evoduel.com", template: "https://evoduel.com/#/reset-account-password?token={token}" },
 			...(isProduction
 				? []
