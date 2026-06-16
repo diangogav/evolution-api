@@ -32,8 +32,8 @@ export function renderBrandedEmail({ heading, paragraphs, cta }: BrandedEmailInp
 	<meta charset="UTF-8" />
 	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 </head>
-<body style="margin:0;padding:0;background-color:#0d0d0d">
-	<table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#0d0d0d" style="background-color:#0d0d0d">
+<body style="margin:0;padding:0;background-color:#f1f1f3">
+	<table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#f1f1f3" style="background-color:#f1f1f3">
 		<tr>
 			<td align="center" style="padding:32px 16px">
 				<table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:12px;overflow:hidden;mso-border-alt:none">
