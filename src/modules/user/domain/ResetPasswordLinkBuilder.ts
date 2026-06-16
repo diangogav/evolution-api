@@ -40,6 +40,10 @@ export class ResetPasswordLinkBuilder {
 	}
 
 	private normalize(value: string): string {
-		return value.trim().toLowerCase().replace(/\/+$/, "");
+		return value
+			.trim()
+			.toLowerCase()
+			.replace(/\/+$/, "")
+			.replace(/^(https?:\/\/)www\./, "$1");
 	}
 }

@@ -52,4 +52,16 @@ describe("ResetPasswordLinkBuilder", () => {
 
 		expect(link).toBe("https://evoduel.com/#/reset-account-password?token=abc");
 	});
+
+	it("matches the origin ignoring the www subdomain", () => {
+		const link = builder.build({ origin: "https://www.evoduel.com", referer: null, token: "abc" });
+
+		expect(link).toBe("https://evoduel.com/#/reset-account-password?token=abc");
+	});
+
+	it("derives the origin from a www referer ignoring the subdomain", () => {
+		const link = builder.build({ origin: null, referer: "https://www.evoduel.com/", token: "abc" });
+
+		expect(link).toBe("https://evoduel.com/#/reset-account-password?token=abc");
+	});
 });
