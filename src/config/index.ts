@@ -49,11 +49,15 @@ export const config = {
 			...(isProduction
 				? []
 				: [
-						{
-							origin: "http://localhost:5173",
-							template: "http://localhost:5173/#/reset-account-password?token={token}",
-						},
-					]),
+					{
+						origin: "http://localhost:5173",
+						template: "http://localhost:5173/#/reset-account-password?token={token}",
+					},
+					{
+						origin: "http://localhost:4321",
+						template: "http://localhost:4321/reset-account-password?token={token}",
+					}
+				]),
 		],
 	},
 };
