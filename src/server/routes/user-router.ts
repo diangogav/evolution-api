@@ -59,7 +59,7 @@ export const userRouter = new Elysia({ prefix: "/users" })
 			detail: {
 				tags: ['Authentication'],
 				summary: 'Register new user',
-				description: 'Creates a new user account and sends verification email',
+				description: 'Creates a new user account with a strong password and sends a welcome email',
 				responses: {
 					200: {
 						description: 'User registered successfully',
@@ -68,7 +68,8 @@ export const userRouter = new Elysia({ prefix: "/users" })
 								example: {
 									id: 'uuid-123',
 									username: 'player1',
-									email: 'player1@example.com'
+									email: 'player1@example.com',
+									token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
 								}
 							}
 						}
@@ -79,7 +80,7 @@ export const userRouter = new Elysia({ prefix: "/users" })
 			body: t.Object({
 				username: t.String({ minLength: 1, maxLength: 14, pattern: '^.*\\S.*$' }),
 				email: t.String({ minLength: 1, pattern: '^.*\\S.*$' }),
-				password: t.Optional(t.String({ minLength: 1, pattern: '^.*\\S.*$' })),
+				password: t.String({ minLength: 1, pattern: '^.*\\S.*$' }),
 			}),
 		},
 	)
