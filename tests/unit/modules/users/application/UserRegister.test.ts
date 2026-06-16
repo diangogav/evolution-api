@@ -48,7 +48,7 @@ describe("UserRegister", () => {
 	it("registers a new user with a strong password and returns a token", async () => {
 		const repositoryCreateSpy = spyOn(repository, "create");
 
-		const result = (await userRegister.register(request)) as { token: string };
+		const result = (await userRegister.register(request)) as { token: string; gamePassword: string };
 
 		const createdUser = repositoryCreateSpy.mock.calls[0][0] as User;
 		expect(typeof createdUser.securePassword).toBe("string");
@@ -56,6 +56,8 @@ describe("UserRegister", () => {
 		expect(typeof createdUser.password).toBe("string"); // 4-char game password still provisioned
 		expect(typeof result.token).toBe("string");
 		expect(result.token.length).toBeGreaterThan(0);
+		expect(typeof result.gamePassword).toBe("string"); // plaintext PIN returned once for onboarding
+		expect(result.gamePassword.length).toBe(4);
 	});
 
 	it("sends a welcome email without exposing the plaintext password or game PIN", async () => {

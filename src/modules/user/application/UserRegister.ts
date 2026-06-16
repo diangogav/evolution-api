@@ -32,7 +32,7 @@ export class UserRegister {
 		const gamePassword = GamePassword.generate();
 		const gamePasswordHashed = await this.hash.hash(gamePassword.value);
 
-		return this.registerWithSecurePassword({ id, email, username, password, gamePasswordHashed });
+		return this.registerWithSecurePassword({ id, email, username, password, gamePassword: gamePassword.value, gamePasswordHashed });
 	}
 
 	private async registerWithSecurePassword({
@@ -40,14 +40,16 @@ export class UserRegister {
 		email,
 		username,
 		password,
+		gamePassword,
 		gamePasswordHashed,
 	}: {
 		id: string;
 		email: string;
 		username: string;
 		password: string;
+		gamePassword: string;
 		gamePasswordHashed: string;
-	}): Promise<{ id: string; username: string; email: string; token: string }> {
+	}): Promise<{ id: string; username: string; email: string; token: string; gamePassword: string }> {
 		const securePassword = SecurePassword.create(password);
 		const securePasswordHashed = await this.hash.hash(securePassword.value);
 
@@ -86,6 +88,6 @@ export class UserRegister {
 
 		const token = this.jwt.generate({ id: user.id, role: user.role });
 
-		return { id: user.id, username: user.username, email: user.email, token };
+		return { id: user.id, username: user.username, email: user.email, token, gamePassword };
 	}
 }
