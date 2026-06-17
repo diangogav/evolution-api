@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, spyOn } from "bun:test";
 import { UserUsernameUpdater } from "../../../../../src/modules/user/application/UserUsernameUpdater";
 import { User } from "../../../../../src/modules/user/domain/User";
 import { UserRepository } from "../../../../../src/modules/user/domain/UserRepository";
+import { ConflictError } from "../../../../../src/shared/errors/ConflictError";
 import { UserMother } from "../mothers/UserMother";
 import { UserUsernameUpdaterRequestMother } from "../mothers/UserUsernameUpdaterRequestMother";
 
@@ -17,6 +18,7 @@ describe("User UsernameUpdater", () => {
 			create: async () => undefined,
 			findByEmailOrUsername: async () => null,
 			findByEmail: async () => null,
+			findByUsername: async () => null,
 			findById: async () => null,
 			update: async () => undefined,
 			updateParticipantId: async () => undefined,
@@ -39,5 +41,23 @@ describe("User UsernameUpdater", () => {
 				username: request.username,
 			}),
 		);
+	});
+
+	it("throws a ConflictError when the username is already taken by another user", async () => {
+		const anotherUser = UserMother.create();
+		spyOn(repository, "findByUsername").mockResolvedValue(anotherUser);
+		const repositoryUpdateSpy = spyOn(repository, "update");
+
+		await expect(userUsernameUpdater.updateUsername(request)).rejects.toThrow(ConflictError);
+		expect(repositoryUpdateSpy).not.toHaveBeenCalled();
+	});
+
+	it("allows a user to keep their own username without conflict", async () => {
+		spyOn(repository, "findByUsername").mockResolvedValue(user);
+		const repositoryUpdateSpy = spyOn(repository, "update");
+
+		await userUsernameUpdater.updateUsername({ id: user.id, username: user.username });
+
+		expect(repositoryUpdateSpy).toHaveBeenCalledTimes(1);
 	});
 });
