@@ -16,6 +16,7 @@ import { UserAccountPasswordUpdater } from "../../modules/user/application/UserA
 import { UserUpgradePassword } from "../../modules/user/application/UserUpgradePassword";
 import { UserTokenValidator } from "../../modules/user/application/UserTokenValidator";
 import { UserUsernameUpdater } from "../../modules/user/application/UserUsernameUpdater";
+import { UserUsernameAvailabilityChecker } from "../../modules/user/application/UserUsernameAvailabilityChecker";
 import { ResetPasswordLinkBuilder } from "../../modules/user/domain/ResetPasswordLinkBuilder";
 import { UserPostgresRepository } from "../../modules/user/infrastructure/UserPostgresRepository";
 import { ResendEmailSender } from "../../shared/email/infrastructure/ResendEmailSender";
@@ -174,6 +175,32 @@ export const userRouter = new Elysia({ prefix: "/users" })
 			},
 			query: t.Object({
 				token: t.String(),
+			}),
+		},
+	)
+	.get(
+		"/username-availability",
+		async ({ query }) => {
+			return new UserUsernameAvailabilityChecker(userRepository).check({ username: query.username });
+		},
+		{
+			detail: {
+				tags: ['User Management'],
+				summary: 'Check username availability',
+				description: 'Checks whether a username is available so the frontend can validate it before submitting a change or registration',
+				responses: {
+					200: {
+						description: 'Availability resolved successfully',
+						content: {
+							'application/json': {
+								example: { available: true }
+							}
+						}
+					}
+				}
+			},
+			query: t.Object({
+				username: t.String({ minLength: 1, maxLength: 14, pattern: '^.*\\S.*$' }),
 			}),
 		},
 	)

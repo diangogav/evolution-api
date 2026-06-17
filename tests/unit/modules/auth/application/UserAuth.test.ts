@@ -24,6 +24,7 @@ describe("UserAuth", () => {
       create: async () => { },
       findByEmailOrUsername: async () => null,
       findByEmail: async () => null,
+      findByUsername: async () => null,
       findById: async () => null,
       update: async () => { },
       updateParticipantId: async () => { },

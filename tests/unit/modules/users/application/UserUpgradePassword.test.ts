@@ -21,6 +21,7 @@ describe("UserUpgradePassword", () => {
 			create: async () => undefined,
 			findByEmailOrUsername: async () => null,
 			findByEmail: async () => null,
+			findByUsername: async () => null,
 			findById: async () => null,
 			update: async () => undefined,
 			updateParticipantId: async () => undefined,

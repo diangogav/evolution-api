@@ -44,6 +44,21 @@ export class UserPostgresRepository implements UserRepository {
 		return User.from(userProfileEntity);
 	}
 
+	async findByUsername(username: string): Promise<User | null> {
+		const repository = dataSource.getRepository(UserProfileEntity);
+		const userProfileEntity = await repository.findOne({
+			where: {
+				username,
+			},
+		});
+
+		if (!userProfileEntity) {
+			return null;
+		}
+
+		return User.from(userProfileEntity);
+	}
+
 	async findById(id: string): Promise<User | null> {
 		const repository = dataSource.getRepository(UserProfileEntity);
 		const userProfileEntity = await repository.findOne({
