@@ -26,4 +26,9 @@ export const STANDARD_COSMETICS: StandardCosmeticSeed[] = [
 	{ type: CosmeticType.PLAYMAT, tier: CosmeticTier.STANDARD, assetRef: "playmats/pallet-covered-b/", displayName: "Pallet Covered B" },
 	{ type: CosmeticType.PLAYMAT, tier: CosmeticTier.STANDARD, assetRef: "playmats/pallet-wood/", displayName: "Pallet Wood" },
 	{ type: CosmeticType.PLAYMAT, tier: CosmeticTier.STANDARD, assetRef: "playmats/plaque/", displayName: "Plaque" },
+	{ type: CosmeticType.AVATAR, tier: CosmeticTier.REGISTERED, assetRef: "avatars/baby-frog/", displayName: "Baby Frog" },
+	{ type: CosmeticType.AVATAR, tier: CosmeticTier.REGISTERED, assetRef: "avatars/kagura/", displayName: "Kagura" },
+	{ type: CosmeticType.AVATAR, tier: CosmeticTier.REGISTERED, assetRef: "avatars/mystical-witch/", displayName: "Mystical Witch" },
+	{ type: CosmeticType.AVATAR, tier: CosmeticTier.STANDARD, assetRef: "avatars/evolution/", displayName: "Evolution" },
+	{ type: CosmeticType.AVATAR, tier: CosmeticTier.STANDARD, assetRef: "avatars/evolution-black/", displayName: "Evolution Black" },
 ];
