@@ -1,11 +1,12 @@
 import { UserBanPostgresRepository } from "../../modules/user/infrastructure/UserBanPostgresRepository";
 import { UserGetActiveBan } from "../../modules/user/application/UserGetActiveBan";
 import { AuthenticationError } from "../../shared/errors/AuthenticationError";
+import { ForbiddenError } from "../../shared/errors/ForbiddenError";
 import { config } from "../../config";
 import { JWT } from "../../shared/JWT";
 
 export const banGuard = {
-  async beforeHandle({ set, bearer }) {
+  async beforeHandle({ bearer }) {
     const bearerToken = bearer as string | undefined;
     if (!bearerToken) throw new AuthenticationError("No token provided");
     const jwt = new JWT(config.jwt);
@@ -20,8 +21,7 @@ export const banGuard = {
     const getActiveBan = new UserGetActiveBan(userBanRepository);
     const activeBan = await getActiveBan.execute(userId);
     if (activeBan) {
-      set.status = 403;
-      throw new AuthenticationError("User is banned");
+      throw new ForbiddenError("User is banned");
     }
   }
 };
