@@ -33,7 +33,6 @@ export abstract class AbstractThemeStrategy implements IThemeStrategy {
         };
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     renderSpecialSections(_data: SeasonWrapped, _options: GenerateOptions, _background: string): string {
         return "";
     }
