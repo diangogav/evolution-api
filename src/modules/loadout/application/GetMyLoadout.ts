@@ -1,4 +1,5 @@
 import { AssetUrlSigner } from "../../assets/domain/AssetUrlSigner";
+import type { CompanionAnimationDescriptor } from "../../catalog/domain/CompanionAnimation";
 import { CosmeticRepository } from "../../catalog/domain/CosmeticRepository";
 import { CosmeticType } from "../../catalog/domain/CosmeticType";
 import { LoadoutRepository } from "../domain/LoadoutRepository";
@@ -7,6 +8,7 @@ export interface MyLoadoutSlot {
 	cosmeticType: CosmeticType;
 	cosmeticId: string;
 	assets: Record<string, string>;
+	animation?: CompanionAnimationDescriptor;
 }
 
 export class GetMyLoadout {
@@ -26,6 +28,7 @@ export class GetMyLoadout {
 					cosmeticType: item.cosmeticType,
 					cosmeticId: item.cosmeticId,
 					assets: cosmetic ? await this.signer.signManifest(cosmetic.assetRef) : {},
+					animation: cosmetic?.animation,
 				};
 			}),
 		);

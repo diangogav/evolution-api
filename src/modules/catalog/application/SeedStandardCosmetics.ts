@@ -28,6 +28,7 @@ export class SeedStandardCosmetics {
 					tier: item.tier,
 					assetRef: item.assetRef,
 					displayName: item.displayName,
+					animation: item.animation,
 				}),
 			);
 			created++;

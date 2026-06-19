@@ -20,16 +20,34 @@ const sleeve = Cosmetic.from({
 	displayName: "A",
 	active: true,
 });
+const companionAnimation = {
+	rigFile: "Rig_Medium_General.glb",
+	clips: { idle: "Idle_A", attack: "Throw" },
+};
+const companion = Cosmetic.from({
+	id: "companion-1",
+	type: CosmeticType.COMPANION,
+	tier: CosmeticTier.STANDARD,
+	assetRef: "companions/kaykit-warrior/",
+	displayName: "Warrior",
+	active: true,
+	animation: companionAnimation,
+});
 
-function build(directory: UserDirectory): GetPublicLoadout {
+const catalog = new Map<string, Cosmetic>([
+	[sleeve.id, sleeve],
+	[companion.id, companion],
+]);
+
+function build(directory: UserDirectory, equipped: Cosmetic = sleeve): GetPublicLoadout {
 	const loadouts: LoadoutRepository = {
 		findByUserId: async (userId) =>
-			Loadout.from(userId, [{ cosmeticType: CosmeticType.SLEEVE, cosmeticId: "cosmetic-1" }]),
+			Loadout.from(userId, [{ cosmeticType: equipped.type, cosmeticId: equipped.id }]),
 		save: async () => undefined,
 	};
 	const cosmetics: CosmeticRepository = {
-		findAll: async () => [sleeve],
-		findById: async (id) => (id === sleeve.id ? sleeve : null),
+		findAll: async () => [...catalog.values()],
+		findById: async (id) => catalog.get(id) ?? null,
 		save: async () => undefined,
 	};
 	const signer: AssetUrlSigner = {
@@ -51,6 +69,18 @@ describe("GetPublicLoadout", () => {
 
 		expect(result).toHaveLength(1);
 		expect(result[0].assets).toEqual({ "render.jpg": "signed:sleeves/a/render.jpg" });
+	});
+
+	it("carries the COMPANION animation descriptor through the public gate (opponent/spectator render)", async () => {
+		const directory: UserDirectory = {
+			findUserIdByUsername: async (username) => (username === "rival" ? "user-rival" : null),
+		};
+
+		const result = await build(directory, companion).run("rival");
+
+		expect(result).toHaveLength(1);
+		expect(result[0].cosmeticType).toBe(CosmeticType.COMPANION);
+		expect(result[0].animation).toEqual(companionAnimation);
 	});
 
 	it("throws NotFound when the username does not exist (client falls back to standard)", async () => {

@@ -6,6 +6,7 @@ import {
 	UpdateDateColumn,
 } from "typeorm";
 
+import type { CompanionAnimationDescriptor } from "../domain/CompanionAnimation";
 import { CosmeticTier } from "../domain/CosmeticTier";
 import { CosmeticType } from "../domain/CosmeticType";
 
@@ -28,6 +29,9 @@ export class CosmeticEntity {
 
 	@Column({ default: true })
 	active: boolean;
+
+	@Column({ name: "animation", type: "jsonb", nullable: true })
+	animation?: CompanionAnimationDescriptor | null;
 
 	@CreateDateColumn({ name: "created_at" })
 	createdAt: Date;
