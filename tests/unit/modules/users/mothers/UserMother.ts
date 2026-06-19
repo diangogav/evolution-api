@@ -7,7 +7,7 @@ export class UserMother {
 	static create(params?: Partial<User>): User {
 		return User.from({
 			id: faker.string.uuid(),
-			username: faker.internet.username(),
+			username: faker.string.sample({ min: 1, max: 14 }),
 			email: faker.internet.email(),
 			password: faker.internet.password(),
 			securePassword: null,
