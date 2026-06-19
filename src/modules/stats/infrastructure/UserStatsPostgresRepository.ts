@@ -6,7 +6,12 @@ import { UserStats } from "../domain/UserStats";
 import { UserStatsRepository } from "../domain/UserStatsRepository";
 
 export class UserStatsPostgresRepository implements UserStatsRepository {
-	async find(userId: string, banListName: string, season: number, label?: string): Promise<UserStats | null> {
+	async find(
+		userId: string,
+		banListName: string,
+		season: number,
+		label?: string,
+	): Promise<UserStats | null> {
 		const subQuery = dataSource
 			.createQueryBuilder()
 			.select([
@@ -48,7 +53,9 @@ export class UserStatsPostgresRepository implements UserStatsRepository {
 			.leftJoin("user_achievements", "ua", "ua.user_id = rp.user_id")
 			.leftJoin("achievements", "a", "a.id = ua.achievement_id")
 			.where("rp.user_id = :userId", { userId })
-			.groupBy("rp.username, rp.user_id, rp.points, rp.wins, rp.losses, rp.banListName, rp.win_rate, rp.position")
+			.groupBy(
+				"rp.username, rp.user_id, rp.points, rp.wins, rp.losses, rp.banListName, rp.win_rate, rp.position",
+			)
 			.setParameters({
 				...subQuery.getParameters(),
 				label: label ? JSON.stringify([label]) : null,
@@ -116,7 +123,9 @@ export class UserStatsPostgresRepository implements UserStatsRepository {
 			.setParameters({ banListName })
 			.getRawMany();
 
-		return leaderboard.map((item) => UserStats.from({ ...item, userId: item.userid, winRate: item.winrate }));
+		return leaderboard.map((item) =>
+			UserStats.from({ ...item, userId: item.userid, winRate: item.winrate }),
+		);
 	}
 
 	async getBestPlayerOfLastCompletedWeek(): Promise<PeriodUserStats[]> {
@@ -174,16 +183,16 @@ export class UserStatsPostgresRepository implements UserStatsRepository {
 			WHERE r.rank = 1;
 		`);
 
-		return response.map((item) => PeriodUserStats.from({
-			userId: item?.user_id,
-			username: item?.username,
-			points: item?.total_points,
-			wins: item?.wins,
-			losses: item?.losses,
-			from: item?.week_start,
-			to: item?.week_end
-		}));
-
+		return response.map((item) =>
+			PeriodUserStats.from({
+				userId: item?.user_id,
+				username: item?.username,
+				points: item?.total_points,
+				wins: item?.wins,
+				losses: item?.losses,
+				from: item?.week_start,
+				to: item?.week_end,
+			}),
+		);
 	}
-
 }

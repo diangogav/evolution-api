@@ -81,30 +81,39 @@ describe("UserAccountPasswordReset", () => {
 		const existingUserToken = jwt.generate({ id: existingUser.id });
 		spyOn(repository, "findById").mockResolvedValue(existingUser);
 
-		const session = await reset.resetPassword({ token: existingUserToken, newPassword: "NewPass2024" });
+		const session = await reset.resetPassword({
+			token: existingUserToken,
+			newPassword: "NewPass2024",
+		});
 
 		expect(session.migrated).toBe(false);
 	});
 
 	it("throws when no token is provided", async () => {
-		expect(reset.resetPassword({ token: "", newPassword: "NewPass2024" })).rejects.toThrow(AuthenticationError);
+		expect(reset.resetPassword({ token: "", newPassword: "NewPass2024" })).rejects.toThrow(
+			AuthenticationError,
+		);
 	});
 
 	it("throws when the token is invalid", async () => {
-		expect(reset.resetPassword({ token: "not-a-valid-token", newPassword: "NewPass2024" })).rejects.toThrow(
-			AuthenticationError,
-		);
+		expect(
+			reset.resetPassword({ token: "not-a-valid-token", newPassword: "NewPass2024" }),
+		).rejects.toThrow(AuthenticationError);
 	});
 
 	it("rejects a weak new password", async () => {
 		spyOn(repository, "findById").mockResolvedValue(user);
 
-		expect(reset.resetPassword({ token, newPassword: "weak" })).rejects.toThrow(InvalidArgumentError);
+		expect(reset.resetPassword({ token, newPassword: "weak" })).rejects.toThrow(
+			InvalidArgumentError,
+		);
 	});
 
 	it("throws when the user does not exist", async () => {
 		spyOn(repository, "findById").mockResolvedValue(null);
 
-		expect(reset.resetPassword({ token, newPassword: "NewPass2024" })).rejects.toThrow(NotFoundError);
+		expect(reset.resetPassword({ token, newPassword: "NewPass2024" })).rejects.toThrow(
+			NotFoundError,
+		);
 	});
 });

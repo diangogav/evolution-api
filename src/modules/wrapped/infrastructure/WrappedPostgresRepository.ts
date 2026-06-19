@@ -9,83 +9,82 @@ import { SeasonWrapped } from "../domain/SeasonWrapped";
 import type { WrappedRepository } from "../domain/WrappedRepository";
 
 export class WrappedPostgresRepository implements WrappedRepository {
-    async getSeasonWrappedData(seasonId: number, playerId: string): Promise<SeasonWrapped | null> {
-        // Check if player exists
-        const player = await dataSource.query(
-            "SELECT id, username, avatar FROM users WHERE id = $1 AND deleted_at IS NULL",
-            [playerId],
-        );
+	async getSeasonWrappedData(seasonId: number, playerId: string): Promise<SeasonWrapped | null> {
+		// Check if player exists
+		const player = await dataSource.query(
+			"SELECT id, username, avatar FROM users WHERE id = $1 AND deleted_at IS NULL",
+			[playerId],
+		);
 
-        if (!player || player.length === 0) {
-            return null;
-        }
+		if (!player || player.length === 0) {
+			return null;
+		}
 
-        const playerData = player[0];
+		const playerData = player[0];
 
-        // Get global stats
-        const globalStats = await this.getGlobalStats(seasonId, playerId);
+		// Get global stats
+		const globalStats = await this.getGlobalStats(seasonId, playerId);
 
-        // If no matches, return empty wrapped
-        if (globalStats.totalMatches === 0) {
-            return new SeasonWrapped(
-                playerId,
-                playerData.username,
-                playerData.avatar,
-                seasonId,
-                `Season ${seasonId}`,
-                { start: new Date(), end: new Date() },
-                globalStats,
-                [],
-                null,
-                null,
-                null, // mostPlayedOpponent
-                [], // achievements
-                { position: 0, totalPlayers: 0, points: 0, rankBadge: "Challenger" },
-                { mostPlayedBanList: null, uniqueOpponents: 0, bestDay: null },
-            );
-        }
+		// If no matches, return empty wrapped
+		if (globalStats.totalMatches === 0) {
+			return new SeasonWrapped(
+				playerId,
+				playerData.username,
+				playerData.avatar,
+				seasonId,
+				`Season ${seasonId}`,
+				{ start: new Date(), end: new Date() },
+				globalStats,
+				[],
+				null,
+				null,
+				null, // mostPlayedOpponent
+				[], // achievements
+				{ position: 0, totalPlayers: 0, points: 0, rankBadge: "Challenger" },
+				{ mostPlayedBanList: null, uniqueOpponents: 0, bestDay: null },
+			);
+		}
 
-        // Get stats per ban list
-        const banListStats = await this.getBanListStats(seasonId, playerId);
+		// Get stats per ban list
+		const banListStats = await this.getBanListStats(seasonId, playerId);
 
-        // Get nemesis and victim
-        const nemesis = await this.getNemesis(seasonId, playerId);
-        const victim = await this.getVictim(seasonId, playerId);
+		// Get nemesis and victim
+		const nemesis = await this.getNemesis(seasonId, playerId);
+		const victim = await this.getVictim(seasonId, playerId);
 
-        // Get achievements
-        const achievements = await this.getAchievements(seasonId, playerId);
+		// Get achievements
+		const achievements = await this.getAchievements(seasonId, playerId);
 
-        // Get ranking
-        const ranking = await this.getRanking(seasonId, playerId);
+		// Get ranking
+		const ranking = await this.getRanking(seasonId, playerId);
 
-        // Get extra stats
-        const extraStats = await this.getExtraStats(seasonId, playerId, banListStats);
+		// Get extra stats
+		const extraStats = await this.getExtraStats(seasonId, playerId, banListStats);
 
-        return new SeasonWrapped(
-            playerId,
-            playerData.username,
-            playerData.avatar,
-            seasonId,
-            `Season ${seasonId}`,
-            {
-                start: globalStats.firstMatchDate ?? new Date(),
-                end: globalStats.lastMatchDate ?? new Date(),
-            },
-            globalStats,
-            banListStats,
-            nemesis,
-            victim,
-            null, // mostPlayedOpponent
-            achievements,
-            ranking,
-            extraStats,
-        );
-    }
+		return new SeasonWrapped(
+			playerId,
+			playerData.username,
+			playerData.avatar,
+			seasonId,
+			`Season ${seasonId}`,
+			{
+				start: globalStats.firstMatchDate ?? new Date(),
+				end: globalStats.lastMatchDate ?? new Date(),
+			},
+			globalStats,
+			banListStats,
+			nemesis,
+			victim,
+			null, // mostPlayedOpponent
+			achievements,
+			ranking,
+			extraStats,
+		);
+	}
 
-    private async getGlobalStats(seasonId: number, playerId: string): Promise<PlayerSeasonStats> {
-
-        const result = await dataSource.query(
-            `
+	private async getGlobalStats(seasonId: number, playerId: string): Promise<PlayerSeasonStats> {
+		const result = await dataSource.query(
+			`
 			SELECT
 				COUNT(*)::int AS total_matches,
 				COUNT(*) FILTER (WHERE winner = true)::int AS wins,
@@ -105,40 +104,40 @@ export class WrappedPostgresRepository implements WrappedRepository {
 				AND anulled = false
 				AND deleted_at IS NULL
 		`,
-            [seasonId, playerId],
-        );
+			[seasonId, playerId],
+		);
 
-        const stats = result[0];
+		const stats = result[0];
 
-        // Calculate streaks
-        const streaks = await this.calculateStreaks(seasonId, playerId);
+		// Calculate streaks
+		const streaks = await this.calculateStreaks(seasonId, playerId);
 
-        // Calculate avg matches per day and week
-        const avgMatchesPerDay = stats.active_days > 0 ? stats.total_matches / stats.active_days : 0;
-        const avgMatchesPerWeek = avgMatchesPerDay * 7;
+		// Calculate avg matches per day and week
+		const avgMatchesPerDay = stats.active_days > 0 ? stats.total_matches / stats.active_days : 0;
+		const avgMatchesPerWeek = avgMatchesPerDay * 7;
 
-        return new PlayerSeasonStats(
-            stats.total_matches,
-            stats.wins,
-            stats.losses,
-            stats.draws,
-            Math.round(stats.winrate * 10) / 10,
-            streaks.bestWinStreak,
-            streaks.worstLoseStreak,
-            Math.round(avgMatchesPerDay * 10) / 10,
-            Math.round(avgMatchesPerWeek * 10) / 10,
-            stats.first_match,
-            stats.last_match,
-            stats.active_days,
-        );
-    }
+		return new PlayerSeasonStats(
+			stats.total_matches,
+			stats.wins,
+			stats.losses,
+			stats.draws,
+			Math.round(stats.winrate * 10) / 10,
+			streaks.bestWinStreak,
+			streaks.worstLoseStreak,
+			Math.round(avgMatchesPerDay * 10) / 10,
+			Math.round(avgMatchesPerWeek * 10) / 10,
+			stats.first_match,
+			stats.last_match,
+			stats.active_days,
+		);
+	}
 
-    private async calculateStreaks(
-        seasonId: number,
-        playerId: string,
-    ): Promise<{ bestWinStreak: number; worstLoseStreak: number }> {
-        const matches = await dataSource.query(
-            `
+	private async calculateStreaks(
+		seasonId: number,
+		playerId: string,
+	): Promise<{ bestWinStreak: number; worstLoseStreak: number }> {
+		const matches = await dataSource.query(
+			`
 			SELECT winner
 			FROM matches
 			WHERE season = $1 
@@ -147,32 +146,32 @@ export class WrappedPostgresRepository implements WrappedRepository {
 				AND deleted_at IS NULL
 			ORDER BY date ASC
 		`,
-            [seasonId, playerId],
-        );
+			[seasonId, playerId],
+		);
 
-        let bestWinStreak = 0;
-        let currentWinStreak = 0;
-        let worstLoseStreak = 0;
-        let currentLoseStreak = 0;
+		let bestWinStreak = 0;
+		let currentWinStreak = 0;
+		let worstLoseStreak = 0;
+		let currentLoseStreak = 0;
 
-        for (const match of matches) {
-            if (match.winner) {
-                currentWinStreak++;
-                currentLoseStreak = 0;
-                bestWinStreak = Math.max(bestWinStreak, currentWinStreak);
-            } else {
-                currentLoseStreak++;
-                currentWinStreak = 0;
-                worstLoseStreak = Math.max(worstLoseStreak, currentLoseStreak);
-            }
-        }
+		for (const match of matches) {
+			if (match.winner) {
+				currentWinStreak++;
+				currentLoseStreak = 0;
+				bestWinStreak = Math.max(bestWinStreak, currentWinStreak);
+			} else {
+				currentLoseStreak++;
+				currentWinStreak = 0;
+				worstLoseStreak = Math.max(worstLoseStreak, currentLoseStreak);
+			}
+		}
 
-        return { bestWinStreak, worstLoseStreak };
-    }
+		return { bestWinStreak, worstLoseStreak };
+	}
 
-    private async getBanListStats(seasonId: number, playerId: string): Promise<BanListStats[]> {
-        const results = await dataSource.query(
-            `
+	private async getBanListStats(seasonId: number, playerId: string): Promise<BanListStats[]> {
+		const results = await dataSource.query(
+			`
 			SELECT
 				ban_list_name,
 				COUNT(*)::int AS matches,
@@ -192,27 +191,27 @@ export class WrappedPostgresRepository implements WrappedRepository {
 			GROUP BY ban_list_name
 			ORDER BY matches DESC
 		`,
-            [seasonId, playerId],
-        );
+			[seasonId, playerId],
+		);
 
-        return results.map(
-            // biome-ignore lint/suspicious/noExplicitAny: raw SQL query rows are untyped
-            (row: any) =>
-                new BanListStats(
-                    row.ban_list_name,
-                    row.matches,
-                    row.wins,
-                    row.losses,
-                    row.draws,
-                    Math.round(row.winrate * 10) / 10,
-                    null, // topMatchup not implemented yet
-                ),
-        );
-    }
+		return results.map(
+			// biome-ignore lint/suspicious/noExplicitAny: raw SQL query rows are untyped
+			(row: any) =>
+				new BanListStats(
+					row.ban_list_name,
+					row.matches,
+					row.wins,
+					row.losses,
+					row.draws,
+					Math.round(row.winrate * 10) / 10,
+					null, // topMatchup not implemented yet
+				),
+		);
+	}
 
-    private async getNemesis(seasonId: number, playerId: string): Promise<Nemesis | null> {
-        const results = await dataSource.query(
-            `
+	private async getNemesis(seasonId: number, playerId: string): Promise<Nemesis | null> {
+		const results = await dataSource.query(
+			`
 			WITH opponent_stats AS (
 				SELECT
 					UNNEST(string_to_array(opponent_ids, ',')) AS opponent_id,
@@ -244,28 +243,28 @@ export class WrappedPostgresRepository implements WrappedRepository {
 			ORDER BY os.losses DESC, os.total_matches DESC
 			LIMIT 1
 		`,
-            [seasonId, playerId],
-        );
+			[seasonId, playerId],
+		);
 
-        if (results.length === 0) {
-            return null;
-        }
+		if (results.length === 0) {
+			return null;
+		}
 
-        const nemesis = results[0];
-        return new Nemesis(
-            nemesis.opponent_id,
-            nemesis.opponent_name,
-            nemesis.opponent_avatar,
-            nemesis.total_matches,
-            nemesis.wins,
-            nemesis.losses,
-            Math.round(nemesis.winrate * 10) / 10,
-        );
-    }
+		const nemesis = results[0];
+		return new Nemesis(
+			nemesis.opponent_id,
+			nemesis.opponent_name,
+			nemesis.opponent_avatar,
+			nemesis.total_matches,
+			nemesis.wins,
+			nemesis.losses,
+			Math.round(nemesis.winrate * 10) / 10,
+		);
+	}
 
-    private async getVictim(seasonId: number, playerId: string): Promise<Nemesis | null> {
-        const results = await dataSource.query(
-            `
+	private async getVictim(seasonId: number, playerId: string): Promise<Nemesis | null> {
+		const results = await dataSource.query(
+			`
 			WITH opponent_stats AS (
 				SELECT
 					UNNEST(string_to_array(opponent_ids, ',')) AS opponent_id,
@@ -297,28 +296,28 @@ export class WrappedPostgresRepository implements WrappedRepository {
 			ORDER BY os.wins DESC, os.total_matches DESC
 			LIMIT 1
 		`,
-            [seasonId, playerId],
-        );
+			[seasonId, playerId],
+		);
 
-        if (results.length === 0) {
-            return null;
-        }
+		if (results.length === 0) {
+			return null;
+		}
 
-        const victim = results[0];
-        return new Nemesis(
-            victim.opponent_id,
-            victim.opponent_name,
-            victim.opponent_avatar,
-            victim.total_matches,
-            victim.wins,
-            victim.losses,
-            Math.round(victim.winrate * 10) / 10,
-        );
-    }
+		const victim = results[0];
+		return new Nemesis(
+			victim.opponent_id,
+			victim.opponent_name,
+			victim.opponent_avatar,
+			victim.total_matches,
+			victim.wins,
+			victim.losses,
+			Math.round(victim.winrate * 10) / 10,
+		);
+	}
 
-    private async getAchievements(seasonId: number, playerId: string): Promise<Achievement[]> {
-        const results = await dataSource.query(
-            `
+	private async getAchievements(seasonId: number, playerId: string): Promise<Achievement[]> {
+		const results = await dataSource.query(
+			`
 			SELECT
 				a.id,
 				a.name,
@@ -331,37 +330,37 @@ export class WrappedPostgresRepository implements WrappedRepository {
 				AND ua.season = $2
 			ORDER BY ua.unlocked_at DESC
 		`,
-            [playerId, seasonId],
-        );
+			[playerId, seasonId],
+		);
 
-        // biome-ignore lint/suspicious/noExplicitAny: raw SQL query rows are untyped
-        return results.map((row: any) => ({
-            id: row.id,
-            name: row.name,
-            description: row.description,
-            icon: row.icon,
-            unlockedAt: row.unlocked_at,
-        }));
-    }
+		// biome-ignore lint/suspicious/noExplicitAny: raw SQL query rows are untyped
+		return results.map((row: any) => ({
+			id: row.id,
+			name: row.name,
+			description: row.description,
+			icon: row.icon,
+			unlockedAt: row.unlocked_at,
+		}));
+	}
 
-    private async getRanking(seasonId: number, playerId: string): Promise<PlayerRanking> {
-        // Get total points for this player
-        const playerPoints = await dataSource.query(
-            `
+	private async getRanking(seasonId: number, playerId: string): Promise<PlayerRanking> {
+		// Get total points for this player
+		const playerPoints = await dataSource.query(
+			`
 			SELECT points as total_points
 			FROM player_stats
 			WHERE user_id = $1
 				AND season = $2
                 AND ban_list_name = 'Global'
 		`,
-            [playerId, seasonId],
-        );
+			[playerId, seasonId],
+		);
 
-        const points = playerPoints[0]?.total_points ?? 0;
+		const points = playerPoints[0]?.total_points ?? 0;
 
-        // Get ranking position
-        const ranking = await dataSource.query(
-            `
+		// Get ranking position
+		const ranking = await dataSource.query(
+			`
 			WITH player_totals AS (
 				SELECT
 					user_id,
@@ -383,41 +382,40 @@ export class WrappedPostgresRepository implements WrappedRepository {
 			FROM ranked
 			WHERE user_id = $2
 		`,
-            [seasonId, playerId],
-        );
+			[seasonId, playerId],
+		);
 
-        if (ranking.length === 0) {
-            return {
-                position: 0,
-                totalPlayers: 0,
-                points,
-                rankBadge: "Challenger",
-            };
-        }
+		if (ranking.length === 0) {
+			return {
+				position: 0,
+				totalPlayers: 0,
+				points,
+				rankBadge: "Challenger",
+			};
+		}
 
-        const position = ranking[0].position;
-        const totalPlayers = ranking[0].total_players;
+		const position = ranking[0].position;
+		const totalPlayers = ranking[0].total_players;
 
-        return {
-            position,
-            totalPlayers,
-            points,
-            rankBadge: calculateRankBadge(position),
-        };
-    }
+		return {
+			position,
+			totalPlayers,
+			points,
+			rankBadge: calculateRankBadge(position),
+		};
+	}
 
-    private async getExtraStats(
-        seasonId: number,
-        playerId: string,
-        banListStats: BanListStats[],
-    ): Promise<ExtraStats> {
-        // Most played ban list
-        const mostPlayedBanList =
-            banListStats.length > 0 ? banListStats[0].banListName : null;
+	private async getExtraStats(
+		seasonId: number,
+		playerId: string,
+		banListStats: BanListStats[],
+	): Promise<ExtraStats> {
+		// Most played ban list
+		const mostPlayedBanList = banListStats.length > 0 ? banListStats[0].banListName : null;
 
-        // Unique opponents
-        const uniqueOpponents = await dataSource.query(
-            `
+		// Unique opponents
+		const uniqueOpponents = await dataSource.query(
+			`
 			WITH unnested_opponents AS (
 				SELECT UNNEST(string_to_array(opponent_ids, ',')) AS opponent_id
 				FROM matches
@@ -430,12 +428,12 @@ export class WrappedPostgresRepository implements WrappedRepository {
 			SELECT COUNT(DISTINCT opponent_id)::int AS unique_opponents
 			FROM unnested_opponents
 		`,
-            [seasonId, playerId],
-        );
+			[seasonId, playerId],
+		);
 
-        // Best day of the week
-        const bestDayResult = await dataSource.query(
-            `
+		// Best day of the week
+		const bestDayResult = await dataSource.query(
+			`
 			SELECT
 				TO_CHAR(date, 'Day') AS day_name,
 				COUNT(*) FILTER (WHERE winner = true)::int AS wins,
@@ -454,15 +452,15 @@ export class WrappedPostgresRepository implements WrappedRepository {
 			ORDER BY winrate DESC, total DESC
 			LIMIT 1
 		`,
-            [seasonId, playerId],
-        );
+			[seasonId, playerId],
+		);
 
-        const bestDay = bestDayResult.length > 0 ? bestDayResult[0].day_name.trim() : null;
+		const bestDay = bestDayResult.length > 0 ? bestDayResult[0].day_name.trim() : null;
 
-        return {
-            mostPlayedBanList,
-            uniqueOpponents: uniqueOpponents[0]?.unique_opponents ?? 0,
-            bestDay,
-        };
-    }
+		return {
+			mostPlayedBanList,
+			uniqueOpponents: uniqueOpponents[0]?.unique_opponents ?? 0,
+			bestDay,
+		};
+	}
 }

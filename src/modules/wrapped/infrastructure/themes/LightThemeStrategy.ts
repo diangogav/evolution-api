@@ -1,12 +1,12 @@
 import { AbstractThemeStrategy } from "./AbstractThemeStrategy";
 
 export class LightThemeStrategy extends AbstractThemeStrategy {
-    getName(): string {
-        return "light";
-    }
+	getName(): string {
+		return "light";
+	}
 
-    getStylesheet(): string {
-        return `
+	getStylesheet(): string {
+		return `
             :root {
                 --color-bg: #f8fafc;
                 --color-surface: #ffffff;
@@ -16,5 +16,5 @@ export class LightThemeStrategy extends AbstractThemeStrategy {
                 --color-border: #e2e8f0;
             }
         `;
-    }
+	}
 }

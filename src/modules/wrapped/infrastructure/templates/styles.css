@@ -10,7 +10,7 @@
 	--space-3xl: calc(var(--space-unit) * 10);
 
 	/* Typography */
-	--font-primary: 'Inter', system-ui, -apple-system, sans-serif;
+	--font-primary: "Inter", system-ui, -apple-system, sans-serif;
 
 	/* Font Sizes */
 	--text-xs: 12px;
@@ -140,7 +140,7 @@ body {
 }
 
 /* Ensure content is above backgrounds */
-.page>*:not(.page-bg-decoration) {
+.page > *:not(.page-bg-decoration) {
 	position: relative;
 	z-index: 1;
 }
@@ -199,7 +199,7 @@ body {
 }
 
 .page-title::after {
-	content: '';
+	content: "";
 	display: block;
 	width: 60px;
 	height: 4px;
@@ -215,7 +215,9 @@ body {
 	padding: var(--space-xl);
 	position: relative;
 	overflow: hidden;
-	box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+	box-shadow:
+		0 4px 6px -1px rgba(0, 0, 0, 0.1),
+		0 2px 4px -1px rgba(0, 0, 0, 0.06);
 	border: 1px solid var(--border-subtle);
 }
 
@@ -464,14 +466,14 @@ body {
 	font-weight: 900;
 	line-height: 1.1;
 	margin: 0 0 var(--space-md) 0;
-	color: #FFFFFF !important;
+	color: #ffffff !important;
 	/* Force white, no gradients */
 	text-transform: uppercase;
 	letter-spacing: -0.02em;
 	text-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
 	/* Add shadow for depth instead of gradient */
 	background: transparent !important;
-	-webkit-text-fill-color: #FFFFFF !important;
+	-webkit-text-fill-color: #ffffff !important;
 	padding: 10px;
 }
 
@@ -698,11 +700,13 @@ body {
 	gap: 24px;
 	position: relative;
 	overflow: hidden;
-	box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+	box-shadow:
+		0 4px 6px -1px rgba(0, 0, 0, 0.1),
+		0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 
 .achievement-card::before {
-	content: '';
+	content: "";
 	position: absolute;
 	top: 0;
 	left: 0;
@@ -856,7 +860,7 @@ body {
 		padding: 16px !important;
 	}
 
-	.rival-card>div:last-child {
+	.rival-card > div:last-child {
 		flex-direction: row !important;
 		width: 100%;
 		justify-content: flex-start;
@@ -898,13 +902,15 @@ body {
 	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 	cursor: pointer;
 	z-index: 1000;
-	transition: transform 0.2s, background 0.2s;
+	transition:
+		transform 0.2s,
+		background 0.2s;
 	text-decoration: none;
 }
 
 .download-fab:hover {
 	transform: scale(1.1);
-	background: #2563EB;
+	background: #2563eb;
 }
 
 .download-fab svg {

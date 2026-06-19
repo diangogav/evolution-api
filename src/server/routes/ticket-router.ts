@@ -25,7 +25,8 @@ export const ticketRouter = new Elysia({ prefix: "/game-tickets" })
 				detail: {
 					tags: ["Ranked"],
 					summary: "Issue ranked game ticket",
-					description: "Issues a single-use ticket for the authenticated user to join a ranked game",
+					description:
+						"Issues a single-use ticket for the authenticated user to join a ranked game",
 					security: [{ bearerAuth: [] }],
 					responses: {
 						200: {

@@ -4,9 +4,15 @@ export interface BrandedEmailInput {
 	cta?: { label: string; url: string };
 }
 
-export function renderBrandedEmail({ heading, paragraphs, cta }: BrandedEmailInput): { html: string; text: string } {
+export function renderBrandedEmail({ heading, paragraphs, cta }: BrandedEmailInput): {
+	html: string;
+	text: string;
+} {
 	const paragraphsHtml = paragraphs
-		.map((p) => `<p style="font-size:15px;line-height:1.6;color:#555555;margin:0 0 14px 0;padding:0">${p}</p>`)
+		.map(
+			(p) =>
+				`<p style="font-size:15px;line-height:1.6;color:#555555;margin:0 0 14px 0;padding:0">${p}</p>`,
+		)
 		.join("\n\t\t\t\t\t\t\t");
 
 	const ctaHtml = cta

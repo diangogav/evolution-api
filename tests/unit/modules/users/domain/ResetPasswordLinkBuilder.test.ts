@@ -5,8 +5,14 @@ import { ResetPasswordLinkBuilder } from "../../../../../src/modules/user/domain
 describe("ResetPasswordLinkBuilder", () => {
 	const builder = new ResetPasswordLinkBuilder(
 		[
-			{ origin: "https://evolutionygo.com", template: "https://evolutionygo.com/reset-password?token={token}" },
-			{ origin: "https://evoduel.com", template: "https://evoduel.com/#/reset-account-password?token={token}" },
+			{
+				origin: "https://evolutionygo.com",
+				template: "https://evolutionygo.com/reset-password?token={token}",
+			},
+			{
+				origin: "https://evoduel.com",
+				template: "https://evoduel.com/#/reset-account-password?token={token}",
+			},
 		],
 		"https://evolutionygo.com/reset-password?token={token}",
 	);
@@ -18,13 +24,21 @@ describe("ResetPasswordLinkBuilder", () => {
 	});
 
 	it("derives the origin from the referer when the origin header is absent", () => {
-		const link = builder.build({ origin: null, referer: "https://evolutionygo.com/", token: "abc" });
+		const link = builder.build({
+			origin: null,
+			referer: "https://evolutionygo.com/",
+			token: "abc",
+		});
 
 		expect(link).toBe("https://evolutionygo.com/reset-password?token=abc");
 	});
 
 	it("prefers the origin header over the referer", () => {
-		const link = builder.build({ origin: "https://evoduel.com", referer: "https://evolutionygo.com/", token: "abc" });
+		const link = builder.build({
+			origin: "https://evoduel.com",
+			referer: "https://evolutionygo.com/",
+			token: "abc",
+		});
 
 		expect(link).toBe("https://evoduel.com/#/reset-account-password?token=abc");
 	});

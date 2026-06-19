@@ -13,7 +13,7 @@ describe("MatchGetter", () => {
 	beforeEach(() => {
 		repository = {
 			get: async () => [],
-		}
+		};
 		matchesGetter = new MatchesGetter(repository);
 		matches = [MatchMother.create(), MatchMother.create(), MatchMother.create()];
 	});

@@ -23,7 +23,7 @@ describe("User UsernameUpdater", () => {
 			update: async () => undefined,
 			updateParticipantId: async () => undefined,
 			findByParticipantId: async () => null,
-		}
+		};
 		user = UserMother.create();
 		spyOn(repository, "findById").mockResolvedValue(user);
 		userUsernameUpdater = new UserUsernameUpdater(repository);

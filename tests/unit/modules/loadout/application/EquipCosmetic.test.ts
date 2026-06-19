@@ -54,7 +54,11 @@ describe("EquipCosmetic", () => {
 	it("equips a cosmetic the user is entitled to", async () => {
 		const { equip, saved } = build({ found: cosmetic(CosmeticTier.REGISTERED) });
 
-		await equip.run({ userId: "user-1", cosmeticType: CosmeticType.SLEEVE, cosmeticId: "cosmetic-1" });
+		await equip.run({
+			userId: "user-1",
+			cosmeticType: CosmeticType.SLEEVE,
+			cosmeticId: "cosmetic-1",
+		});
 
 		expect(saved).toHaveLength(1);
 		expect(saved[0].equippedCosmeticId(CosmeticType.SLEEVE)).toBe("cosmetic-1");
@@ -96,9 +100,16 @@ describe("EquipCosmetic", () => {
 			source: EntitlementSource.PURCHASE,
 			expiresAt: null,
 		});
-		const { equip, saved } = build({ found: cosmetic(CosmeticTier.DONOR), entitlements: [cosmeticGrant] });
+		const { equip, saved } = build({
+			found: cosmetic(CosmeticTier.DONOR),
+			entitlements: [cosmeticGrant],
+		});
 
-		await equip.run({ userId: "user-1", cosmeticType: CosmeticType.SLEEVE, cosmeticId: "cosmetic-1" });
+		await equip.run({
+			userId: "user-1",
+			cosmeticType: CosmeticType.SLEEVE,
+			cosmeticId: "cosmetic-1",
+		});
 
 		expect(saved).toHaveLength(1);
 		expect(saved[0].equippedCosmeticId(CosmeticType.SLEEVE)).toBe("cosmetic-1");

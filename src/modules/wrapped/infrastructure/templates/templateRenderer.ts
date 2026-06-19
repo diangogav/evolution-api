@@ -9,43 +9,48 @@ const __dirname = dirname(__filename);
 
 // Helper function to load optimized images as base64
 function getImageAsBase64(filename: string): string {
-    try {
-        const imagePath = join(__dirname, 'optimized', filename);
-        if (!existsSync(imagePath)) return '';
-        const imageBuffer = readFileSync(imagePath);
-        const base64 = imageBuffer.toString('base64');
-        return `data:image/png;base64,${base64}`;
-    } catch (error) {
-        console.error(`Failed to load image ${filename}:`, error);
-        return '';
-    }
+	try {
+		const imagePath = join(__dirname, "optimized", filename);
+		if (!existsSync(imagePath)) return "";
+		const imageBuffer = readFileSync(imagePath);
+		const base64 = imageBuffer.toString("base64");
+		return `data:image/png;base64,${base64}`;
+	} catch (error) {
+		console.error(`Failed to load image ${filename}:`, error);
+		return "";
+	}
 }
 
 // Pre-load optimized Yu-Gi-Oh! themed images
 const images = {
-    decorative1: getImageAsBase64('yugioh_dragon_background.png'),      // Dragon artwork
-    decorative2: getImageAsBase64('yugioh_monster_background.png'),     // Monster artwork
-    decorative3: getImageAsBase64('yugioh_battlefield_background.png'), // Battlefield scene
-    decorative4: getImageAsBase64('yugioh_cards_background.png'),       // Cards artwork
-    icon: getImageAsBase64('yugioh_chapter_icon.png'),                  // Small chapter icon
+	decorative1: getImageAsBase64("yugioh_dragon_background.png"), // Dragon artwork
+	decorative2: getImageAsBase64("yugioh_monster_background.png"), // Monster artwork
+	decorative3: getImageAsBase64("yugioh_battlefield_background.png"), // Battlefield scene
+	decorative4: getImageAsBase64("yugioh_cards_background.png"), // Cards artwork
+	icon: getImageAsBase64("yugioh_chapter_icon.png"), // Small chapter icon
 };
 
-export function renderTemplate(data: SeasonWrapped, options: GenerateOptions, themeStrategy: IThemeStrategy): string {
-    const styles = readFileSync(join(__dirname, "styles.css"), "utf-8");
-    const themeCss = getSeasonTheme(data.seasonId);
-    const themeStylesheet = themeStrategy.getStylesheet();
-    const phrases = themeStrategy.getPhrases(data);
+export function renderTemplate(
+	data: SeasonWrapped,
+	options: GenerateOptions,
+	themeStrategy: IThemeStrategy,
+): string {
+	const styles = readFileSync(join(__dirname, "styles.css"), "utf-8");
+	const themeCss = getSeasonTheme(data.seasonId);
+	const themeStylesheet = themeStrategy.getStylesheet();
+	const phrases = themeStrategy.getPhrases(data);
 
-    // Select theme background or random monster
-    let randomMonster = themeStrategy.getBackground();
-    if (!randomMonster) {
-        const monsterImages = [images.decorative1, images.decorative2].filter(Boolean);
-        randomMonster = monsterImages[Math.floor(Math.random() * monsterImages.length)] || images.decorative1;
-    }
+	// Select theme background or random monster
+	let randomMonster = themeStrategy.getBackground();
+	if (!randomMonster) {
+		const monsterImages = [images.decorative1, images.decorative2].filter(Boolean);
+		randomMonster =
+			monsterImages[Math.floor(Math.random() * monsterImages.length)] || images.decorative1;
+	}
 
-    const specialSections = themeStrategy.renderSpecialSections(data, options, randomMonster);
+	const specialSections = themeStrategy.renderSpecialSections(data, options, randomMonster);
 
-    return `
+	return `
 <!DOCTYPE html>
 <html lang="${options.locale}">
 <head>
@@ -92,7 +97,7 @@ export function renderTemplate(data: SeasonWrapped, options: GenerateOptions, th
 	${renderGlobalStatsPage(data, options, randomMonster, phrases)}
 	${renderBanListPages(data, options, randomMonster, phrases)}
 	${renderChartsPage(data, options, randomMonster, phrases)}
-    ${(data.nemesis || data.victim) ? renderRivalsPage(data, options, randomMonster, phrases) : ""}
+    ${data.nemesis || data.victim ? renderRivalsPage(data, options, randomMonster, phrases) : ""}
     ${specialSections}
 	${renderRankingPage(data, options, randomMonster, phrases)}
 	${renderSummaryPage(data, options, randomMonster, phrases)}
@@ -102,21 +107,26 @@ export function renderTemplate(data: SeasonWrapped, options: GenerateOptions, th
 }
 
 // Single-page compact version for evaluation
-export function renderSinglePageTemplate(data: SeasonWrapped, options: GenerateOptions, themeStrategy: IThemeStrategy): string {
-    const styles = readFileSync(join(__dirname, "styles.css"), "utf-8");
-    const singlePageStyles = readFileSync(join(__dirname, "styles_single_page.css"), "utf-8");
-    const themeCss = getSeasonTheme(data.seasonId);
-    const themeStylesheet = themeStrategy.getStylesheet();
-    const phrases = themeStrategy.getPhrases(data);
+export function renderSinglePageTemplate(
+	data: SeasonWrapped,
+	options: GenerateOptions,
+	themeStrategy: IThemeStrategy,
+): string {
+	const styles = readFileSync(join(__dirname, "styles.css"), "utf-8");
+	const singlePageStyles = readFileSync(join(__dirname, "styles_single_page.css"), "utf-8");
+	const themeCss = getSeasonTheme(data.seasonId);
+	const themeStylesheet = themeStrategy.getStylesheet();
+	const phrases = themeStrategy.getPhrases(data);
 
-    // Select theme background or random monster
-    let randomMonster = themeStrategy.getBackground();
-    if (!randomMonster) {
-        const monsterImages = [images.decorative1, images.decorative2].filter(Boolean);
-        randomMonster = monsterImages[Math.floor(Math.random() * monsterImages.length)] || images.decorative1;
-    }
+	// Select theme background or random monster
+	let randomMonster = themeStrategy.getBackground();
+	if (!randomMonster) {
+		const monsterImages = [images.decorative1, images.decorative2].filter(Boolean);
+		randomMonster =
+			monsterImages[Math.floor(Math.random() * monsterImages.length)] || images.decorative1;
+	}
 
-    return `
+	return `
 <!DOCTYPE html>
 <html lang="${options.locale}">
 <head>
@@ -135,7 +145,7 @@ export function renderSinglePageTemplate(data: SeasonWrapped, options: GenerateO
 	${renderGlobalStatsPage(data, options, randomMonster, phrases)}
 	${renderBanListPages(data, options, randomMonster, phrases)}
 	${renderChartsPage(data, options, randomMonster, phrases)}
-    ${(data.nemesis || data.victim) ? renderRivalsPage(data, options, randomMonster, phrases) : ""}
+    ${data.nemesis || data.victim ? renderRivalsPage(data, options, randomMonster, phrases) : ""}
     ${data.achievements.length > 0 ? renderAchievementsPage(data, options, randomMonster, phrases) : ""}
     ${renderRankingPage(data, options, randomMonster, phrases)}
 </body>
@@ -144,7 +154,7 @@ export function renderSinglePageTemplate(data: SeasonWrapped, options: GenerateO
 }
 
 function renderHeader(title: string, seasonName: string, phrases: ThemePhrases): string {
-    return `
+	return `
     <div class="header-bar">
         <div class="brand">
             <span class="brand-icon">◆</span>
@@ -155,12 +165,15 @@ function renderHeader(title: string, seasonName: string, phrases: ThemePhrases):
     `;
 }
 
-function renderCoverPage(data: SeasonWrapped, options: GenerateOptions, randomMonster: string, phrases: ThemePhrases): string {
-
-
-    return `
+function renderCoverPage(
+	data: SeasonWrapped,
+	options: GenerateOptions,
+	randomMonster: string,
+	phrases: ThemePhrases,
+): string {
+	return `
 <div class="page cover-page">
-	${randomMonster ? `<div class="page-bg-decoration"><img src="${randomMonster}" alt="" /></div>` : ''}
+	${randomMonster ? `<div class="page-bg-decoration"><img src="${randomMonster}" alt="" /></div>` : ""}
 
     <div class="cover-hero-container">
         <div class="cover-hero-image">
@@ -184,16 +197,21 @@ function renderCoverPage(data: SeasonWrapped, options: GenerateOptions, randomMo
 	`;
 }
 
-function renderGlobalStatsPage(data: SeasonWrapped, options: GenerateOptions, randomMonster: string, phrases: ThemePhrases): string {
-    const stats = data.globalStats;
+function renderGlobalStatsPage(
+	data: SeasonWrapped,
+	options: GenerateOptions,
+	randomMonster: string,
+	phrases: ThemePhrases,
+): string {
+	const stats = data.globalStats;
 
-    return `
+	return `
 <div class="page">
-    ${randomMonster ? `<div class="page-bg-decoration"><img src="${randomMonster}" alt="" /></div>` : ''}
+    ${randomMonster ? `<div class="page-bg-decoration"><img src="${randomMonster}" alt="" /></div>` : ""}
     ${renderHeader("Season Overview", data.seasonName, phrases)}
 
 	<div class="chapter-super">
-		${images.icon ? `<img src="${images.icon}" class="chapter-icon" alt="" />` : ''}
+		${images.icon ? `<img src="${images.icon}" class="chapter-icon" alt="" />` : ""}
 		${phrases.chapter1 || (options.locale === "es" ? "CAPÍTULO 1" : "CHAPTER 1")}
 	</div>
 	<h2 class="page-title">${phrases.statsTitle}</h2>
@@ -246,19 +264,24 @@ function renderGlobalStatsPage(data: SeasonWrapped, options: GenerateOptions, ra
 	`;
 }
 
-function renderBanListPages(data: SeasonWrapped, options: GenerateOptions, randomMonster: string, phrases: ThemePhrases): string {
-    if (data.banListStats.length === 0) return "";
+function renderBanListPages(
+	data: SeasonWrapped,
+	options: GenerateOptions,
+	randomMonster: string,
+	phrases: ThemePhrases,
+): string {
+	if (data.banListStats.length === 0) return "";
 
-    // Take top 3 banlists to fit on one page if possible, or paginate
-    const topBanlist = data.banListStats[0];
+	// Take top 3 banlists to fit on one page if possible, or paginate
+	const topBanlist = data.banListStats[0];
 
-    return `
+	return `
 <div class="page">
-    ${randomMonster ? `<div class="page-bg-decoration"><img src="${randomMonster}" alt="" /></div>` : ''}
+    ${randomMonster ? `<div class="page-bg-decoration"><img src="${randomMonster}" alt="" /></div>` : ""}
     ${renderHeader("Formats", data.seasonName, phrases)}
     
 	<div class="chapter-super">
-		${images.icon ? `<img src="${images.icon}" class="chapter-icon" alt="" />` : ''}
+		${images.icon ? `<img src="${images.icon}" class="chapter-icon" alt="" />` : ""}
 		${phrases.chapter2 || (options.locale === "es" ? "CAPÍTULO 2" : "CHAPTER 2")}
 	</div>
 	<h2 class="page-title">${phrases.statsTitle}</h2>
@@ -281,26 +304,36 @@ function renderBanListPages(data: SeasonWrapped, options: GenerateOptions, rando
 	</div>
 
     <div class="grid-2" style="margin-top: 24px;">
-        ${data.banListStats.slice(1, 3).map(bl => `
+        ${data.banListStats
+					.slice(1, 3)
+					.map(
+						(bl) => `
         <div class="stat-box">
             <div class="stat-box-label">${escapeHtml(bl.banListName)}</div>
             <div class="stat-box-value" style="font-size: 32px;">${bl.winrate}%</div>
             <div class="stat-box-sub">${bl.matches} matches</div>
         </div>
-        `).join('')}
+        `,
+					)
+					.join("")}
     </div>
 </div>
 	`;
 }
 
-function renderRivalsPage(data: SeasonWrapped, options: GenerateOptions, randomMonster: string, phrases: ThemePhrases): string {
-    return `
+function renderRivalsPage(
+	data: SeasonWrapped,
+	options: GenerateOptions,
+	randomMonster: string,
+	phrases: ThemePhrases,
+): string {
+	return `
 <div class="page">
-    ${randomMonster ? `<div class="page-bg-decoration"><img src="${randomMonster}" alt="" /></div>` : ''}
+    ${randomMonster ? `<div class="page-bg-decoration"><img src="${randomMonster}" alt="" /></div>` : ""}
     ${renderHeader("Rivals", data.seasonName, phrases)}
 
     <div class="chapter-super">
-		${images.icon ? `<img src="${images.icon}" class="chapter-icon" alt="" />` : ''}
+		${images.icon ? `<img src="${images.icon}" class="chapter-icon" alt="" />` : ""}
 		${options.locale === "es" ? "CAPÍTULO 3" : "CHAPTER 3"}
 	</div>
     <h2 class="page-title">${phrases.rivalsTitle}</h2>
@@ -310,7 +343,9 @@ function renderRivalsPage(data: SeasonWrapped, options: GenerateOptions, randomM
 
 
     <div class="rivals-grid" style="display: flex; flex-direction: column; gap: 16px; margin-top: 20px;">
-        ${data.nemesis ? `
+        ${
+					data.nemesis
+						? `
         <div class="card-container rival-card" style="padding: 20px; display: flex; align-items: center; gap: 20px;">
             <div style="flex-shrink: 0;">
                 <img src="${data.nemesis.playerAvatar || getInitialsAvatar(data.nemesis.playerName)}" class="profile-avatar" style="width: 80px; height: 80px; border-color: #ef4444;" />
@@ -331,9 +366,13 @@ function renderRivalsPage(data: SeasonWrapped, options: GenerateOptions, randomM
                 <span class="pill" style="margin: 0; background: rgba(239, 68, 68, 0.3); color: #ef4444; font-weight: bold;">${data.nemesis.losses} ${options.locale === "es" ? "derrotas" : "losses"}</span>
             </div>
         </div>
-        ` : ""}
+        `
+						: ""
+				}
 
-        ${data.victim ? `
+        ${
+					data.victim
+						? `
         <div class="card-container rival-card" style="padding: 20px; display: flex; align-items: center; gap: 20px;">
             <div style="flex-shrink: 0;">
                 <img src="${data.victim.playerAvatar || getInitialsAvatar(data.victim.playerName)}" class="profile-avatar" style="width: 80px; height: 80px; border-color: #10b981;" />
@@ -354,17 +393,22 @@ function renderRivalsPage(data: SeasonWrapped, options: GenerateOptions, randomM
                 <span class="pill" style="margin: 0; background: rgba(16, 185, 129, 0.3); color: #10b981; font-weight: bold;">${data.victim.wins} ${options.locale === "es" ? "victorias" : "wins"}</span>
             </div>
         </div>
-        ` : ""}
+        `
+						: ""
+				}
 
         ${(() => {
-            // Determine arch-rival (most frequent opponent)
-            const archRival = data.nemesis && data.victim
-                ? (data.nemesis.totalMatches >= data.victim.totalMatches ? data.nemesis : data.victim)
-                : data.nemesis || data.victim;
+					// Determine arch-rival (most frequent opponent)
+					const archRival =
+						data.nemesis && data.victim
+							? data.nemesis.totalMatches >= data.victim.totalMatches
+								? data.nemesis
+								: data.victim
+							: data.nemesis || data.victim;
 
-            if (!archRival) return "";
+					if (!archRival) return "";
 
-            return `
+					return `
         <div class="card-container rival-card" style="padding: 20px; display: flex; align-items: center; gap: 20px;">
             <div style="flex-shrink: 0;">
                 <img src="${archRival.playerAvatar || getInitialsAvatar(archRival.playerName)}" class="profile-avatar" style="width: 80px; height: 80px; border-color: #a855f7;" />
@@ -385,21 +429,26 @@ function renderRivalsPage(data: SeasonWrapped, options: GenerateOptions, randomM
             </div>
         </div>
             `;
-        })()}
+				})()}
     </div>
 </div>
     `;
 }
 
-function renderChartsPage(data: SeasonWrapped, options: GenerateOptions, randomMonster: string, phrases: ThemePhrases): string {
-    if (data.banListStats.length === 0) return "";
+function renderChartsPage(
+	data: SeasonWrapped,
+	options: GenerateOptions,
+	randomMonster: string,
+	phrases: ThemePhrases,
+): string {
+	if (data.banListStats.length === 0) return "";
 
-    // Calculate max matches for scaling
-    const maxMatches = Math.max(...data.banListStats.map(bl => bl.matches));
+	// Calculate max matches for scaling
+	const maxMatches = Math.max(...data.banListStats.map((bl) => bl.matches));
 
-    return `
+	return `
 <div class="page">
-    ${randomMonster ? `<div class="page-bg-decoration"><img src="${randomMonster}" alt="" /></div>` : ''}
+    ${randomMonster ? `<div class="page-bg-decoration"><img src="${randomMonster}" alt="" /></div>` : ""}
     ${renderHeader("Evolution", data.seasonName, phrases)}
     
     <div class="chapter-super">${options.locale === "es" ? "CAPÍTULO 4" : "CHAPTER 4"}</div>
@@ -408,7 +457,9 @@ function renderChartsPage(data: SeasonWrapped, options: GenerateOptions, randomM
     <div class="card-container">
         <h3 style="margin-bottom: 24px;">Matches Distribution</h3>
         
-        ${data.banListStats.map(bl => `
+        ${data.banListStats
+					.map(
+						(bl) => `
         <div class="chart-bar-item">
             <div class="chart-bar-header">
                 <span>${escapeHtml(bl.banListName)}</span>
@@ -418,30 +469,41 @@ function renderChartsPage(data: SeasonWrapped, options: GenerateOptions, randomM
                 <div class="chart-fill active" style="width: ${(bl.matches / maxMatches) * 100}%"></div>
             </div>
         </div>
-        `).join('')}
+        `,
+					)
+					.join("")}
     </div>
 </div>
     `;
 }
 
-function renderAchievementsPage(data: SeasonWrapped, options: GenerateOptions, randomMonster: string, phrases: ThemePhrases): string {
-    if (data.achievements.length === 0) return "";
+function renderAchievementsPage(
+	data: SeasonWrapped,
+	options: GenerateOptions,
+	randomMonster: string,
+	phrases: ThemePhrases,
+): string {
+	if (data.achievements.length === 0) return "";
 
-    return `
+	return `
 <div class="page">
-    ${randomMonster ? `<div class="page-bg-decoration"><img src="${randomMonster}" alt="" /></div>` : ''}
+    ${randomMonster ? `<div class="page-bg-decoration"><img src="${randomMonster}" alt="" /></div>` : ""}
     ${renderHeader("Logros", data.seasonName, phrases)}
     
     <div class="chapter-super">${options.locale === "es" ? "CAPÍTULO 5" : "CHAPTER 5"}</div>
     <h2 class="page-title">${phrases.achievementsTitle}</h2>
     
     <div class="achievements-list">
-        ${data.achievements.map(ach => `
+        ${data.achievements
+					.map(
+						(ach) => `
         <div class="achievement-card">
             <div class="achievement-icon-container">
-                ${ach.icon && ach.icon.startsWith('http')
-            ? `<img src="${ach.icon}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" />`
-            : '🏆'}
+                ${
+									ach.icon && ach.icon.startsWith("http")
+										? `<img src="${ach.icon}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" />`
+										: "🏆"
+								}
             </div>
             <div class="achievement-content">
                 <div class="achievement-badge">
@@ -452,22 +514,33 @@ function renderAchievementsPage(data: SeasonWrapped, options: GenerateOptions, r
                 </h3>
                 <p class="achievement-description">${escapeHtml(ach.description)}</p>
             </div>
-            ${ach.unlockedAt ? `
+            ${
+							ach.unlockedAt
+								? `
             <div class="achievement-date">
-                ${new Date(ach.unlockedAt).toLocaleDateString(options.locale === 'es' ? 'es-ES' : 'en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                ${new Date(ach.unlockedAt).toLocaleDateString(options.locale === "es" ? "es-ES" : "en-US", { month: "short", day: "numeric", year: "numeric" })}
             </div>
-            ` : ''}
+            `
+								: ""
+						}
         </div>
-        `).join('')}
+        `,
+					)
+					.join("")}
     </div>
 </div>
     `;
 }
 
-function renderRankingPage(data: SeasonWrapped, options: GenerateOptions, randomMonster: string, phrases: ThemePhrases): string {
-    return `
+function renderRankingPage(
+	data: SeasonWrapped,
+	options: GenerateOptions,
+	randomMonster: string,
+	phrases: ThemePhrases,
+): string {
+	return `
 <div class="page">
-    ${randomMonster ? `<div class="page-bg-decoration"><img src="${randomMonster}" alt="" /></div>` : ''}
+    ${randomMonster ? `<div class="page-bg-decoration"><img src="${randomMonster}" alt="" /></div>` : ""}
     ${renderHeader("Ranking", data.seasonName, phrases)}
     
     <div class="chapter-super">${options.locale === "es" ? "FINAL" : "FINALE"}</div>
@@ -483,7 +556,7 @@ function renderRankingPage(data: SeasonWrapped, options: GenerateOptions, random
         </div>
         
         <p style="color: var(--text-secondary); font-size: 20px;">
-            Top ${(data.ranking.position / data.ranking.totalPlayers * 100).toFixed(0)}% of ${data.ranking.totalPlayers} players
+            Top ${((data.ranking.position / data.ranking.totalPlayers) * 100).toFixed(0)}% of ${data.ranking.totalPlayers} players
         </p>
         
         <div style="margin-top: 32px; padding-top: 32px; border-top: 1px solid var(--border-subtle);">
@@ -492,28 +565,41 @@ function renderRankingPage(data: SeasonWrapped, options: GenerateOptions, random
         </div>
     </div>
     
-    ${data.extraStats.uniqueOpponents > 0 ? `
+    ${
+			data.extraStats.uniqueOpponents > 0
+				? `
     <div class="grid-2" style="margin-top: 24px;">
         <div class="stat-box">
              <div class="stat-box-label">Unique Opponents</div>
              <div class="stat-box-value">${data.extraStats.uniqueOpponents}</div>
         </div>
-        ${data.extraStats.bestDay ? `
+        ${
+					data.extraStats.bestDay
+						? `
         <div class="stat-box">
              <div class="stat-box-label">Lucky Day</div>
              <div class="stat-box-value" style="font-size: 24px;">${escapeHtml(data.extraStats.bestDay)}</div>
         </div>
-        ` : ""}
+        `
+						: ""
+				}
     </div>
-    ` : ""}
+    `
+				: ""
+		}
 </div>
     `;
 }
 
-function renderSummaryPage(data: SeasonWrapped, options: GenerateOptions, randomMonster: string, phrases: ThemePhrases): string {
-    return `
+function renderSummaryPage(
+	data: SeasonWrapped,
+	options: GenerateOptions,
+	randomMonster: string,
+	phrases: ThemePhrases,
+): string {
+	return `
 <div class="page summary-page">
-    ${randomMonster ? `<div class="page-bg-decoration"><img src="${randomMonster}" alt="" /></div>` : ''}
+    ${randomMonster ? `<div class="page-bg-decoration"><img src="${randomMonster}" alt="" /></div>` : ""}
     
     
     <div class="cover-container">
@@ -539,28 +625,44 @@ function renderSummaryPage(data: SeasonWrapped, options: GenerateOptions, random
         </div>
         
         <div class="summary-highlights">
-            ${data.globalStats.bestWinStreak > 0 ? `
+            ${
+							data.globalStats.bestWinStreak > 0
+								? `
             <div class="summary-highlight">
                 🔥 <strong>${data.globalStats.bestWinStreak}</strong> ${options.locale === "es" ? "racha de victorias" : "win streak"}
             </div>
-            ` : ''}
+            `
+								: ""
+						}
             
-            ${data.ranking ? `
+            ${
+							data.ranking
+								? `
             <div class="summary-highlight">
                 🏆 <strong>#${data.ranking.position}</strong> ${options.locale === "es" ? "en el ranking" : "in rankings"} · ${data.ranking.rankBadge}
             </div>
-            ` : ''}
+            `
+								: ""
+						}
             
-            ${data.extraStats?.mostPlayedBanList ? `
+            ${
+							data.extraStats?.mostPlayedBanList
+								? `
             <div class="summary-highlight">
                 🎮 ${options.locale === "es" ? "Formato favorito:" : "Favorite format:"} <strong>${data.extraStats.mostPlayedBanList}</strong>
             </div>
-            ` : ''}
+            `
+								: ""
+						}
         </div>
         
-        ${(data.nemesis || data.victim) ? `
+        ${
+					data.nemesis || data.victim
+						? `
         <div class="summary-rivals">
-            ${data.nemesis ? `
+            ${
+							data.nemesis
+								? `
             <div class="summary-rival nemesis">
                 <div class="summary-rival-badge">👻</div>
                 <div class="summary-rival-info">
@@ -569,9 +671,13 @@ function renderSummaryPage(data: SeasonWrapped, options: GenerateOptions, random
                     <div class="summary-rival-stat">${data.nemesis.wins}W / ${data.nemesis.losses}L</div>
                 </div>
             </div>
-            ` : ''}
+            `
+								: ""
+						}
             
-            ${data.victim ? `
+            ${
+							data.victim
+								? `
             <div class="summary-rival victim">
                 <div class="summary-rival-badge">🎯</div>
                 <div class="summary-rival-info">
@@ -580,15 +686,19 @@ function renderSummaryPage(data: SeasonWrapped, options: GenerateOptions, random
                     <div class="summary-rival-stat">${data.victim.wins}W / ${data.victim.losses}L</div>
                 </div>
             </div>
-            ` : ''}
+            `
+								: ""
+						}
         </div>
-        ` : ''}
+        `
+						: ""
+				}
         
         <div class="summary-footer">
             <div class="summary-branding">Evolution API</div>
             <div class="summary-season-dates">
-                ${new Date(data.seasonDates.start).toLocaleDateString(options.locale === "es" ? "es-ES" : "en-US", { month: 'short', day: 'numeric' })} - 
-                ${new Date(data.seasonDates.end).toLocaleDateString(options.locale === "es" ? "es-ES" : "en-US", { month: 'short', day: 'numeric', year: 'numeric' })}
+                ${new Date(data.seasonDates.start).toLocaleDateString(options.locale === "es" ? "es-ES" : "en-US", { month: "short", day: "numeric" })} - 
+                ${new Date(data.seasonDates.end).toLocaleDateString(options.locale === "es" ? "es-ES" : "en-US", { month: "short", day: "numeric", year: "numeric" })}
             </div>
         </div>
     </div>
@@ -596,57 +706,57 @@ function renderSummaryPage(data: SeasonWrapped, options: GenerateOptions, random
 }
 
 function getInitialsAvatar(name: string): string {
-    return `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%231e293b'/%3E%3Ctext x='50' y='55' text-anchor='middle' fill='white' font-size='40' font-family='sans-serif' font-weight='bold'%3E${name.charAt(0).toUpperCase()}%3C/text%3E%3C/svg%3E`;
+	return `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%231e293b'/%3E%3Ctext x='50' y='55' text-anchor='middle' fill='white' font-size='40' font-family='sans-serif' font-weight='bold'%3E${name.charAt(0).toUpperCase()}%3C/text%3E%3C/svg%3E`;
 }
 
 function escapeHtml(text: string): string {
-    const map: Record<string, string> = {
-        "&": "&amp;",
-        "<": "&lt;",
-        ">": "&gt;",
-        '"': "&quot;",
-        "'": "&#039;",
-    };
-    return text.replace(/[&<>"']/g, (char) => map[char] || char);
+	const map: Record<string, string> = {
+		"&": "&amp;",
+		"<": "&lt;",
+		">": "&gt;",
+		'"': "&quot;",
+		"'": "&#039;",
+	};
+	return text.replace(/[&<>"']/g, (char) => map[char] || char);
 }
 
 function getBanListFlavor(winrate: number): string {
-    if (winrate >= 70) return "En esta banlist estabas on fire 🔥";
-    if (winrate <= 40) return "En esta banlist sufriste un poco 😅";
-    return "En esta banlist te mantuviste competitivo 💪";
+	if (winrate >= 70) return "En esta banlist estabas on fire 🔥";
+	if (winrate <= 40) return "En esta banlist sufriste un poco 😅";
+	return "En esta banlist te mantuviste competitivo 💪";
 }
 
 function getSeasonTheme(seasonId: number): string {
-    const themes: Record<number, { accent: string; bgBase: string; bgCard: string }> = {
-        // Season 3: Wind/Nature - Refined Teal/Forest
-        3: {
-            accent: '#2DD4BF',
-            bgBase: '#041010',
-            bgCard: '#0A1F1F'
-        },
-        // Season 4: Fire/Invasion - Refined Muted Coral/Maroon
-        4: {
-            accent: '#F87171',
-            bgBase: '#110707',
-            bgCard: '#1F0D0D'
-        },
-        // Season 5: Water/Abyss - Refined Midnight/Cyan
-        5: {
-            accent: '#38BDF8',
-            bgBase: '#050C14',
-            bgCard: '#0D1B2A'
-        },
-        // Season 6: Current/Tech - Refined Indigo/Slate
-        6: {
-            accent: '#818CF8',
-            bgBase: '#0A0F1E',
-            bgCard: '#161B33'
-        }
-    };
+	const themes: Record<number, { accent: string; bgBase: string; bgCard: string }> = {
+		// Season 3: Wind/Nature - Refined Teal/Forest
+		3: {
+			accent: "#2DD4BF",
+			bgBase: "#041010",
+			bgCard: "#0A1F1F",
+		},
+		// Season 4: Fire/Invasion - Refined Muted Coral/Maroon
+		4: {
+			accent: "#F87171",
+			bgBase: "#110707",
+			bgCard: "#1F0D0D",
+		},
+		// Season 5: Water/Abyss - Refined Midnight/Cyan
+		5: {
+			accent: "#38BDF8",
+			bgBase: "#050C14",
+			bgCard: "#0D1B2A",
+		},
+		// Season 6: Current/Tech - Refined Indigo/Slate
+		6: {
+			accent: "#818CF8",
+			bgBase: "#0A0F1E",
+			bgCard: "#161B33",
+		},
+	};
 
-    const theme = themes[seasonId] || themes[6]; // Default to Season 6 style
+	const theme = themes[seasonId] || themes[6]; // Default to Season 6 style
 
-    return `
+	return `
     :root {
         --color-accent: ${theme.accent};
         --color-accent-glow: ${theme.accent}80;

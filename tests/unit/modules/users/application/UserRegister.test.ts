@@ -49,7 +49,10 @@ describe("UserRegister", () => {
 	it("registers a new user with a strong password and returns a token", async () => {
 		const repositoryCreateSpy = spyOn(repository, "create");
 
-		const result = (await userRegister.register(request)) as { token: string; gamePassword: string };
+		const result = (await userRegister.register(request)) as {
+			token: string;
+			gamePassword: string;
+		};
 
 		const createdUser = repositoryCreateSpy.mock.calls[0][0] as User;
 		expect(typeof createdUser.securePassword).toBe("string");
@@ -83,13 +86,17 @@ describe("UserRegister", () => {
 	});
 
 	it("rejects a weak password that does not meet the policy", async () => {
-		expect(userRegister.register({ ...request, password: "weak" })).rejects.toThrow(InvalidArgumentError);
+		expect(userRegister.register({ ...request, password: "weak" })).rejects.toThrow(
+			InvalidArgumentError,
+		);
 	});
 
 	it("errors if the user already exists", async () => {
 		spyOn(repository, "findByEmailOrUsername").mockResolvedValue(UserMother.create());
 		expect(userRegister.register(request)).rejects.toThrow(
-			new ConflictError(`User with email ${request.email} or username ${request.username} already exists`),
+			new ConflictError(
+				`User with email ${request.email} or username ${request.username} already exists`,
+			),
 		);
 	});
 });

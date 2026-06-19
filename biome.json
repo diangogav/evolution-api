@@ -5,7 +5,7 @@
 		"ignoreUnknown": false,
 		"includes": ["**", "!build/**", "!.agent/**", "!src/evolution-types/**"]
 	},
-	"formatter": { "enabled": false },
+	"formatter": { "enabled": true, "indentStyle": "tab", "lineWidth": 100 },
 	"assist": { "enabled": false },
 	"linter": {
 		"enabled": true,

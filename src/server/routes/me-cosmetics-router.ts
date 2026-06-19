@@ -20,25 +20,23 @@ const getCosmeticsCatalog = new GetCosmeticsCatalog(
 	gatekeeper,
 );
 
-export const meCosmeticsRouter = new Elysia({ prefix: "/me/cosmetics" })
-	.use(bearer())
-	.get(
-		"/",
-		({ bearer, query }) => {
-			const { id } = jwt.decode(bearer as string) as { id: string };
-			return getCosmeticsCatalog.run({ type: query.type, tier: query.tier }, id);
+export const meCosmeticsRouter = new Elysia({ prefix: "/me/cosmetics" }).use(bearer()).get(
+	"/",
+	({ bearer, query }) => {
+		const { id } = jwt.decode(bearer as string) as { id: string };
+		return getCosmeticsCatalog.run({ type: query.type, tier: query.tier }, id);
+	},
+	{
+		query: t.Object({
+			type: t.Optional(t.Enum(CosmeticType)),
+			tier: t.Optional(t.Enum(CosmeticTier)),
+		}),
+		detail: {
+			tags: ["Cosmetics"],
+			summary: "List my cosmetics catalog",
+			description:
+				"Personalized catalog of cosmetics visible to the authenticated user. Includes cosmetics covered by the user's tier or individual COSMETIC grants. Each item includes a manifest of short-lived signed URLs.",
+			security: [{ bearerAuth: [] }],
 		},
-		{
-			query: t.Object({
-				type: t.Optional(t.Enum(CosmeticType)),
-				tier: t.Optional(t.Enum(CosmeticTier)),
-			}),
-			detail: {
-				tags: ["Cosmetics"],
-				summary: "List my cosmetics catalog",
-				description:
-					"Personalized catalog of cosmetics visible to the authenticated user. Includes cosmetics covered by the user's tier or individual COSMETIC grants. Each item includes a manifest of short-lived signed URLs.",
-				security: [{ bearerAuth: [] }],
-			},
-		},
-	);
+	},
+);

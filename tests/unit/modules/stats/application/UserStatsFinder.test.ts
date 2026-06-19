@@ -23,7 +23,7 @@ describe("UserStatsFinder", () => {
 	});
 
 	it("Should return user stats when they exist for the given user and ban list", async () => {
-		spyOn(repository, 'find').mockResolvedValue(userStats);
+		spyOn(repository, "find").mockResolvedValue(userStats);
 		const response = await userStatsFinder.find({
 			userId: userStats.userId,
 			banListName: "Global",
@@ -35,17 +35,20 @@ describe("UserStatsFinder", () => {
 	});
 
 	it("Should default to the 'Global' ban list when none is specified", async () => {
-		spyOn(repository, 'find').mockResolvedValue(userStats);
-		const response = await userStatsFinder.find({ userId: userStats.userId, season: config.season });
+		spyOn(repository, "find").mockResolvedValue(userStats);
+		const response = await userStatsFinder.find({
+			userId: userStats.userId,
+			season: config.season,
+		});
 		expect(repository.find).toHaveBeenCalledTimes(1);
 		expect(repository.find).toHaveBeenCalledWith(userStats.userId, "Global", config.season);
 		expect(response).toEqual(userStats.toJson());
 	});
 
 	it("Should throw NotFoundError when stats are not found for the given user", async () => {
-		spyOn(repository, 'find').mockResolvedValue(null);
-		expect(userStatsFinder.find({ userId: userStats.userId, season: config.season })).rejects.toThrow(
-			new NotFoundError(`Stats for user with id ${userStats.userId} not found.`),
-		);
+		spyOn(repository, "find").mockResolvedValue(null);
+		expect(
+			userStatsFinder.find({ userId: userStats.userId, season: config.season }),
+		).rejects.toThrow(new NotFoundError(`Stats for user with id ${userStats.userId} not found.`));
 	});
 });

@@ -12,7 +12,7 @@ export class UserForgotPassword {
 		private readonly jwt: JWT,
 		private readonly logger: Logger,
 		private readonly resetLinkBuilder: ResetPasswordLinkBuilder,
-	) { }
+	) {}
 
 	async forgotPassword({
 		email,

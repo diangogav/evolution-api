@@ -52,7 +52,9 @@ describe("UserUpgradePassword", () => {
 		spyOn(repository, "findById").mockResolvedValue(migratedUser);
 		const updateSpy = spyOn(repository, "update");
 
-		expect(upgrader.upgrade({ userId: migratedUser.id, password: "yugi2024" })).rejects.toThrow(ConflictError);
+		expect(upgrader.upgrade({ userId: migratedUser.id, password: "yugi2024" })).rejects.toThrow(
+			ConflictError,
+		);
 		expect(updateSpy).not.toHaveBeenCalled();
 	});
 
@@ -60,12 +62,16 @@ describe("UserUpgradePassword", () => {
 		const user = UserMother.create({ securePassword: null });
 		spyOn(repository, "findById").mockResolvedValue(user);
 
-		expect(upgrader.upgrade({ userId: user.id, password: "weak" })).rejects.toThrow(InvalidArgumentError);
+		expect(upgrader.upgrade({ userId: user.id, password: "weak" })).rejects.toThrow(
+			InvalidArgumentError,
+		);
 	});
 
 	it("throws when the user does not exist", async () => {
 		spyOn(repository, "findById").mockResolvedValue(null);
 
-		expect(upgrader.upgrade({ userId: "missing-user-id", password: "yugi2024" })).rejects.toThrow(NotFoundError);
+		expect(upgrader.upgrade({ userId: "missing-user-id", password: "yugi2024" })).rejects.toThrow(
+			NotFoundError,
+		);
 	});
 });

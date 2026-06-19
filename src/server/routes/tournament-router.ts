@@ -17,31 +17,35 @@ const repository = new TournamentRankingPostgresRepository();
 const userRepository = new UserPostgresRepository();
 const tournamentRepository = new TournamentGateway();
 const updateRanking = new UpdateRankingUseCase(
-    repository,
-    userRepository,
-    config.tournaments.apiUrl,
-    logger
+	repository,
+	userRepository,
+	config.tournaments.apiUrl,
+	logger,
 );
 const getRanking = new GetRankingUseCase(repository);
-const tournamentEnrollmentUseCase = new TournamentEnrollmentUseCase(userRepository, tournamentRepository);
-const tournamentWithdrawalUseCase = new TournamentWithdrawalUseCase(userRepository, tournamentRepository);
-const jwt = new JWT(config.jwt)
+const tournamentEnrollmentUseCase = new TournamentEnrollmentUseCase(
+	userRepository,
+	tournamentRepository,
+);
+const tournamentWithdrawalUseCase = new TournamentWithdrawalUseCase(
+	userRepository,
+	tournamentRepository,
+);
+const jwt = new JWT(config.jwt);
 
 // Webhook URL will be dynamically generated in the controller based on request origin
 const createTournament = new CreateTournamentProxyUseCase(
-    config.tournaments.apiUrl,
-    config.tournaments.webhookUrl,
+	config.tournaments.apiUrl,
+	config.tournaments.webhookUrl,
 );
 
 const controller = new TournamentController(
-    updateRanking,
-    getRanking,
-    createTournament,
-    tournamentEnrollmentUseCase,
-    tournamentWithdrawalUseCase,
-    jwt
+	updateRanking,
+	getRanking,
+	createTournament,
+	tournamentEnrollmentUseCase,
+	tournamentWithdrawalUseCase,
+	jwt,
 );
 
-export const tournamentRouter = new Elysia().use(
-    controller.routes(new Elysia())
-);
+export const tournamentRouter = new Elysia().use(controller.routes(new Elysia()));

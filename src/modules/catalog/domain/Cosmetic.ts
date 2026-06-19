@@ -48,7 +48,14 @@ export class Cosmetic {
 		displayName: string;
 		active: boolean;
 	}): Cosmetic {
-		return new Cosmetic(data.id, data.type, data.tier, data.assetRef, data.displayName, data.active);
+		return new Cosmetic(
+			data.id,
+			data.type,
+			data.tier,
+			data.assetRef,
+			data.displayName,
+			data.active,
+		);
 	}
 
 	toPrimitives(): {

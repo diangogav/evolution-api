@@ -1,12 +1,12 @@
 import { AbstractThemeStrategy } from "./AbstractThemeStrategy";
 
 export class DarkThemeStrategy extends AbstractThemeStrategy {
-    getName(): string {
-        return "dark";
-    }
+	getName(): string {
+		return "dark";
+	}
 
-    getStylesheet(): string {
-        return `
+	getStylesheet(): string {
+		return `
             :root {
                 --color-bg: #0f172a;
                 --color-surface: #1e293b;
@@ -16,5 +16,5 @@ export class DarkThemeStrategy extends AbstractThemeStrategy {
                 --color-border: #334155;
             }
         `;
-    }
+	}
 }

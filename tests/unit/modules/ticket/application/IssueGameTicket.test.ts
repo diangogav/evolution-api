@@ -20,7 +20,9 @@ describe("IssueGameTicket", () => {
 
 		const result = await issuer.issue({ userId: "user-123" });
 
-		expect(result.ticket).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+		expect(result.ticket).toMatch(
+			/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+		);
 		expect(saveSpy).toHaveBeenCalledTimes(1);
 
 		const [savedTicket, savedUserId] = saveSpy.mock.calls[0];

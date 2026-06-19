@@ -1,28 +1,20 @@
 {
-  "compilerOptions": {
-    "baseUrl": ".",
-    "outDir": "./build",
-    "target": "ES2021",
-    "module": "ES2022",
-    "moduleResolution": "node",
-    "types": [
-      "bun-types"
-    ],
-    "esModuleInterop": true,
-    "forceConsistentCasingInFileNames": true,
-    "skipLibCheck": true,
-    "resolveJsonModule": true,
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true,
-    "strict": false,
-    "strictNullChecks": true
-  },
-  "include": [
-    "src/**/*",
-    "tests/**/*"
-  ],
-  "exclude": [
-    "node_modules",
-    "dist"
-  ]
+	"compilerOptions": {
+		"baseUrl": ".",
+		"outDir": "./build",
+		"target": "ES2021",
+		"module": "ES2022",
+		"moduleResolution": "node",
+		"types": ["bun-types"],
+		"esModuleInterop": true,
+		"forceConsistentCasingInFileNames": true,
+		"skipLibCheck": true,
+		"resolveJsonModule": true,
+		"experimentalDecorators": true,
+		"emitDecoratorMetadata": true,
+		"strict": false,
+		"strictNullChecks": true
+	},
+	"include": ["src/**/*", "tests/**/*"],
+	"exclude": ["node_modules", "dist"]
 }

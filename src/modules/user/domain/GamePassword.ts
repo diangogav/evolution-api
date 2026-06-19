@@ -1,6 +1,7 @@
 export class GamePassword {
 	private static readonly LENGTH = 4;
-	private static readonly CHARSET = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+	private static readonly CHARSET =
+		"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 
 	private constructor(public readonly value: string) {}
 

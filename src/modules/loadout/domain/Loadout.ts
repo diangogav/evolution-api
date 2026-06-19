@@ -29,6 +29,9 @@ export class Loadout {
 	}
 
 	items(): LoadoutItem[] {
-		return Array.from(this.equipped, ([cosmeticType, cosmeticId]) => ({ cosmeticType, cosmeticId }));
+		return Array.from(this.equipped, ([cosmeticType, cosmeticId]) => ({
+			cosmeticType,
+			cosmeticId,
+		}));
 	}
 }
