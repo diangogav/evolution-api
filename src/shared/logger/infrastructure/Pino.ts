@@ -13,6 +13,7 @@ export class Pino implements Logger {
 		},
 	});
 
+	// biome-ignore lint/correctness/noUnusedPrivateClassMembers: reserved for file logging, currently disabled (see commented calls in log methods)
 	private readonly fileLogger = pino({
 		level: "debug",
 		transport: {

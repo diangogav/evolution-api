@@ -196,7 +196,7 @@ export class WrappedPostgresRepository implements WrappedRepository {
         );
 
         return results.map(
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            // biome-ignore lint/suspicious/noExplicitAny: raw SQL query rows are untyped
             (row: any) =>
                 new BanListStats(
                     row.ban_list_name,
@@ -334,7 +334,7 @@ export class WrappedPostgresRepository implements WrappedRepository {
             [playerId, seasonId],
         );
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        // biome-ignore lint/suspicious/noExplicitAny: raw SQL query rows are untyped
         return results.map((row: any) => ({
             id: row.id,
             name: row.name,

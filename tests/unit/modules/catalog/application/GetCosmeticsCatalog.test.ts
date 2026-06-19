@@ -224,12 +224,10 @@ describe("GetCosmeticsCatalog", () => {
 		// Use a spy gatekeeper to count accessFor calls.
 		let accessForCalls = 0;
 		const spyGk = {
-			// eslint-disable-next-line @typescript-eslint/no-unused-vars
 			accessFor: async (_userId: string | null) => {
 				accessForCalls++;
 				return new CosmeticAccess(CosmeticTier.REGISTERED, new Set());
 			},
-			// eslint-disable-next-line @typescript-eslint/no-unused-vars
 			canUse: async (_userId: string, _c: { id: string; tier: CosmeticTier }) => false,
 		} as unknown as EntitlementsGatekeeper;
 
