@@ -1,4 +1,5 @@
 import { InvalidArgumentError } from "../../../shared/errors/InvalidArgumentError";
+import type { CompanionAnimationDescriptor } from "./CompanionAnimation";
 import { CosmeticTier } from "./CosmeticTier";
 import { CosmeticType } from "./CosmeticType";
 
@@ -10,6 +11,7 @@ export class Cosmetic {
 		public readonly assetRef: string,
 		public readonly displayName: string,
 		public readonly active: boolean,
+		public readonly animation?: CompanionAnimationDescriptor,
 	) {}
 
 	static create({
@@ -18,12 +20,14 @@ export class Cosmetic {
 		tier,
 		assetRef,
 		displayName,
+		animation,
 	}: {
 		id: string;
 		type: CosmeticType;
 		tier: CosmeticTier;
 		assetRef: string;
 		displayName: string;
+		animation?: CompanionAnimationDescriptor;
 	}): Cosmetic {
 		if (!assetRef.trim()) {
 			throw new InvalidArgumentError("assetRef cannot be empty");
@@ -36,8 +40,13 @@ export class Cosmetic {
 		if (!displayName.trim()) {
 			throw new InvalidArgumentError("displayName cannot be empty");
 		}
+		// The animation descriptor is exclusive to COMPANION assets — it has no meaning
+		// for any other type, so carrying it elsewhere is a programming error.
+		if (animation !== undefined && type !== CosmeticType.COMPANION) {
+			throw new InvalidArgumentError("animation is only allowed for COMPANION cosmetics");
+		}
 
-		return new Cosmetic(id, type, tier, assetRef, displayName, true);
+		return new Cosmetic(id, type, tier, assetRef, displayName, true, animation);
 	}
 
 	static from(data: {
@@ -47,6 +56,7 @@ export class Cosmetic {
 		assetRef: string;
 		displayName: string;
 		active: boolean;
+		animation?: CompanionAnimationDescriptor;
 	}): Cosmetic {
 		return new Cosmetic(
 			data.id,
@@ -55,6 +65,7 @@ export class Cosmetic {
 			data.assetRef,
 			data.displayName,
 			data.active,
+			data.animation,
 		);
 	}
 
@@ -65,6 +76,7 @@ export class Cosmetic {
 		assetRef: string;
 		displayName: string;
 		active: boolean;
+		animation?: CompanionAnimationDescriptor;
 	} {
 		return {
 			id: this.id,
@@ -73,6 +85,7 @@ export class Cosmetic {
 			assetRef: this.assetRef,
 			displayName: this.displayName,
 			active: this.active,
+			animation: this.animation,
 		};
 	}
 }

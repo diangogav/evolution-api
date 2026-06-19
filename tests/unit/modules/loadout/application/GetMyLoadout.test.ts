@@ -17,6 +17,24 @@ const sleeve = Cosmetic.from({
 	displayName: "A",
 	active: true,
 });
+const companionAnimation = {
+	rigFile: "Rig_Medium_General.glb",
+	clips: { idle: "Idle_A", attack: "Throw" },
+};
+const companion = Cosmetic.from({
+	id: "companion-1",
+	type: CosmeticType.COMPANION,
+	tier: CosmeticTier.STANDARD,
+	assetRef: "companions/kaykit-warrior/",
+	displayName: "Warrior",
+	active: true,
+	animation: companionAnimation,
+});
+
+const catalog = new Map<string, Cosmetic>([
+	[sleeve.id, sleeve],
+	[companion.id, companion],
+]);
 
 function build(loadout: Loadout) {
 	const loadouts: LoadoutRepository = {
@@ -24,8 +42,8 @@ function build(loadout: Loadout) {
 		save: async () => undefined,
 	};
 	const cosmetics: CosmeticRepository = {
-		findAll: async () => [sleeve],
-		findById: async (id) => (id === sleeve.id ? sleeve : null),
+		findAll: async () => [...catalog.values()],
+		findById: async (id) => catalog.get(id) ?? null,
 		save: async () => undefined,
 	};
 	const signer: AssetUrlSigner = {
@@ -55,5 +73,20 @@ describe("GetMyLoadout", () => {
 		const result = await build(Loadout.empty("user-1")).run("user-1");
 
 		expect(result).toEqual([]);
+	});
+
+	it("includes both signed assets and the animation descriptor for an equipped COMPANION", async () => {
+		const loadout = Loadout.from("user-1", [
+			{ cosmeticType: CosmeticType.COMPANION, cosmeticId: "companion-1" },
+		]);
+
+		const result = await build(loadout).run("user-1");
+
+		expect(result).toHaveLength(1);
+		expect(result[0].cosmeticType).toBe(CosmeticType.COMPANION);
+		expect(result[0].assets).toEqual({
+			"render.jpg": "signed:companions/kaykit-warrior/render.jpg",
+		});
+		expect(result[0].animation).toEqual(companionAnimation);
 	});
 });

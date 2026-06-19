@@ -26,6 +26,18 @@ function cosmetic(tier: CosmeticTier): Cosmetic {
 	});
 }
 
+function companion(): Cosmetic {
+	return Cosmetic.from({
+		id: "companion-1",
+		type: CosmeticType.COMPANION,
+		tier: CosmeticTier.STANDARD,
+		assetRef: "companions/kaykit-warrior/",
+		displayName: "Warrior",
+		active: true,
+		animation: { rigFile: "Rig_Medium_General.glb", clips: { idle: "Idle_A" } },
+	});
+}
+
 function build(options: { found: Cosmetic | null; entitlements?: Entitlement[] }) {
 	const cosmetics: CosmeticRepository = {
 		findAll: async () => [],
@@ -87,6 +99,37 @@ describe("EquipCosmetic", () => {
 		await expect(
 			equip.run({ userId: "user-1", cosmeticType: CosmeticType.PLAYMAT, cosmeticId: "cosmetic-1" }),
 		).rejects.toBeInstanceOf(InvalidArgumentError);
+	});
+
+	it("equips a COMPANION the user is entitled to", async () => {
+		const { equip, saved } = build({ found: companion() });
+
+		await equip.run({
+			userId: "user-1",
+			cosmeticType: CosmeticType.COMPANION,
+			cosmeticId: "companion-1",
+		});
+
+		expect(saved).toHaveLength(1);
+		expect(saved[0].equippedCosmeticId(CosmeticType.COMPANION)).toBe("companion-1");
+	});
+
+	// An unknown/non-uuid cosmeticId must resolve to a graceful NotFound (4xx), never a
+	// 500. The Postgres id column is uuid, so a value like "skeleton-mage" would make the
+	// repository throw `invalid input syntax for type uuid`; the repository guard turns
+	// that into the contract's null, so the use case reports NotFound exactly as it does
+	// for any missing cosmetic.
+	it("rejects a non-uuid cosmeticId with NotFound instead of failing hard", async () => {
+		const { equip, saved } = build({ found: null });
+
+		await expect(
+			equip.run({
+				userId: "user-1",
+				cosmeticType: CosmeticType.COMPANION,
+				cosmeticId: "skeleton-mage",
+			}),
+		).rejects.toBeInstanceOf(NotFoundError);
+		expect(saved).toHaveLength(0);
 	});
 
 	// --- COSMETIC grant regression (spec: catalog scenario 6) ---
