@@ -5,7 +5,10 @@ import { STANDARD_COSMETICS } from "../../../../../src/modules/catalog/applicati
 import { Cosmetic } from "../../../../../src/modules/catalog/domain/Cosmetic";
 import { CosmeticRepository } from "../../../../../src/modules/catalog/domain/CosmeticRepository";
 
-function fakeRepository(existing: Cosmetic[]): { repository: CosmeticRepository; saved: Cosmetic[] } {
+function fakeRepository(existing: Cosmetic[]): {
+	repository: CosmeticRepository;
+	saved: Cosmetic[];
+} {
 	const saved: Cosmetic[] = [];
 	const repository: CosmeticRepository = {
 		findAll: async () => existing,

@@ -27,7 +27,9 @@ export class EquipCosmetic {
 			throw new NotFoundError(`Cosmetic ${cosmeticId} not found`);
 		}
 		if (cosmetic.type !== cosmeticType) {
-			throw new InvalidArgumentError(`Cosmetic ${cosmeticId} cannot be equipped in the ${cosmeticType} slot`);
+			throw new InvalidArgumentError(
+				`Cosmetic ${cosmeticId} cannot be equipped in the ${cosmeticType} slot`,
+			);
 		}
 		// Access is always decided by the gate — never compared here (RFC §8).
 		if (!(await this.gatekeeper.canUse(userId, cosmetic))) {

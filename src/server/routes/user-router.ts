@@ -52,34 +52,37 @@ export const userRouter = new Elysia({ prefix: "/users" })
 		"/register",
 		async ({ body }) => {
 			const id = randomUUID();
-			return new UserRegister(userRepository, hash, logger, emailSender, jwt).register({ ...body, id });
+			return new UserRegister(userRepository, hash, logger, emailSender, jwt).register({
+				...body,
+				id,
+			});
 		},
 		{
 			detail: {
-				tags: ['Authentication'],
-				summary: 'Register new user',
-				description: 'Creates a new user account with a strong password and sends a welcome email',
+				tags: ["Authentication"],
+				summary: "Register new user",
+				description: "Creates a new user account with a strong password and sends a welcome email",
 				responses: {
 					200: {
-						description: 'User registered successfully',
+						description: "User registered successfully",
 						content: {
-							'application/json': {
+							"application/json": {
 								example: {
-									id: 'uuid-123',
-									username: 'player1',
-									email: 'player1@example.com',
-									token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
-								}
-							}
-						}
+									id: "uuid-123",
+									username: "player1",
+									email: "player1@example.com",
+									token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+								},
+							},
+						},
 					},
-					409: { description: 'User already exists' }
-				}
+					409: { description: "User already exists" },
+				},
 			},
 			body: t.Object({
-				username: t.String({ minLength: 1, maxLength: 14, pattern: '^.*\\S.*$' }),
-				email: t.String({ minLength: 1, pattern: '^.*\\S.*$' }),
-				password: t.String({ minLength: 1, pattern: '^.*\\S.*$' }),
+				username: t.String({ minLength: 1, maxLength: 14, pattern: "^.*\\S.*$" }),
+				email: t.String({ minLength: 1, pattern: "^.*\\S.*$" }),
+				password: t.String({ minLength: 1, pattern: "^.*\\S.*$" }),
 			}),
 		},
 	)
@@ -90,38 +93,44 @@ export const userRouter = new Elysia({ prefix: "/users" })
 		},
 		{
 			detail: {
-				tags: ['Authentication'],
-				summary: 'User login',
-				description: 'Authenticates a user and returns a JWT token',
+				tags: ["Authentication"],
+				summary: "User login",
+				description: "Authenticates a user and returns a JWT token",
 				responses: {
 					200: {
-						description: 'Login successful',
+						description: "Login successful",
 						content: {
-							'application/json': {
+							"application/json": {
 								example: {
-									token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+									token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
 									user: {
-										id: 'user-123',
-										username: 'player1',
-										email: 'player1@example.com'
-									}
-								}
-							}
-						}
+										id: "user-123",
+										username: "player1",
+										email: "player1@example.com",
+									},
+								},
+							},
+						},
 					},
-					401: { description: 'Invalid credentials' }
-				}
+					401: { description: "Invalid credentials" },
+				},
 			},
 			body: t.Object({
-				email: t.String({ minLength: 1, pattern: '^.*\\S.*$' }),
-				password: t.String({ minLength: 1, pattern: '^.*\\S.*$' }),
+				email: t.String({ minLength: 1, pattern: "^.*\\S.*$" }),
+				password: t.String({ minLength: 1, pattern: "^.*\\S.*$" }),
 			}),
 		},
 	)
 	.post(
 		"/forgot-password",
 		async ({ body, request }) => {
-			return new UserForgotPassword(userRepository, emailSender, jwt, logger, resetPasswordLinkBuilder).forgotPassword({
+			return new UserForgotPassword(
+				userRepository,
+				emailSender,
+				jwt,
+				logger,
+				resetPasswordLinkBuilder,
+			).forgotPassword({
 				...body,
 				origin: request.headers.get("origin"),
 				referer: request.headers.get("referer"),
@@ -129,23 +138,23 @@ export const userRouter = new Elysia({ prefix: "/users" })
 		},
 		{
 			detail: {
-				tags: ['Authentication'],
-				summary: 'Request password reset',
-				description: 'Sends a password reset email to the user',
+				tags: ["Authentication"],
+				summary: "Request password reset",
+				description: "Sends a password reset email to the user",
 				responses: {
 					200: {
-						description: 'Reset email sent successfully',
+						description: "Reset email sent successfully",
 						content: {
-							'application/json': {
-								example: { message: 'Password reset email sent' }
-							}
-						}
+							"application/json": {
+								example: { message: "Password reset email sent" },
+							},
+						},
 					},
-					404: { description: 'User not found' }
-				}
+					404: { description: "User not found" },
+				},
 			},
 			body: t.Object({
-				email: t.String({ minLength: 1, pattern: '^.*\\S.*$' }),
+				email: t.String({ minLength: 1, pattern: "^.*\\S.*$" }),
 			}),
 		},
 	)
@@ -158,20 +167,20 @@ export const userRouter = new Elysia({ prefix: "/users" })
 		},
 		{
 			detail: {
-				tags: ['Authentication'],
-				summary: 'Validate reset token',
-				description: 'Validates a password reset token',
+				tags: ["Authentication"],
+				summary: "Validate reset token",
+				description: "Validates a password reset token",
 				responses: {
 					200: {
-						description: 'Token is valid',
+						description: "Token is valid",
 						content: {
-							'application/json': {
-								example: { valid: true, email: 'user@example.com' }
-							}
-						}
+							"application/json": {
+								example: { valid: true, email: "user@example.com" },
+							},
+						},
 					},
-					401: { description: 'Invalid or expired token' }
-				}
+					401: { description: "Invalid or expired token" },
+				},
 			},
 			query: t.Object({
 				token: t.String(),
@@ -181,26 +190,29 @@ export const userRouter = new Elysia({ prefix: "/users" })
 	.get(
 		"/username-availability",
 		async ({ query }) => {
-			return new UserUsernameAvailabilityChecker(userRepository).check({ username: query.username });
+			return new UserUsernameAvailabilityChecker(userRepository).check({
+				username: query.username,
+			});
 		},
 		{
 			detail: {
-				tags: ['User Management'],
-				summary: 'Check username availability',
-				description: 'Checks whether a username is available so the frontend can validate it before submitting a change or registration',
+				tags: ["User Management"],
+				summary: "Check username availability",
+				description:
+					"Checks whether a username is available so the frontend can validate it before submitting a change or registration",
 				responses: {
 					200: {
-						description: 'Availability resolved successfully',
+						description: "Availability resolved successfully",
 						content: {
-							'application/json': {
-								example: { available: true }
-							}
-						}
-					}
-				}
+							"application/json": {
+								example: { available: true },
+							},
+						},
+					},
+				},
 			},
 			query: t.Object({
-				username: t.String({ minLength: 1, maxLength: 14, pattern: '^.*\\S.*$' }),
+				username: t.String({ minLength: 1, maxLength: 14, pattern: "^.*\\S.*$" }),
 			}),
 		},
 	)
@@ -211,34 +223,41 @@ export const userRouter = new Elysia({ prefix: "/users" })
 			if (!token) {
 				throw new AuthenticationError("No token provided");
 			}
-			return new UserAccountPasswordReset(userRepository, hash, emailSender, logger, jwt).resetPassword({
+			return new UserAccountPasswordReset(
+				userRepository,
+				hash,
+				emailSender,
+				logger,
+				jwt,
+			).resetPassword({
 				token,
 				newPassword: body.password,
 			});
 		},
 		{
 			detail: {
-				tags: ['Authentication'],
-				summary: 'Reset account password',
-				description: 'Resets the strong account password using a valid reset token',
+				tags: ["Authentication"],
+				summary: "Reset account password",
+				description: "Resets the strong account password using a valid reset token",
 				security: [{ bearerAuth: [] }],
 				responses: {
 					200: {
-						description: 'Account password reset successfully; returns a fresh session for auto-login',
+						description:
+							"Account password reset successfully; returns a fresh session for auto-login",
 						content: {
-							'application/json': {
+							"application/json": {
 								example: {
-									id: 'user-123',
-									username: 'player1',
-									token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
-									migrated: true
-								}
-							}
-						}
+									id: "user-123",
+									username: "player1",
+									token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+									migrated: true,
+								},
+							},
+						},
 					},
-					400: { description: 'Password does not meet the policy' },
-					401: { description: 'Invalid or expired token' }
-				}
+					400: { description: "Password does not meet the policy" },
+					401: { description: "Invalid or expired token" },
+				},
 			},
 			body: t.Object({
 				password: t.String({ minLength: 1 }),
@@ -255,27 +274,27 @@ export const userRouter = new Elysia({ prefix: "/users" })
 		},
 		{
 			detail: {
-				tags: ['User Management'],
-				summary: 'Get user statistics',
-				description: 'Retrieves user statistics for a specific ban list and season',
+				tags: ["User Management"],
+				summary: "Get user statistics",
+				description: "Retrieves user statistics for a specific ban list and season",
 				responses: {
 					200: {
-						description: 'Statistics retrieved successfully',
+						description: "Statistics retrieved successfully",
 						content: {
-							'application/json': {
+							"application/json": {
 								example: {
-									userId: 'user-123',
-									banListName: 'Global',
+									userId: "user-123",
+									banListName: "Global",
 									season: 1,
 									wins: 15,
 									losses: 5,
-									winRate: 0.75
-								}
-							}
-						}
+									winRate: 0.75,
+								},
+							},
+						},
 					},
-					404: { description: 'User not found' }
-				}
+					404: { description: "User not found" },
+				},
 			},
 			query: t.Object({
 				banListName: t.String({ default: "Global" }),
@@ -298,31 +317,31 @@ export const userRouter = new Elysia({ prefix: "/users" })
 		},
 		{
 			detail: {
-				tags: ['User Management'],
-				summary: 'Get user matches',
-				description: 'Retrieves paginated match history for a user',
+				tags: ["User Management"],
+				summary: "Get user matches",
+				description: "Retrieves paginated match history for a user",
 				responses: {
 					200: {
-						description: 'Matches retrieved successfully',
+						description: "Matches retrieved successfully",
 						content: {
-							'application/json': {
+							"application/json": {
 								example: {
 									data: [
 										{
-											id: 'match-1',
-											date: '2025-11-24T10:00:00Z',
-											opponent: 'Player2',
-											result: 'win'
-										}
+											id: "match-1",
+											date: "2025-11-24T10:00:00Z",
+											opponent: "Player2",
+											result: "win",
+										},
 									],
 									total: 50,
 									page: 1,
-									limit: 100
-								}
-							}
-						}
-					}
-				}
+									limit: 100,
+								},
+							},
+						},
+					},
+				},
 			},
 			query: t.Object({
 				page: t.Number({ default: 1, minimum: 1 }),
@@ -344,28 +363,31 @@ export const userRouter = new Elysia({ prefix: "/users" })
 				"/change-username",
 				async ({ body, bearer }) => {
 					const { id } = jwt.decode(bearer as string) as { id: string };
-					return new UserUsernameUpdater(userRepository).updateUsername({ ...(body as { username: string }), id });
+					return new UserUsernameUpdater(userRepository).updateUsername({
+						...(body as { username: string }),
+						id,
+					});
 				},
 				{
 					detail: {
-						tags: ['User Management'],
-						summary: 'Change username',
-						description: 'Changes the username for the authenticated user',
+						tags: ["User Management"],
+						summary: "Change username",
+						description: "Changes the username for the authenticated user",
 						security: [{ bearerAuth: [] }],
 						responses: {
 							200: {
-								description: 'Username changed successfully',
+								description: "Username changed successfully",
 								content: {
-									'application/json': {
-										example: { message: 'Username updated successfully' }
-									}
-								}
+									"application/json": {
+										example: { message: "Username updated successfully" },
+									},
+								},
 							},
-							409: { description: 'Username already taken' }
-						}
+							409: { description: "Username already taken" },
+						},
 					},
 					body: t.Object({
-						username: t.String({ minLength: 1, maxLength: 14, pattern: '^.*\\S.*$' }),
+						username: t.String({ minLength: 1, maxLength: 14, pattern: "^.*\\S.*$" }),
 					}),
 				},
 			)
@@ -377,21 +399,22 @@ export const userRouter = new Elysia({ prefix: "/users" })
 				},
 				{
 					detail: {
-						tags: ['User Management'],
-						summary: 'Generate game password',
-						description: 'Regenerates the 4-character game password used to connect through other ygopro clients and returns it once',
+						tags: ["User Management"],
+						summary: "Generate game password",
+						description:
+							"Regenerates the 4-character game password used to connect through other ygopro clients and returns it once",
 						security: [{ bearerAuth: [] }],
 						responses: {
 							200: {
-								description: 'Game password generated successfully',
+								description: "Game password generated successfully",
 								content: {
-									'application/json': {
-										example: { gamePassword: 'Xy3z' }
-									}
-								}
+									"application/json": {
+										example: { gamePassword: "Xy3z" },
+									},
+								},
 							},
-							404: { description: 'User not found' }
-						}
+							404: { description: "User not found" },
+						},
 					},
 				},
 			)
@@ -406,15 +429,16 @@ export const userRouter = new Elysia({ prefix: "/users" })
 				},
 				{
 					detail: {
-						tags: ['Authentication'],
-						summary: 'Set account password (upgrade)',
-						description: 'Sets the strong account password for a user that signed in with mustUpgrade, and returns a fresh token',
+						tags: ["Authentication"],
+						summary: "Set account password (upgrade)",
+						description:
+							"Sets the strong account password for a user that signed in with mustUpgrade, and returns a fresh token",
 						security: [{ bearerAuth: [] }],
 						responses: {
-							200: { description: 'Account password set successfully' },
-							400: { description: 'Password does not meet the policy' },
-							409: { description: 'User already has an account password' }
-						}
+							200: { description: "Account password set successfully" },
+							400: { description: "Password does not meet the policy" },
+							409: { description: "User already has an account password" },
+						},
 					},
 					body: t.Object({
 						password: t.String({ minLength: 1 }),
@@ -425,29 +449,35 @@ export const userRouter = new Elysia({ prefix: "/users" })
 				"/change-account-password",
 				async ({ body, bearer }) => {
 					const { id } = jwt.decode(bearer as string) as { id: string };
-					return new UserAccountPasswordUpdater(userRepository, hash, logger, emailSender).updatePassword({
+					return new UserAccountPasswordUpdater(
+						userRepository,
+						hash,
+						logger,
+						emailSender,
+					).updatePassword({
 						...(body as { currentPassword: string; newPassword: string }),
 						id,
 					});
 				},
 				{
 					detail: {
-						tags: ['Authentication'],
-						summary: 'Change account password',
-						description: 'Changes the strong account password of the authenticated user, verifying the current one',
+						tags: ["Authentication"],
+						summary: "Change account password",
+						description:
+							"Changes the strong account password of the authenticated user, verifying the current one",
 						security: [{ bearerAuth: [] }],
 						responses: {
-							200: { description: 'Account password changed successfully' },
-							400: { description: 'Password does not meet the policy' },
-							401: { description: 'Wrong current password' }
-						}
+							200: { description: "Account password changed successfully" },
+							400: { description: "Password does not meet the policy" },
+							401: { description: "Wrong current password" },
+						},
 					},
 					body: t.Object({
 						currentPassword: t.String({ minLength: 1 }),
 						newPassword: t.String({ minLength: 1 }),
 					}),
 				},
-			)
+			),
 	)
 
 	// Admin Endpoints (NOT protected by banGuard)
@@ -468,22 +498,23 @@ export const userRouter = new Elysia({ prefix: "/users" })
 		},
 		{
 			detail: {
-				tags: ['User Bans'],
-				summary: 'Ban user',
-				description: 'Bans a user with a reason and optional expiration date. Requires admin privileges.',
+				tags: ["User Bans"],
+				summary: "Ban user",
+				description:
+					"Bans a user with a reason and optional expiration date. Requires admin privileges.",
 				security: [{ bearerAuth: [] }],
 				responses: {
 					200: {
-						description: 'User banned successfully',
+						description: "User banned successfully",
 						content: {
-							'application/json': {
-								example: { success: true }
-							}
-						}
+							"application/json": {
+								example: { success: true },
+							},
+						},
 					},
-					401: { description: 'Unauthorized - Admin role required' },
-					404: { description: 'User not found' }
-				}
+					401: { description: "Unauthorized - Admin role required" },
+					404: { description: "User not found" },
+				},
 			},
 			params: t.Object({ userId: t.String() }),
 			body: t.Object({
@@ -504,22 +535,22 @@ export const userRouter = new Elysia({ prefix: "/users" })
 		},
 		{
 			detail: {
-				tags: ['User Bans'],
-				summary: 'Unban user',
-				description: 'Removes an active ban from a user. Requires admin privileges.',
+				tags: ["User Bans"],
+				summary: "Unban user",
+				description: "Removes an active ban from a user. Requires admin privileges.",
 				security: [{ bearerAuth: [] }],
 				responses: {
 					200: {
-						description: 'User unbanned successfully',
+						description: "User unbanned successfully",
 						content: {
-							'application/json': {
-								example: { success: true }
-							}
-						}
+							"application/json": {
+								example: { success: true },
+							},
+						},
 					},
-					401: { description: 'Unauthorized - Admin role required' },
-					404: { description: 'User or ban not found' }
-				}
+					401: { description: "Unauthorized - Admin role required" },
+					404: { description: "User or ban not found" },
+				},
 			},
 			params: t.Object({ userId: t.String() }),
 		},
@@ -552,32 +583,32 @@ export const userRouter = new Elysia({ prefix: "/users" })
 		},
 		{
 			detail: {
-				tags: ['User Bans'],
-				summary: 'Get ban history',
-				description: 'Retrieves the complete ban history for a user. Requires admin privileges.',
+				tags: ["User Bans"],
+				summary: "Get ban history",
+				description: "Retrieves the complete ban history for a user. Requires admin privileges.",
 				security: [{ bearerAuth: [] }],
 				responses: {
 					200: {
-						description: 'Ban history retrieved successfully',
+						description: "Ban history retrieved successfully",
 						content: {
-							'application/json': {
+							"application/json": {
 								example: {
 									history: [
 										{
-											id: 'ban-123',
-											reason: 'Inappropriate behavior',
-											bannedAt: '2025-11-24T10:00:00Z',
-											unbannedAt: '2025-11-25T10:00:00Z',
-											isActive: false
-										}
-									]
-								}
-							}
-						}
+											id: "ban-123",
+											reason: "Inappropriate behavior",
+											bannedAt: "2025-11-24T10:00:00Z",
+											unbannedAt: "2025-11-25T10:00:00Z",
+											isActive: false,
+										},
+									],
+								},
+							},
+						},
 					},
-					401: { description: 'Unauthorized - Admin role required' },
-					404: { description: 'User not found' }
-				}
+					401: { description: "Unauthorized - Admin role required" },
+					404: { description: "User not found" },
+				},
 			},
 			params: t.Object({ userId: t.String() }),
 		},

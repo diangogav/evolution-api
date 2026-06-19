@@ -47,7 +47,11 @@ describe("UserAccountPasswordUpdater", () => {
 		const updateSpy = spyOn(repository, "update");
 		const emailSpy = spyOn(emailSender, "send");
 
-		await updater.updatePassword({ id: migratedUser.id, currentPassword, newPassword: "NewPass2024" });
+		await updater.updatePassword({
+			id: migratedUser.id,
+			currentPassword,
+			newPassword: "NewPass2024",
+		});
 
 		expect(updateSpy).toHaveBeenCalledTimes(1);
 		const updatedUser = updateSpy.mock.calls[0][0] as User;
@@ -59,7 +63,11 @@ describe("UserAccountPasswordUpdater", () => {
 		spyOn(repository, "findById").mockResolvedValue(migratedUser);
 
 		expect(
-			updater.updatePassword({ id: migratedUser.id, currentPassword: "WrongPass9", newPassword: "NewPass2024" }),
+			updater.updatePassword({
+				id: migratedUser.id,
+				currentPassword: "WrongPass9",
+				newPassword: "NewPass2024",
+			}),
 		).rejects.toThrow(AuthenticationError);
 	});
 
@@ -68,7 +76,11 @@ describe("UserAccountPasswordUpdater", () => {
 		spyOn(repository, "findById").mockResolvedValue(unmigrated);
 
 		expect(
-			updater.updatePassword({ id: unmigrated.id, currentPassword: "whatever1", newPassword: "NewPass2024" }),
+			updater.updatePassword({
+				id: unmigrated.id,
+				currentPassword: "whatever1",
+				newPassword: "NewPass2024",
+			}),
 		).rejects.toThrow(AuthenticationError);
 	});
 
@@ -84,7 +96,11 @@ describe("UserAccountPasswordUpdater", () => {
 		spyOn(repository, "findById").mockResolvedValue(null);
 
 		expect(
-			updater.updatePassword({ id: "missing-user-id", currentPassword, newPassword: "NewPass2024" }),
+			updater.updatePassword({
+				id: "missing-user-id",
+				currentPassword,
+				newPassword: "NewPass2024",
+			}),
 		).rejects.toThrow(NotFoundError);
 	});
 });

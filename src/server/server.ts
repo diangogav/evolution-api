@@ -21,7 +21,6 @@ import { tournamentRouter } from "./routes/tournament-router";
 import { userRouter } from "./routes/user-router";
 import { wrappedRouter } from "./routes/wrapped-router";
 
-
 export class Server {
 	private readonly app: Elysia;
 	private readonly logger: Logger;
@@ -29,75 +28,77 @@ export class Server {
 	constructor(logger: Logger) {
 		this.app = new Elysia()
 			.use(cors())
-			.use(swagger({
-				documentation: {
-					info: {
-						title: 'Evolution API - Tournaments',
-						version: '1.0.0',
-						description: 'API for managing tournaments, matches, participants, and leaderboards'
+			.use(
+				swagger({
+					documentation: {
+						info: {
+							title: "Evolution API - Tournaments",
+							version: "1.0.0",
+							description: "API for managing tournaments, matches, participants, and leaderboards",
+						},
+						tags: [
+							{
+								name: "Authentication",
+								description: "User authentication and registration endpoints",
+							},
+							{
+								name: "User Management",
+								description: "User profile and account management",
+							},
+							{
+								name: "User Bans",
+								description: "User ban management (Admin only)",
+							},
+							{
+								name: "Leaderboard",
+								description: "Rankings and statistics endpoints",
+							},
+							{
+								name: "Ban Lists",
+								description: "Game ban list information",
+							},
+							{
+								name: "Tournaments",
+								description: "Tournament management and enrollment",
+							},
+							{
+								name: "Players & Participants",
+								description: "Endpoints for querying player and participant information",
+							},
+							{
+								name: "Bracket Management",
+								description: "Endpoints for generating and retrieving tournament brackets",
+							},
+							{
+								name: "Match Management",
+								description: "Endpoints for managing match results and match data",
+							},
+							{
+								name: "Season Wrapped",
+								description: "Season summary reports and statistics visualization",
+							},
+							{
+								name: "Statistics",
+								description: "Global statistics and historical data",
+							},
+							{
+								name: "Cosmetics",
+								description: "Cosmetics catalog and customization",
+							},
+						],
+						components: {
+							securitySchemes: {
+								bearerAuth: {
+									type: "http",
+									scheme: "bearer",
+									bearerFormat: "JWT",
+									description: "JWT token obtained from authentication endpoint",
+								},
+							},
+						},
 					},
-					tags: [
-						{
-							name: 'Authentication',
-							description: 'User authentication and registration endpoints'
-						},
-						{
-							name: 'User Management',
-							description: 'User profile and account management'
-						},
-						{
-							name: 'User Bans',
-							description: 'User ban management (Admin only)'
-						},
-						{
-							name: 'Leaderboard',
-							description: 'Rankings and statistics endpoints'
-						},
-						{
-							name: 'Ban Lists',
-							description: 'Game ban list information'
-						},
-						{
-							name: 'Tournaments',
-							description: 'Tournament management and enrollment'
-						},
-						{
-							name: 'Players & Participants',
-							description: 'Endpoints for querying player and participant information'
-						},
-						{
-							name: 'Bracket Management',
-							description: 'Endpoints for generating and retrieving tournament brackets'
-						},
-						{
-							name: 'Match Management',
-							description: 'Endpoints for managing match results and match data'
-						},
-						{
-							name: 'Season Wrapped',
-							description: 'Season summary reports and statistics visualization'
-						},
-						{
-							name: 'Statistics',
-							description: 'Global statistics and historical data'
-						},
-						{
-							name: 'Cosmetics',
-							description: 'Cosmetics catalog and customization'
-						}
-					],
-					components: {
-						securitySchemes: {
-							bearerAuth: {
-								type: 'http',
-								scheme: 'bearer',
-								bearerFormat: 'JWT',
-								description: 'JWT token obtained from authentication endpoint'
-							}
-						}
-					}
-				}
-			}))
+				}),
+			)
 			.onError(({ error, set }) => {
 				if (error instanceof ConflictError) {
 					set.status = 409;
@@ -133,8 +134,7 @@ export class Server {
 				.use(cosmeticsRouter)
 				.use(meCosmeticsRouter)
 				.use(loadoutRouter)
-				.use(publicLoadoutRouter)
-
+				.use(publicLoadoutRouter);
 		});
 		this.logger = logger;
 	}

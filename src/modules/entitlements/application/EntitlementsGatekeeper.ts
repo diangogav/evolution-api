@@ -18,9 +18,7 @@ export class EntitlementsGatekeeper {
 
 		const isDonor = granted.some(
 			(e) =>
-				e.grantType === GrantType.TIER &&
-				e.grantValue === CosmeticTier.DONOR &&
-				e.isActiveAt(at),
+				e.grantType === GrantType.TIER && e.grantValue === CosmeticTier.DONOR && e.isActiveAt(at),
 		);
 
 		const cosmeticIds = new Set(

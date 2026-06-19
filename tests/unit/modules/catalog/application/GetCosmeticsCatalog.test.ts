@@ -76,10 +76,16 @@ function fakeRepo(cosmetics: Cosmetic[]): CosmeticRepository {
 	};
 }
 
-function gatekeeperWith(entitlements: Entitlement[]): { gk: EntitlementsGatekeeper; callCount: () => number } {
+function gatekeeperWith(entitlements: Entitlement[]): {
+	gk: EntitlementsGatekeeper;
+	callCount: () => number;
+} {
 	let calls = 0;
 	const repo: EntitlementRepository = {
-		findByUserId: async () => { calls++; return entitlements; },
+		findByUserId: async () => {
+			calls++;
+			return entitlements;
+		},
 		save: async () => undefined,
 	};
 	return { gk: new EntitlementsGatekeeper(repo), callCount: () => calls };

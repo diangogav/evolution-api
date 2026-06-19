@@ -2,9 +2,9 @@ import { PeriodUserStats } from "../domain/PeriodUserStats";
 import { UserStatsRepository } from "../domain/UserStatsRepository";
 
 export class GetBestPlayerOfLastCompletedWeek {
-    constructor(private readonly repository: UserStatsRepository) {}
+	constructor(private readonly repository: UserStatsRepository) {}
 
-    async get(): Promise<PeriodUserStats[]> {
-        return this.repository.getBestPlayerOfLastCompletedWeek();
-    }
+	async get(): Promise<PeriodUserStats[]> {
+		return this.repository.getBestPlayerOfLastCompletedWeek();
+	}
 }

@@ -9,100 +9,100 @@ import { UserMother } from "../../users/mothers/UserMother";
 import type { UserRepository } from "../../../../../src/modules/user/domain/UserRepository";
 
 describe("UserAuth", () => {
-  let userAuth: UserAuth;
-  let repository: UserRepository;
-  let hash: Hash;
-  let jwt: JWT;
-  let user: User;
-  let request: { email: string; password: string };
+	let userAuth: UserAuth;
+	let repository: UserRepository;
+	let hash: Hash;
+	let jwt: JWT;
+	let user: User;
+	let request: { email: string; password: string };
 
-  beforeEach(async () => {
-    hash = new Hash();
-    jwt = new JWT({ issuer: "issuer", secret: "secret" });
+	beforeEach(async () => {
+		hash = new Hash();
+		jwt = new JWT({ issuer: "issuer", secret: "secret" });
 
-    repository = {
-      create: async () => undefined,
-      findByEmailOrUsername: async () => null,
-      findByEmail: async () => null,
-      findByUsername: async () => null,
-      findById: async () => null,
-      update: async () => undefined,
-      updateParticipantId: async () => undefined,
-      findByParticipantId: async () => null,
-    };
+		repository = {
+			create: async () => undefined,
+			findByEmailOrUsername: async () => null,
+			findByEmail: async () => null,
+			findByUsername: async () => null,
+			findById: async () => null,
+			update: async () => undefined,
+			updateParticipantId: async () => undefined,
+			findByParticipantId: async () => null,
+		};
 
-    userAuth = new UserAuth(repository, hash, jwt);
-    request = UserAuthRequestMother.create();
+		userAuth = new UserAuth(repository, hash, jwt);
+		request = UserAuthRequestMother.create();
 
-    const hashedPassword = await hash.hash(request.password);
-    user = UserMother.create({ password: hashedPassword, email: request.email });
-  });
+		const hashedPassword = await hash.hash(request.password);
+		user = UserMother.create({ password: hashedPassword, email: request.email });
+	});
 
-  it("Should login success if data is correct", async () => {
-    spyOn(repository, "findByEmail").mockResolvedValue(user);
+	it("Should login success if data is correct", async () => {
+		spyOn(repository, "findByEmail").mockResolvedValue(user);
 
-    const response = await userAuth.login(request);
+		const response = await userAuth.login(request);
 
-    expect(repository.findByEmail).toHaveBeenCalledTimes(1);
-    expect(repository.findByEmail).toHaveBeenCalledWith(request.email);
+		expect(repository.findByEmail).toHaveBeenCalledTimes(1);
+		expect(repository.findByEmail).toHaveBeenCalledWith(request.email);
 
-    expect(response).toHaveProperty("token");
-    expect(response).toHaveProperty("username", user.username);
-    expect(response).toHaveProperty("id", user.id);
-  });
+		expect(response).toHaveProperty("token");
+		expect(response).toHaveProperty("username", user.username);
+		expect(response).toHaveProperty("id", user.id);
+	});
 
-  it("logs in a user that has not migrated yet with the game password and flags mustUpgrade", async () => {
-    // user from beforeEach has no account password (securePassword null) and a game password.
-    spyOn(repository, "findByEmail").mockResolvedValue(user);
+	it("logs in a user that has not migrated yet with the game password and flags mustUpgrade", async () => {
+		// user from beforeEach has no account password (securePassword null) and a game password.
+		spyOn(repository, "findByEmail").mockResolvedValue(user);
 
-    const response = await userAuth.login(request);
+		const response = await userAuth.login(request);
 
-    expect(response).toHaveProperty("token");
-    expect(response).toHaveProperty("mustUpgrade", true);
-  });
+		expect(response).toHaveProperty("token");
+		expect(response).toHaveProperty("mustUpgrade", true);
+	});
 
-  it("logs in a migrated user with the account password and does not require an upgrade", async () => {
-    const accountPassword = "BlueEyes7";
-    const migratedUser = UserMother.create({
-      email: request.email,
-      securePassword: await hash.hash(accountPassword),
-    });
-    spyOn(repository, "findByEmail").mockResolvedValue(migratedUser);
+	it("logs in a migrated user with the account password and does not require an upgrade", async () => {
+		const accountPassword = "BlueEyes7";
+		const migratedUser = UserMother.create({
+			email: request.email,
+			securePassword: await hash.hash(accountPassword),
+		});
+		spyOn(repository, "findByEmail").mockResolvedValue(migratedUser);
 
-    const response = await userAuth.login({ email: request.email, password: accountPassword });
+		const response = await userAuth.login({ email: request.email, password: accountPassword });
 
-    expect(response).toHaveProperty("token");
-    expect(response).toHaveProperty("mustUpgrade", false);
-  });
+		expect(response).toHaveProperty("token");
+		expect(response).toHaveProperty("mustUpgrade", false);
+	});
 
-  it("rejects the game password once the user has an account password", async () => {
-    const gamePassword = "ab12";
-    const migratedUser = UserMother.create({
-      email: request.email,
-      password: await hash.hash(gamePassword),
-      securePassword: await hash.hash("StrongPass1"),
-    });
-    spyOn(repository, "findByEmail").mockResolvedValue(migratedUser);
+	it("rejects the game password once the user has an account password", async () => {
+		const gamePassword = "ab12";
+		const migratedUser = UserMother.create({
+			email: request.email,
+			password: await hash.hash(gamePassword),
+			securePassword: await hash.hash("StrongPass1"),
+		});
+		spyOn(repository, "findByEmail").mockResolvedValue(migratedUser);
 
-    await expect(userAuth.login({ email: request.email, password: gamePassword })).rejects.toThrowError(
-      new AuthenticationError("Wrong email or password"),
-    );
-  });
+		await expect(
+			userAuth.login({ email: request.email, password: gamePassword }),
+		).rejects.toThrowError(new AuthenticationError("Wrong email or password"));
+	});
 
-  it("Should throw an AuthenticationError if user does not exist", async () => {
-    spyOn(repository, "findByEmail").mockResolvedValue(null);
+	it("Should throw an AuthenticationError if user does not exist", async () => {
+		spyOn(repository, "findByEmail").mockResolvedValue(null);
 
-    await expect(userAuth.login(request)).rejects.toThrowError(
-      new AuthenticationError("Wrong email or password"),
-    );
-  });
+		await expect(userAuth.login(request)).rejects.toThrowError(
+			new AuthenticationError("Wrong email or password"),
+		);
+	});
 
-  it("Should throw an AuthenticationError if password is invalid", async () => {
-    spyOn(repository, "findByEmail").mockResolvedValue(user);
-    request.password = "InvalidPassword";
+	it("Should throw an AuthenticationError if password is invalid", async () => {
+		spyOn(repository, "findByEmail").mockResolvedValue(user);
+		request.password = "InvalidPassword";
 
-    await expect(userAuth.login(request)).rejects.toThrowError(
-      new AuthenticationError("Wrong email or password"),
-    );
-  });
+		await expect(userAuth.login(request)).rejects.toThrowError(
+			new AuthenticationError("Wrong email or password"),
+		);
+	});
 });

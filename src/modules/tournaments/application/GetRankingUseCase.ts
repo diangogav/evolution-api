@@ -2,9 +2,9 @@ import { TournamentRankingRepository } from "../domain/TournamentRankingReposito
 import { RankingWithUser } from "../domain/RankingWithUser";
 
 export class GetRankingUseCase {
-    constructor(private readonly repository: TournamentRankingRepository) { }
+	constructor(private readonly repository: TournamentRankingRepository) {}
 
-    async execute(limit: number = 10): Promise<RankingWithUser[]> {
-        return this.repository.getTopRankings(limit);
-    }
+	async execute(limit: number = 10): Promise<RankingWithUser[]> {
+		return this.repository.getTopRankings(limit);
+	}
 }

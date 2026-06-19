@@ -17,9 +17,19 @@ export class UserRegister {
 		private readonly logger: Logger,
 		private readonly emailSender: EmailSender,
 		private readonly jwt: JWT,
-	) { }
+	) {}
 
-	async register({ id, email, username, password }: { id: string; email: string; username: string; password: string }): Promise<unknown> {
+	async register({
+		id,
+		email,
+		username,
+		password,
+	}: {
+		id: string;
+		email: string;
+		username: string;
+		password: string;
+	}): Promise<unknown> {
 		this.logger.info(`Creating new user ${email}`);
 
 		const existingUser = await this.repository.findByEmailOrUsername(email, username);
@@ -32,7 +42,14 @@ export class UserRegister {
 		const gamePassword = GamePassword.generate();
 		const gamePasswordHashed = await this.hash.hash(gamePassword.value);
 
-		return this.registerWithSecurePassword({ id, email, username, password, gamePassword: gamePassword.value, gamePasswordHashed });
+		return this.registerWithSecurePassword({
+			id,
+			email,
+			username,
+			password,
+			gamePassword: gamePassword.value,
+			gamePasswordHashed,
+		});
 	}
 
 	private async registerWithSecurePassword({
@@ -49,7 +66,13 @@ export class UserRegister {
 		password: string;
 		gamePassword: string;
 		gamePasswordHashed: string;
-	}): Promise<{ id: string; username: string; email: string; token: string; gamePassword: string }> {
+	}): Promise<{
+		id: string;
+		username: string;
+		email: string;
+		token: string;
+		gamePassword: string;
+	}> {
 		const securePassword = SecurePassword.create(password);
 		const securePasswordHashed = await this.hash.hash(securePassword.value);
 

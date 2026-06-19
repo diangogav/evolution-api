@@ -1,7 +1,9 @@
 import { faker } from "@faker-js/faker";
 
 export class UserRegisterRequestMother {
-	static create(params?: Partial<{ id: string; email: string; username: string; password: string }>): {
+	static create(
+		params?: Partial<{ id: string; email: string; username: string; password: string }>,
+	): {
 		id: string;
 		email: string;
 		username: string;

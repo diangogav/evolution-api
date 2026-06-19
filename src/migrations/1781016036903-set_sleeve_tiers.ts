@@ -9,11 +9,7 @@ import { MigrationInterface, QueryRunner } from "typeorm";
 export class SetSleeveTiers1781016036903 implements MigrationInterface {
 	name = "SetSleeveTiers1781016036903";
 
-	private readonly refs = [
-		"sleeves/baby-frog/",
-		"sleeves/kagura/",
-		"sleeves/mystical-witch/",
-	];
+	private readonly refs = ["sleeves/baby-frog/", "sleeves/kagura/", "sleeves/mystical-witch/"];
 
 	public async up(queryRunner: QueryRunner): Promise<void> {
 		await queryRunner.query(

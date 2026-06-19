@@ -63,7 +63,15 @@ export class User {
 		if (!password.trim()) {
 			throw new InvalidArgumentError(`password cannot be empty`);
 		}
-		return new User({ id, username, email, password, securePassword: securePassword ?? null, role, participantId: null });
+		return new User({
+			id,
+			username,
+			email,
+			password,
+			securePassword: securePassword ?? null,
+			role,
+			participantId: null,
+		});
 	}
 
 	static from(data: {

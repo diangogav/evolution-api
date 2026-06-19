@@ -6,24 +6,24 @@ import type { PlayerRanking } from "./PlayerRanking";
 import type { PlayerSeasonStats } from "./PlayerSeasonStats";
 
 export class SeasonWrapped {
-    constructor(
-        public readonly playerId: string,
-        public readonly playerName: string,
-        public readonly playerAvatar: string | null,
-        public readonly seasonId: number,
-        public readonly seasonName: string,
-        public readonly seasonDates: { start: Date; end: Date },
-        public readonly globalStats: PlayerSeasonStats,
-        public readonly banListStats: BanListStats[],
-        public readonly nemesis: Nemesis | null,
-        public readonly victim: Victim | null,
-        public readonly mostPlayedOpponent: Nemesis | null,
-        public readonly achievements: Achievement[],
-        public readonly ranking: PlayerRanking,
-        public readonly extraStats: ExtraStats,
-    ) { }
+	constructor(
+		public readonly playerId: string,
+		public readonly playerName: string,
+		public readonly playerAvatar: string | null,
+		public readonly seasonId: number,
+		public readonly seasonName: string,
+		public readonly seasonDates: { start: Date; end: Date },
+		public readonly globalStats: PlayerSeasonStats,
+		public readonly banListStats: BanListStats[],
+		public readonly nemesis: Nemesis | null,
+		public readonly victim: Victim | null,
+		public readonly mostPlayedOpponent: Nemesis | null,
+		public readonly achievements: Achievement[],
+		public readonly ranking: PlayerRanking,
+		public readonly extraStats: ExtraStats,
+	) {}
 
-    isEmpty(): boolean {
-        return this.globalStats.totalMatches === 0;
-    }
+	isEmpty(): boolean {
+		return this.globalStats.totalMatches === 0;
+	}
 }

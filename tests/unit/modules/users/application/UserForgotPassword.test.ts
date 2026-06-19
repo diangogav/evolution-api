@@ -35,8 +35,14 @@ describe("UserForgotPassword", () => {
 		logger = new Pino();
 		resetLinkBuilder = new ResetPasswordLinkBuilder(
 			[
-				{ origin: "https://evolutionygo.com", template: "https://evolutionygo.com/reset-password?token={token}" },
-				{ origin: "https://evoduel.com", template: "https://evoduel.com/#/reset-account-password?token={token}" },
+				{
+					origin: "https://evolutionygo.com",
+					template: "https://evolutionygo.com/reset-password?token={token}",
+				},
+				{
+					origin: "https://evoduel.com",
+					template: "https://evoduel.com/#/reset-account-password?token={token}",
+				},
 			],
 			"https://evolutionygo.com/reset-password?token={token}",
 		);
@@ -49,7 +55,11 @@ describe("UserForgotPassword", () => {
 		spyOn(repository, "findByEmail").mockResolvedValue(user);
 		const sendSpy = spyOn(emailSender, "send").mockResolvedValue();
 
-		await forgot.forgotPassword({ email: user.email, origin: "https://evoduel.com", referer: null });
+		await forgot.forgotPassword({
+			email: user.email,
+			origin: "https://evoduel.com",
+			referer: null,
+		});
 
 		expect(sendSpy).toHaveBeenCalledTimes(1);
 		const emailData = sendSpy.mock.calls[0][1];
@@ -61,7 +71,11 @@ describe("UserForgotPassword", () => {
 		spyOn(repository, "findByEmail").mockResolvedValue(user);
 		const sendSpy = spyOn(emailSender, "send").mockResolvedValue();
 
-		await forgot.forgotPassword({ email: user.email, origin: null, referer: "https://evolutionygo.com/" });
+		await forgot.forgotPassword({
+			email: user.email,
+			origin: null,
+			referer: "https://evolutionygo.com/",
+		});
 
 		const emailData = sendSpy.mock.calls[0][1];
 		expect(emailData.html).toContain("https://evolutionygo.com/reset-password?token=");

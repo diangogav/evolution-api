@@ -10,10 +10,16 @@ import { EntitlementsGatekeeper } from "../../../../../src/modules/entitlements/
 
 const NOW = new Date("2026-06-08T00:00:00Z");
 
-function makeRepo(entitlements: Entitlement[]): { repo: EntitlementRepository; callCount: () => number } {
+function makeRepo(entitlements: Entitlement[]): {
+	repo: EntitlementRepository;
+	callCount: () => number;
+} {
 	let calls = 0;
 	const repo: EntitlementRepository = {
-		findByUserId: async () => { calls++; return entitlements; },
+		findByUserId: async () => {
+			calls++;
+			return entitlements;
+		},
 		save: async () => undefined,
 	};
 	return { repo, callCount: () => calls };
