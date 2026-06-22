@@ -65,6 +65,36 @@ export const KAYKIT_COMPANIONS: StandardCosmeticSeed[] = [
 	},
 ];
 
+// Terminator — first EXCLUSIVE companion. Uses its own animation (not the shared KayKit
+// descriptor).
+// WARNING: the seed is INSERT-ONLY (matched by asset_ref) — it never updates an already
+// seeded row. So the clip names and rigFile below must be the REAL animation-group names
+// from the Terminator .glb BEFORE the first seed run; fixing them afterwards needs a data
+// migration. The placeholders are marked TODO on purpose.
+const TERMINATOR_ANIMATION: CompanionAnimationDescriptor = {
+	rigFile: "TODO_terminator_rig.glb", // TODO: real external rig basename
+	clips: {
+		idle: "TODO_idle",
+		spawn: "TODO_spawn",
+		speak: "TODO_speak",
+		hit: "TODO_hit",
+		summon: "TODO_summon",
+		attack: "TODO_attack",
+		cast: "TODO_cast",
+		defeat: "TODO_defeat",
+	},
+};
+
+export const EXCLUSIVE_COMPANIONS: StandardCosmeticSeed[] = [
+	{
+		type: CosmeticType.COMPANION,
+		tier: CosmeticTier.EXCLUSIVE,
+		assetRef: "companions/terminator/",
+		displayName: "Terminator",
+		animation: TERMINATOR_ANIMATION,
+	},
+];
+
 // The cosmetic set seeded on bootstrap. asset_ref is the R2 folder prefix; the
 // individual files (render/preview for sleeves, gltf/bin/texture for playmats,
 // character.glb/rig.glb/preview.jpg for companions) live under it and are resolved at
@@ -165,4 +195,7 @@ export const STANDARD_COSMETICS: StandardCosmeticSeed[] = [
 	},
 	// Companions are live now that their assets are uploaded to R2.
 	...KAYKIT_COMPANIONS,
+	// Exclusive companions: EXCLUSIVE tier is granted by NO user tier, so these are only
+	// obtainable through a per-user COSMETIC entitlement (see scripts/assign-cosmetic.ts).
+	...EXCLUSIVE_COMPANIONS,
 ];

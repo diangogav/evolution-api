@@ -9,6 +9,7 @@
 		"migration:cosmetics:run": "bun run src/scripts/run-cosmetics-migrations.ts",
 		"migration:cosmetics:revert": "bun run src/scripts/run-cosmetics-migrations.ts --revert",
 		"seed:cosmetics": "bun run src/scripts/seed-cosmetics.ts",
+		"assign:cosmetic": "bun run src/scripts/assign-cosmetic.ts",
 		"lint": "biome check .",
 		"lint:fix": "biome check --write .",
 		"format": "biome format --write .",
