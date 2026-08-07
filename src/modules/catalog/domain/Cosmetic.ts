@@ -12,6 +12,7 @@ export class Cosmetic {
 		public readonly displayName: string,
 		public readonly active: boolean,
 		public readonly animation?: CompanionAnimationDescriptor,
+		public readonly assetFiles: readonly string[] | null = null,
 	) {}
 
 	static create({
@@ -21,6 +22,7 @@ export class Cosmetic {
 		assetRef,
 		displayName,
 		animation,
+		assetFiles,
 	}: {
 		id: string;
 		type: CosmeticType;
@@ -28,6 +30,7 @@ export class Cosmetic {
 		assetRef: string;
 		displayName: string;
 		animation?: CompanionAnimationDescriptor;
+		assetFiles?: readonly string[];
 	}): Cosmetic {
 		if (!assetRef.trim()) {
 			throw new InvalidArgumentError("assetRef cannot be empty");
@@ -46,7 +49,7 @@ export class Cosmetic {
 			throw new InvalidArgumentError("animation is only allowed for COMPANION cosmetics");
 		}
 
-		return new Cosmetic(id, type, tier, assetRef, displayName, true, animation);
+		return new Cosmetic(id, type, tier, assetRef, displayName, true, animation, assetFiles ?? null);
 	}
 
 	static from(data: {
@@ -57,6 +60,7 @@ export class Cosmetic {
 		displayName: string;
 		active: boolean;
 		animation?: CompanionAnimationDescriptor;
+		assetFiles?: readonly string[] | null;
 	}): Cosmetic {
 		return new Cosmetic(
 			data.id,
@@ -66,6 +70,7 @@ export class Cosmetic {
 			data.displayName,
 			data.active,
 			data.animation,
+			data.assetFiles ?? null,
 		);
 	}
 
@@ -77,6 +82,7 @@ export class Cosmetic {
 		displayName: string;
 		active: boolean;
 		animation?: CompanionAnimationDescriptor;
+		assetFiles: readonly string[] | null;
 	} {
 		return {
 			id: this.id,
@@ -86,6 +92,7 @@ export class Cosmetic {
 			displayName: this.displayName,
 			active: this.active,
 			animation: this.animation,
+			assetFiles: this.assetFiles,
 		};
 	}
 }

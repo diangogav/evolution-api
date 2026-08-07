@@ -11,6 +11,7 @@ import { EquipCosmetic } from "../../modules/loadout/application/EquipCosmetic";
 import { GetMyLoadout } from "../../modules/loadout/application/GetMyLoadout";
 import { LoadoutPostgresRepository } from "../../modules/loadout/infrastructure/LoadoutPostgresRepository";
 import { JWT } from "../../shared/JWT";
+import { preventSignedAssetResponseCaching } from "./signed-asset-response";
 
 const jwt = new JWT(config.jwt);
 const cosmetics = new CosmeticPostgresRepository();
@@ -24,7 +25,8 @@ export const loadoutRouter = new Elysia({ prefix: "/me/loadout" })
 	.use(bearer())
 	.get(
 		"/",
-		({ bearer }) => {
+		({ bearer, set }) => {
+			preventSignedAssetResponseCaching(set);
 			const { id } = jwt.decode(bearer as string) as { id: string };
 			return getMyLoadout.run(id);
 		},
@@ -39,7 +41,8 @@ export const loadoutRouter = new Elysia({ prefix: "/me/loadout" })
 	)
 	.put(
 		"/",
-		async ({ bearer, body }) => {
+		async ({ bearer, body, set }) => {
+			preventSignedAssetResponseCaching(set);
 			const { id } = jwt.decode(bearer as string) as { id: string };
 			await equipCosmetic.run({
 				userId: id,

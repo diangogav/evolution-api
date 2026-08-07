@@ -78,7 +78,10 @@ const companion = Cosmetic.from({
 const signer: AssetUrlSigner = {
 	sign: () => "",
 	signMany: () => ({}),
-	signManifest: async (prefix) => ({ "render.jpg": `signed:${prefix}render.jpg` }),
+	signManifest: async (prefix) => ({
+		assets: { "render.jpg": `signed:${prefix}render.jpg` },
+		expiresAt: "2030-01-01T00:00:00.000Z",
+	}),
 };
 
 function fakeRepo(cosmetics: Cosmetic[]): CosmeticRepository {
@@ -132,6 +135,7 @@ describe("GetCosmeticsCatalog", () => {
 
 		expect(result).toHaveLength(2);
 		expect(result[0].assets).toEqual({ "render.jpg": "signed:sleeves/a/render.jpg" });
+		expect(result[0].assetsExpiresAt).toBe("2030-01-01T00:00:00.000Z");
 	});
 
 	it("excludes inactive cosmetics", async () => {

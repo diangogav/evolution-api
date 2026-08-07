@@ -33,6 +33,9 @@ export class CosmeticEntity {
 	@Column({ name: "animation", type: "jsonb", nullable: true })
 	animation?: CompanionAnimationDescriptor | null;
 
+	@Column({ name: "asset_files", type: "text", array: true, nullable: true })
+	assetFiles: string[] | null;
+
 	@CreateDateColumn({ name: "created_at" })
 	createdAt: Date;
 

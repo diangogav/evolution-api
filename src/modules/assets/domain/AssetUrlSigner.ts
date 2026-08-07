@@ -1,3 +1,8 @@
+export interface SignedAssetManifest {
+	assets: Record<string, string>;
+	expiresAt: string;
+}
+
 export interface AssetUrlSigner {
 	/** Signs a short-lived read (GET) URL for a single asset reference. */
 	sign(assetRef: string): string;
@@ -11,5 +16,5 @@ export interface AssetUrlSigner {
 	 * Lets clients fetch a multi-file asset (a gltf plus its .bin/texture, or a
 	 * sleeve's render + preview) whose parts each need their own signed URL.
 	 */
-	signManifest(prefix: string): Promise<Record<string, string>>;
+	signManifest(prefix: string, assetFiles?: readonly string[]): Promise<SignedAssetManifest>;
 }

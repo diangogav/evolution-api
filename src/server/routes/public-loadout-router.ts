@@ -6,6 +6,7 @@ import { GetMyLoadout } from "../../modules/loadout/application/GetMyLoadout";
 import { GetPublicLoadout } from "../../modules/loadout/application/GetPublicLoadout";
 import { LoadoutPostgresRepository } from "../../modules/loadout/infrastructure/LoadoutPostgresRepository";
 import { UserDirectoryPostgresRepository } from "../../modules/loadout/infrastructure/UserDirectoryPostgresRepository";
+import { preventSignedAssetResponseCaching } from "./signed-asset-response";
 
 const loadouts = new LoadoutPostgresRepository();
 const cosmetics = new CosmeticPostgresRepository();
@@ -14,7 +15,10 @@ const getPublicLoadout = new GetPublicLoadout(new UserDirectoryPostgresRepositor
 
 export const publicLoadoutRouter = new Elysia().get(
 	"/users/by-username/:username/loadout",
-	({ params }) => getPublicLoadout.run(params.username),
+	({ params, set }) => {
+		preventSignedAssetResponseCaching(set);
+		return getPublicLoadout.run(params.username);
+	},
 	{
 		detail: {
 			tags: ["Cosmetics"],
