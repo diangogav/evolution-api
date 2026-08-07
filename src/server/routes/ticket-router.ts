@@ -1,15 +1,14 @@
 import { bearer } from "@elysiajs/bearer";
-import { RedisClient } from "bun";
 import { Elysia } from "elysia";
 
 import { config } from "../../config";
 import { IssueGameTicket } from "../../modules/ticket/application/IssueGameTicket";
 import { BunRedisRankedTicketRepository } from "../../modules/ticket/infrastructure/BunRedisRankedTicketRepository";
 import { JWT } from "../../shared/JWT";
+import { redisClient } from "../../shared/redis/redisClient";
 import { banGuard } from "../guards/bandGuard";
 
 const jwt = new JWT(config.jwt);
-const redisClient = new RedisClient(config.redis.url);
 const rankedTicketRepository = new BunRedisRankedTicketRepository(redisClient);
 
 export const ticketRouter = new Elysia({ prefix: "/game-tickets" })
