@@ -30,6 +30,7 @@ describe("CosmeticPostgresRepository", () => {
 
 	it("maps the animation descriptor when loading a COMPANION by uuid", async () => {
 		const animation = { rigFile: "Rig_Medium_General.glb", clips: { idle: "Idle_A" } };
+		const assetFiles = ["Warrior.glb", "Rig_Medium_General.glb", "preview.jpg"];
 		const id = "11111111-1111-4111-8111-111111111111";
 		const findOne = mock(async () => ({
 			id,
@@ -39,6 +40,7 @@ describe("CosmeticPostgresRepository", () => {
 			displayName: "Warrior",
 			active: true,
 			animation,
+			assetFiles,
 		}));
 		const spy = stubRepository({ findOne });
 
@@ -46,6 +48,7 @@ describe("CosmeticPostgresRepository", () => {
 
 		expect(result).toBeInstanceOf(Cosmetic);
 		expect(result?.animation).toEqual(animation);
+		expect(result?.assetFiles).toEqual(assetFiles);
 
 		spy.mockRestore();
 	});

@@ -8,6 +8,7 @@ export interface MyLoadoutSlot {
 	cosmeticType: CosmeticType;
 	cosmeticId: string;
 	assets: Record<string, string>;
+	assetsExpiresAt?: string;
 	animation?: CompanionAnimationDescriptor;
 }
 
@@ -24,10 +25,14 @@ export class GetMyLoadout {
 		return Promise.all(
 			loadout.items().map(async (item) => {
 				const cosmetic = await this.cosmetics.findById(item.cosmeticId);
+				const signedManifest = cosmetic
+					? await this.signer.signManifest(cosmetic.assetRef, cosmetic.assetFiles ?? undefined)
+					: undefined;
 				return {
 					cosmeticType: item.cosmeticType,
 					cosmeticId: item.cosmeticId,
-					assets: cosmetic ? await this.signer.signManifest(cosmetic.assetRef) : {},
+					assets: signedManifest?.assets ?? {},
+					assetsExpiresAt: signedManifest?.expiresAt,
 					animation: cosmetic?.animation,
 				};
 			}),

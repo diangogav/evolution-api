@@ -49,7 +49,10 @@ function build(loadout: Loadout) {
 	const signer: AssetUrlSigner = {
 		sign: () => "",
 		signMany: () => ({}),
-		signManifest: async (prefix) => ({ "render.jpg": `signed:${prefix}render.jpg` }),
+		signManifest: async (prefix) => ({
+			assets: { "render.jpg": `signed:${prefix}render.jpg` },
+			expiresAt: "2030-01-01T00:00:00.000Z",
+		}),
 	};
 
 	return new GetMyLoadout(loadouts, cosmetics, signer);
@@ -67,6 +70,7 @@ describe("GetMyLoadout", () => {
 		expect(result[0].cosmeticType).toBe(CosmeticType.SLEEVE);
 		expect(result[0].cosmeticId).toBe("cosmetic-1");
 		expect(result[0].assets).toEqual({ "render.jpg": "signed:sleeves/a/render.jpg" });
+		expect(result[0].assetsExpiresAt).toBe("2030-01-01T00:00:00.000Z");
 	});
 
 	it("returns an empty loadout for a user with nothing equipped", async () => {

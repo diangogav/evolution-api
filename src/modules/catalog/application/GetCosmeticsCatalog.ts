@@ -11,6 +11,7 @@ export interface CatalogCosmetic {
 	tier: CosmeticTier;
 	displayName: string;
 	assets: Record<string, string>;
+	assetsExpiresAt: string;
 	animation?: CompanionAnimationDescriptor;
 }
 
@@ -41,14 +42,21 @@ export class GetCosmeticsCatalog {
 		);
 
 		return Promise.all(
-			visible.map(async (cosmetic) => ({
-				id: cosmetic.id,
-				type: cosmetic.type,
-				tier: cosmetic.tier,
-				displayName: cosmetic.displayName,
-				assets: await this.signer.signManifest(cosmetic.assetRef),
-				animation: cosmetic.animation,
-			})),
+			visible.map(async (cosmetic) => {
+				const signedManifest = await this.signer.signManifest(
+					cosmetic.assetRef,
+					cosmetic.assetFiles ?? undefined,
+				);
+				return {
+					id: cosmetic.id,
+					type: cosmetic.type,
+					tier: cosmetic.tier,
+					displayName: cosmetic.displayName,
+					assets: signedManifest.assets,
+					assetsExpiresAt: signedManifest.expiresAt,
+					animation: cosmetic.animation,
+				};
+			}),
 		);
 	}
 }

@@ -46,6 +46,23 @@ describe("Cosmetic", () => {
 		expect(cosmetic.toPrimitives().animation).toEqual(animation);
 	});
 
+	it("round-trips the persisted relative asset file index", () => {
+		const assetFiles = ["character.glb", "Rig_Medium_General.glb", "preview.jpg"];
+		const cosmetic = Cosmetic.from({
+			id: "companion-1",
+			type: CosmeticType.COMPANION,
+			tier: CosmeticTier.STANDARD,
+			assetRef: "companions/kaykit-warrior/",
+			displayName: "Warrior",
+			active: true,
+			animation,
+			assetFiles,
+		});
+
+		expect(cosmetic.assetFiles).toEqual(assetFiles);
+		expect(cosmetic.toPrimitives().assetFiles).toEqual(assetFiles);
+	});
+
 	it("leaves animation undefined for non-COMPANION cosmetics", () => {
 		const cosmetic = Cosmetic.create({
 			id: "sleeve-1",

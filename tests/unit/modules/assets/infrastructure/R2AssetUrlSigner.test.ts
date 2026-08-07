@@ -39,4 +39,46 @@ describe("R2AssetUrlSigner", () => {
 			expect(urls[ref]).toContain("X-Amz-Expires=600");
 		}
 	});
+
+	it("signs a manifest and reports its absolute expiration", async () => {
+		const now = Date.parse("2029-12-31T23:50:00.000Z");
+		const fakeClient = {
+			list: async () => ({
+				contents: [
+					{ key: "playmats/arena/" },
+					{ key: "playmats/arena/model.gltf" },
+					{ key: "playmats/arena/model.bin" },
+				],
+			}),
+			presign: (key: string) => `signed:${key}`,
+		} as unknown as S3Client;
+		const signer = new R2AssetUrlSigner(fakeClient, ttlSeconds, () => now);
+
+		const result = await signer.signManifest("playmats/arena/");
+
+		expect(result).toEqual({
+			assets: {
+				"model.gltf": "signed:playmats/arena/model.gltf",
+				"model.bin": "signed:playmats/arena/model.bin",
+			},
+			expiresAt: "2030-01-01T00:00:00.000Z",
+		});
+	});
+
+	it("does not call ListObjects when relative asset files are already indexed", async () => {
+		const fakeClient = {
+			list: () => {
+				throw new Error("ListObjects must not run on the indexed hot path");
+			},
+			presign: (key: string) => `signed:${key}`,
+		} as unknown as S3Client;
+		const signer = new R2AssetUrlSigner(fakeClient, ttlSeconds, () => 0);
+
+		const result = await signer.signManifest("playmats/arena/", ["model.gltf", "model.bin"]);
+
+		expect(result.assets).toEqual({
+			"model.gltf": "signed:playmats/arena/model.gltf",
+			"model.bin": "signed:playmats/arena/model.bin",
+		});
+	});
 });
