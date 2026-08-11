@@ -1,3 +1,4 @@
+import type { AssetUrlSigner } from "../../assets/domain/AssetUrlSigner";
 import type { CosmeticRepository } from "../domain/CosmeticRepository";
 import type { CosmeticTier } from "../domain/CosmeticTier";
 import type { CosmeticType } from "../domain/CosmeticType";
@@ -10,23 +11,37 @@ export interface AdminCosmeticDto {
 	readonly displayName: string;
 	readonly active: boolean;
 	readonly assetFiles: readonly string[];
+	readonly assets: Readonly<Record<string, string>>;
+	readonly assetsExpiresAt: string;
 }
 
 export class GetAdminCosmetics {
-	constructor(private readonly cosmetics: CosmeticRepository) {}
+	constructor(
+		private readonly cosmetics: CosmeticRepository,
+		private readonly signer: AssetUrlSigner,
+	) {}
 
 	async run(): Promise<AdminCosmeticDto[]> {
 		const cosmetics = await this.cosmetics.findAll();
-		return cosmetics
-			.map((cosmetic) => ({
-				id: cosmetic.id,
-				type: cosmetic.type,
-				tier: cosmetic.tier,
-				assetRef: cosmetic.assetRef,
-				displayName: cosmetic.displayName,
-				active: cosmetic.active,
-				assetFiles: cosmetic.assetFiles ?? [],
-			}))
-			.sort((left, right) => left.displayName.localeCompare(right.displayName));
+		const catalog = await Promise.all(
+			cosmetics.map(async (cosmetic) => {
+				const manifest = await this.signer.signManifest(
+					cosmetic.assetRef,
+					cosmetic.assetFiles ?? undefined,
+				);
+				return {
+					id: cosmetic.id,
+					type: cosmetic.type,
+					tier: cosmetic.tier,
+					assetRef: cosmetic.assetRef,
+					displayName: cosmetic.displayName,
+					active: cosmetic.active,
+					assetFiles: cosmetic.assetFiles ?? [],
+					assets: manifest.assets,
+					assetsExpiresAt: manifest.expiresAt,
+				};
+			}),
+		);
+		return catalog.sort((left, right) => left.displayName.localeCompare(right.displayName));
 	}
 }

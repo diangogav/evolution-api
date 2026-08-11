@@ -2,6 +2,8 @@ import { bearer } from "@elysiajs/bearer";
 import { Elysia, t } from "elysia";
 
 import { config } from "../../config";
+import type { AssetUrlSigner } from "../../modules/assets/domain/AssetUrlSigner";
+import { createR2AssetUrlSigner } from "../../modules/assets/infrastructure/createR2AssetUrlSigner";
 import { createR2CosmeticAssetStorage } from "../../modules/assets/infrastructure/createR2CosmeticAssetStorage";
 import { GetAdminCosmetics } from "../../modules/catalog/application/GetAdminCosmetics";
 import { PublishCosmetic } from "../../modules/catalog/application/PublishCosmetic";
@@ -20,10 +22,12 @@ import { InvalidArgumentError } from "../../shared/errors/InvalidArgumentError";
 import { JWT } from "../../shared/JWT";
 import type { AdminAuthorizer } from "../auth/AdminAuthorizer";
 import { JwtAdminAuthorizer } from "../auth/AdminAuthorizer";
+import { preventSignedAssetResponseCaching } from "./signed-asset-response";
 
 export interface AdminCosmeticsRouterDependencies {
 	readonly authorizer: AdminAuthorizer;
 	readonly cosmetics: CosmeticRepository;
+	readonly signer: AssetUrlSigner;
 	readonly publish: PublishCosmetic;
 	readonly entitlements: EntitlementRepository;
 	readonly users: UserDirectory;
@@ -41,15 +45,16 @@ function parseAnimation(raw: string | undefined): CompanionAnimationDescriptor |
 }
 
 export function createAdminCosmeticsRouter(deps: AdminCosmeticsRouterDependencies) {
-	const list = new GetAdminCosmetics(deps.cosmetics);
+	const list = new GetAdminCosmetics(deps.cosmetics, deps.signer);
 	const grant = new GrantCosmeticToUser(deps.cosmetics, deps.entitlements, deps.users);
 
 	return new Elysia({ prefix: "/admin/cosmetics" })
 		.use(bearer())
 		.get(
 			"/",
-			({ bearer: token }) => {
+			({ bearer: token, set }) => {
 				deps.authorizer.requireAdmin(token);
+				preventSignedAssetResponseCaching(set);
 				return list.run();
 			},
 			{
@@ -124,6 +129,7 @@ const cosmetics = new CosmeticPostgresRepository();
 export const adminCosmeticsRouter = createAdminCosmeticsRouter({
 	authorizer: new JwtAdminAuthorizer(new JWT(config.jwt)),
 	cosmetics,
+	signer: createR2AssetUrlSigner(),
 	publish: new PublishCosmetic(cosmetics, createR2CosmeticAssetStorage()),
 	entitlements: new EntitlementPostgresRepository(),
 	users: new UserDirectoryPostgresRepository(),

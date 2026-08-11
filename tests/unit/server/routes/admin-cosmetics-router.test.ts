@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test";
 import { Elysia } from "elysia";
 
 import type { CosmeticAssetStorage } from "../../../../src/modules/assets/domain/CosmeticAssetStorage";
+import type { AssetUrlSigner } from "../../../../src/modules/assets/domain/AssetUrlSigner";
 import { PublishCosmetic } from "../../../../src/modules/catalog/application/PublishCosmetic";
 import type { CosmeticRepository } from "../../../../src/modules/catalog/domain/CosmeticRepository";
 import type { EntitlementRepository } from "../../../../src/modules/entitlements/domain/EntitlementRepository";
@@ -18,6 +19,12 @@ function buildApp() {
 	const storage: CosmeticAssetStorage = {
 		put: async () => undefined,
 		delete: async () => undefined,
+	};
+	const signer: AssetUrlSigner = {
+		sign: (assetRef) => `https://r2.test/${assetRef}`,
+		signMany: (assetRefs) =>
+			Object.fromEntries(assetRefs.map((assetRef) => [assetRef, `https://r2.test/${assetRef}`])),
+		signManifest: async () => ({ assets: {}, expiresAt: "2026-08-11T20:00:00.000Z" }),
 	};
 	const entitlements: EntitlementRepository = {
 		findByUserId: async () => [],
@@ -38,6 +45,7 @@ function buildApp() {
 					},
 				},
 				cosmetics,
+				signer,
 				publish: new PublishCosmetic(cosmetics, storage),
 				entitlements,
 				users: { findUserIdByUsername: async () => null },
