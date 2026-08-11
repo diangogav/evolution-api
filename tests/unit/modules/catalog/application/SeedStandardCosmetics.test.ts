@@ -61,6 +61,12 @@ describe("SeedStandardCosmetics", () => {
 		expect(saved.some((c) => c.assetRef === first.assetRef)).toBe(false);
 	});
 
+	it("leaves the exclusive Magma Forge playmat to backoffice publication", () => {
+		expect(
+			STANDARD_COSMETICS.some((cosmetic) => cosmetic.assetRef === "playmats/magma-forge/"),
+		).toBe(false);
+	});
+
 	// Assets are uploaded to R2, so KAYKIT_COMPANIONS now ships in the active seed. These
 	// assertions lock the seed data shape and that the companions are actually enabled.
 	describe("KAYKIT_COMPANIONS", () => {

@@ -21,7 +21,7 @@ export class CosmeticEntity {
 	@Column({ type: "enum", enum: CosmeticTier, enumName: "cosmetic_tier_enum" })
 	tier: CosmeticTier;
 
-	@Column({ name: "asset_ref" })
+	@Column({ name: "asset_ref", unique: true })
 	assetRef: string;
 
 	@Column({ name: "display_name" })

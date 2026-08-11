@@ -15,6 +15,7 @@ import { leaderboardRouter } from "./routes/leaderboard-router";
 import { loadoutRouter } from "./routes/loadout-router";
 import { meCosmeticsRouter } from "./routes/me-cosmetics-router";
 import { publicLoadoutRouter } from "./routes/public-loadout-router";
+import { adminCosmeticsRouter } from "./routes/admin-cosmetics-router";
 import { statsRouter } from "./routes/stats-router";
 import { ticketRouter } from "./routes/ticket-router";
 import { tournamentRouter } from "./routes/tournament-router";
@@ -134,7 +135,8 @@ export class Server {
 				.use(cosmeticsRouter)
 				.use(meCosmeticsRouter)
 				.use(loadoutRouter)
-				.use(publicLoadoutRouter);
+				.use(publicLoadoutRouter)
+				.use(adminCosmeticsRouter);
 		});
 		this.logger = logger;
 	}

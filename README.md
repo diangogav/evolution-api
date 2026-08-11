@@ -86,6 +86,8 @@ The API documentation is automatically generated using Swagger.
 1.  Start the server (`bun run dev`).
 2.  Navigate to `http://localhost:3000/swagger` in your browser.
 
+Operational guide: [publish a cosmetic asset and assign it to a user](./docs/cosmetics-operations.es.md).
+
 ## Contributing
 
 We welcome contributions! Please check our [AGENTS.md](./AGENTS.md) for coding standards and architectural guidelines before submitting a Pull Request.

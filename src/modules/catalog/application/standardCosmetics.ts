@@ -96,7 +96,8 @@ export const EXCLUSIVE_COMPANIONS: StandardCosmeticSeed[] = [
 ];
 
 // The cosmetic set seeded on bootstrap. asset_ref is the R2 folder prefix; the
-// individual files (render/preview for sleeves, gltf/bin/texture for playmats,
+// individual files (render/preview for sleeves, gltf/bin/texture or a self-contained
+// glb for playmats,
 // character.glb/rig.glb/preview.jpg for companions) live under it and are resolved at
 // serve time. `tier` gates visibility/usage: anonymous players see STANDARD only;
 // REGISTERED requires an account. NOTE: the seed only INSERTS missing rows (matched by
