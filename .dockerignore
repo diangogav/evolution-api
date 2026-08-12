@@ -1,1 +1,3 @@
 src/evolution-types
+.env
+.env.*

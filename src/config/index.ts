@@ -1,4 +1,5 @@
 import * as dotenv from "dotenv";
+import type jwt from "jsonwebtoken";
 
 dotenv.config();
 
@@ -8,6 +9,13 @@ function ensureEnvVariable(variable: string, variableName: string): string {
 	}
 
 	return variable;
+}
+
+function jwtExpiration(value = "24h"): jwt.SignOptions["expiresIn"] {
+	if (!/^\d+[smhd]$/.test(value)) {
+		throw new Error("Environment variable JWT_EXPIRES_IN must use formats such as 30m, 8h or 7d");
+	}
+	return value as jwt.SignOptions["expiresIn"];
 }
 
 const isProduction = process.env.NODE_ENV === "production";
@@ -28,6 +36,7 @@ export const config = {
 	jwt: {
 		secret: ensureEnvVariable(process.env.JWT_SECRET as string, "JWT_SECRET"),
 		issuer: ensureEnvVariable(process.env.JWT_ISSUER as string, "JWT_ISSUER"),
+		expiresIn: jwtExpiration(process.env.JWT_EXPIRES_IN?.trim()),
 	},
 	redis: {
 		url: ensureEnvVariable(process.env.REDIS_URL as string, "REDIS_URL"),

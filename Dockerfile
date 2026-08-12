@@ -4,7 +4,6 @@ WORKDIR /app
 
 COPY package.json .
 COPY bun.lock .
-COPY .env .
 ENV NODE_ENV production
 
 RUN apt-get update && apt-get install -y git
