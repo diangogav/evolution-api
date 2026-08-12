@@ -1,5 +1,6 @@
 import type { AssetUrlSigner } from "../../assets/domain/AssetUrlSigner";
 import type { CosmeticRepository } from "../domain/CosmeticRepository";
+import type { CompanionAnimationDescriptor } from "../domain/CompanionAnimation";
 import type { CosmeticTier } from "../domain/CosmeticTier";
 import type { CosmeticType } from "../domain/CosmeticType";
 
@@ -11,6 +12,7 @@ export interface AdminCosmeticDto {
 	readonly displayName: string;
 	readonly active: boolean;
 	readonly assetFiles: readonly string[];
+	readonly animation?: CompanionAnimationDescriptor;
 	readonly assets: Readonly<Record<string, string>>;
 	readonly assetsExpiresAt: string;
 }
@@ -37,6 +39,7 @@ export class GetAdminCosmetics {
 					displayName: cosmetic.displayName,
 					active: cosmetic.active,
 					assetFiles: cosmetic.assetFiles ?? [],
+					...(cosmetic.animation ? { animation: cosmetic.animation } : {}),
 					assets: manifest.assets,
 					assetsExpiresAt: manifest.expiresAt,
 				};

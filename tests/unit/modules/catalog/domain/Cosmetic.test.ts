@@ -76,6 +76,25 @@ describe("Cosmetic", () => {
 		expect(cosmetic.toPrimitives().animation).toBeUndefined();
 	});
 
+	it("configures a procedural motion profile without changing companion identity", () => {
+		const companion = Cosmetic.create({
+			id: "companion-1",
+			type: CosmeticType.COMPANION,
+			tier: CosmeticTier.EXCLUSIVE,
+			assetRef: "companions/golden-dragon/",
+			displayName: "Golden Dragon",
+		});
+
+		const configured = companion.configureAnimation({
+			targetHeight: 1.3,
+			motion: { preset: "serpentine", intensity: 0.8, speed: 0.7 },
+		});
+
+		expect(configured.id).toBe(companion.id);
+		expect(configured.animation?.motion?.preset).toBe("serpentine");
+		expect(configured.animation?.targetHeight).toBe(1.3);
+	});
+
 	it("rejects an animation descriptor on a non-COMPANION cosmetic", () => {
 		expect(() =>
 			Cosmetic.create({

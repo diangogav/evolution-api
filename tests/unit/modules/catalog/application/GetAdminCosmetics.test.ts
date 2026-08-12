@@ -49,4 +49,33 @@ describe("GetAdminCosmetics", () => {
 			},
 		]);
 	});
+
+	it("surfaces a companion animation profile for editing", async () => {
+		const companion = Cosmetic.create({
+			id: "companion-1",
+			type: CosmeticType.COMPANION,
+			tier: CosmeticTier.EXCLUSIVE,
+			assetRef: "companions/golden-dragon/",
+			displayName: "Golden Dragon",
+			animation: { motion: { preset: "hover", intensity: 0.8 } },
+			assetFiles: ["dragon.glb"],
+		});
+		const repository: CosmeticRepository = {
+			findAll: async () => [companion],
+			findById: async () => companion,
+			save: async () => undefined,
+		};
+		const signer: AssetUrlSigner = {
+			sign: () => "",
+			signMany: () => ({}),
+			signManifest: async () => ({
+				assets: { "dragon.glb": "https://r2.test/dragon.glb" },
+				expiresAt: "2026-08-11T20:00:00.000Z",
+			}),
+		};
+
+		const [result] = await new GetAdminCosmetics(repository, signer).run();
+
+		expect(result?.animation?.motion).toEqual({ preset: "hover", intensity: 0.8 });
+	});
 });

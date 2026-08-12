@@ -74,6 +74,49 @@ export class Cosmetic {
 		);
 	}
 
+	configureAnimation(animation?: CompanionAnimationDescriptor): Cosmetic {
+		if (this.type !== CosmeticType.COMPANION) {
+			throw new InvalidArgumentError("animation is only allowed for COMPANION cosmetics");
+		}
+
+		return new Cosmetic(
+			this.id,
+			this.type,
+			this.tier,
+			this.assetRef,
+			this.displayName,
+			this.active,
+			animation,
+			this.assetFiles,
+		);
+	}
+
+	replaceAssetFile(
+		currentFile: string,
+		replacementFile: string,
+		animation: CompanionAnimationDescriptor | undefined = this.animation,
+	): Cosmetic {
+		if (!this.assetFiles?.includes(currentFile)) {
+			throw new InvalidArgumentError(
+				`Asset file "${currentFile}" does not belong to this cosmetic`,
+			);
+		}
+		if (!replacementFile.trim()) {
+			throw new InvalidArgumentError("replacement asset file cannot be empty");
+		}
+
+		return new Cosmetic(
+			this.id,
+			this.type,
+			this.tier,
+			this.assetRef,
+			this.displayName,
+			this.active,
+			animation,
+			this.assetFiles.map((file) => (file === currentFile ? replacementFile : file)),
+		);
+	}
+
 	toPrimitives(): {
 		id: string;
 		type: CosmeticType;
