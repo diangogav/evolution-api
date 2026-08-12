@@ -1,5 +1,8 @@
 [test]
 
+# Keep generated JavaScript in build/ out of test discovery.
+root = "./tests"
+
 # load test environment variables before any test runs
 preload = ["./tests/setup.ts"]
 
