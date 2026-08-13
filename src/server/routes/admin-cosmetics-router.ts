@@ -65,11 +65,24 @@ const companionAnimationSchema = t.Object({
 				summon: t.String(),
 				attack: t.String(),
 				cast: t.String(),
+				knockdown: t.String(),
+				recover: t.String(),
 				victory: t.String(),
 				defeat: t.String(),
 			}),
 		),
 	),
+	attackStyle: t.Optional(
+		t.Union([t.Literal("magic"), t.Literal("breath"), t.Literal("projectile")]),
+	),
+	attackOrigin: t.Optional(
+		t.Object({
+			x: t.Number({ minimum: -2, maximum: 2 }),
+			y: t.Number({ minimum: 0, maximum: 4 }),
+			z: t.Number({ minimum: -2, maximum: 2 }),
+		}),
+	),
+	attackReleaseTime: t.Optional(t.Number({ minimum: 0, maximum: 2.5 })),
 	motion: t.Optional(
 		t.Object({
 			preset: t.Union([

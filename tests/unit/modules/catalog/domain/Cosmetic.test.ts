@@ -10,6 +10,9 @@ const animation: CompanionAnimationDescriptor = {
 	rigFile: "Rig_Medium_General.glb",
 	targetHeight: 1.6,
 	orientationOffsetY: 0,
+	attackStyle: "projectile",
+	attackOrigin: { x: 0.12, y: 1.05, z: 0.28 },
+	attackReleaseTime: 0.63,
 	clips: {
 		idle: "Idle_A",
 		spawn: "Spawn_Ground",

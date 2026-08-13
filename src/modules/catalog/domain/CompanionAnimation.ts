@@ -13,6 +13,19 @@ export type CompanionRole =
 
 export type CompanionMotionPreset = "grounded" | "hover" | "serpentine" | "bouncy";
 
+/** Visual language of the direct companion-to-companion attack. */
+export type CompanionAttackStyle = "magic" | "breath" | "projectile";
+
+/**
+ * Emission point in companion-local presentation units. X moves sideways,
+ * Y rises from the ground anchor, and Z moves forward in the model's facing.
+ */
+export interface CompanionAttackOrigin {
+	x: number;
+	y: number;
+	z: number;
+}
+
 /**
  * Model-agnostic procedural personality. The game resolves the preset into safe
  * movement values; intensity affects displacement and speed affects duration.
@@ -29,4 +42,7 @@ export interface CompanionAnimationDescriptor {
 	targetHeight?: number; // bbox target world height
 	orientationOffsetY?: number; // per-model Y-rotation offset
 	motion?: CompanionMotionDescriptor; // procedural fallback personality
+	attackStyle?: CompanionAttackStyle; // direct-attack visual identity
+	attackOrigin?: CompanionAttackOrigin; // local emission point (head, hand, weapon, etc.)
+	attackReleaseTime?: number; // seconds from clip start until the client-owned effect launches
 }

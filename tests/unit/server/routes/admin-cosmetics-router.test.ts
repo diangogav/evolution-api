@@ -135,6 +135,10 @@ describe("admin cosmetics routes", () => {
 				body: JSON.stringify({
 					animation: {
 						targetHeight: 1.3,
+						attackStyle: "breath",
+						attackOrigin: { x: 0.08, y: 1.1, z: 0.32 },
+						attackReleaseTime: 0.63,
+						clips: { attack: "Bite", knockdown: "Fall", recover: "Get_Up" },
 						motion: { preset: "serpentine", intensity: 0.8, speed: 0.7 },
 					},
 				}),
@@ -144,9 +148,16 @@ describe("admin cosmetics routes", () => {
 		expect(response.status).toBe(200);
 		expect(await response.json()).toMatchObject({
 			cosmeticId: companion.id,
-			animation: { motion: { preset: "serpentine", intensity: 0.8, speed: 0.7 } },
+			animation: {
+				attackStyle: "breath",
+				attackOrigin: { x: 0.08, y: 1.1, z: 0.32 },
+				attackReleaseTime: 0.63,
+				clips: { attack: "Bite", knockdown: "Fall", recover: "Get_Up" },
+				motion: { preset: "serpentine", intensity: 0.8, speed: 0.7 },
+			},
 		});
 		expect(saved?.animation?.targetHeight).toBe(1.3);
+		expect(saved?.animation?.attackOrigin?.z).toBe(0.32);
 	});
 
 	it("replaces a companion GLB without creating another catalog entry", async () => {
