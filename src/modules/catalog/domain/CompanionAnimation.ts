@@ -6,6 +6,8 @@ export type CompanionRole =
 	| "summon"
 	| "attack"
 	| "cast"
+	| "knockdown"
+	| "recover"
 	| "victory"
 	| "defeat";
 

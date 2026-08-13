@@ -14,6 +14,8 @@ const animation: CompanionAnimationDescriptor = {
 		idle: "Idle_A",
 		spawn: "Spawn_Ground",
 		attack: "Throw",
+		knockdown: "Fall",
+		recover: "Get_Up",
 	},
 };
 
