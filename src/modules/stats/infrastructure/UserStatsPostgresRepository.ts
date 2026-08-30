@@ -2,8 +2,10 @@ import { dataSource } from "../../../evolution-types/src/data-source";
 import { PlayerStatsEntity } from "../../../evolution-types/src/entities/PlayerStatsEntity";
 import { UserProfileEntity } from "../../../evolution-types/src/entities/UserProfileEntity";
 import { PeriodUserStats } from "../domain/PeriodUserStats";
-import { UserStats } from "../domain/UserStats";
+import { RatingSummary, UserStats } from "../domain/UserStats";
 import { UserStatsRepository } from "../domain/UserStatsRepository";
+
+const PROVISIONAL_GAMES_THRESHOLD = 10;
 
 export class UserStatsPostgresRepository implements UserStatsRepository {
 	async find(
@@ -66,7 +68,33 @@ export class UserStatsPostgresRepository implements UserStatsRepository {
 			return null;
 		}
 
-		return UserStats.from({ ...response, userId: response.user_id, winRate: response.win_rate });
+		const ratings = await this.findRatings(userId, season);
+
+		return UserStats.from({
+			...response,
+			userId: response.user_id,
+			winRate: response.win_rate,
+			ratings,
+		});
+	}
+
+	private async findRatings(userId: string, season: number): Promise<RatingSummary[]> {
+		const rows: { banListName: string; rating: number; gamesPlayed: number; peak: number }[] =
+			await dataSource.query(
+				`SELECT ban_list_name AS "banListName", rating, games_played AS "gamesPlayed", peak
+				 FROM player_ratings
+				 WHERE user_id = $1 AND season = $2
+				 ORDER BY ban_list_name ASC`,
+				[userId, season],
+			);
+
+		return rows.map((row) => ({
+			banListName: row.banListName,
+			rating: row.rating,
+			gamesPlayed: row.gamesPlayed,
+			peak: row.peak,
+			provisional: row.gamesPlayed < PROVISIONAL_GAMES_THRESHOLD,
+		}));
 	}
 
 	async leaderboard({
