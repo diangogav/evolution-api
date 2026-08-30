@@ -12,6 +12,7 @@
 		"index:cosmetic-assets": "bun run src/scripts/index-cosmetic-assets.ts",
 		"upload:cosmetic-asset": "bun run src/scripts/upload-cosmetic-asset.ts",
 		"assign:cosmetic": "bun run src/scripts/assign-cosmetic.ts",
+		"rating:compensate": "bun run src/scripts/rating-compensate.ts",
 		"lint": "biome check .",
 		"lint:fix": "biome check --write .",
 		"format": "biome format --write .",
