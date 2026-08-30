@@ -4,6 +4,15 @@ import {
 	RatingCompensationRepository,
 } from "../domain/RatingCompensationRepository";
 
+// Serializes the read-recompute-write projection sequence per (user, ban list,
+// season) for the lifetime of the transaction. pg_advisory_xact_lock works
+// even when no player_ratings row exists yet, unlike SELECT ... FOR UPDATE,
+// which closes the concurrent-reversal lost-update window that a row lock
+// alone cannot cover.
+const ADVISORY_LOCK_QUERY = `
+	SELECT pg_advisory_xact_lock(hashtextextended($1 || '|' || $2 || '|' || $3, 0))
+`;
+
 const INSERT_REVERSAL_QUERY = `
 	INSERT INTO rating_history
 	   (match_id, user_id, ban_list_name, season, kind, previous_rating, delta, k_factor, opponent_rating)
@@ -58,6 +67,8 @@ export class RatingCompensationPostgresRepository implements RatingCompensationR
 
 	async insertReversal(entry: AppliedRatingHistoryRecord, reversalDelta: number): Promise<boolean> {
 		return dataSource.transaction(async (manager) => {
+			await manager.query(ADVISORY_LOCK_QUERY, [entry.userId, entry.banListName, entry.season]);
+
 			const inserted: { id: string }[] = await manager.query(INSERT_REVERSAL_QUERY, [
 				entry.matchId,
 				entry.userId,

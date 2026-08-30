@@ -35,6 +35,7 @@ describe("RatingCompensationPostgresRepository — insertReversal", () => {
 
 	it("runs the reversal insert and the projection update inside one dataSource.transaction", async () => {
 		manager.query
+			.mockResolvedValueOnce(undefined) // advisory lock
 			.mockResolvedValueOnce([{ id: "history-row-1" }]) // reversal insert
 			.mockResolvedValueOnce([{ kind: "applied", delta: 15 }]); // history for reprojection
 
@@ -42,16 +43,34 @@ describe("RatingCompensationPostgresRepository — insertReversal", () => {
 
 		expect(applied).toBe(true);
 		expect(transactionSpy).toHaveBeenCalledTimes(1);
-		expect(manager.query).toHaveBeenCalledTimes(3);
+		expect(manager.query).toHaveBeenCalledTimes(4);
 	});
 
 	it("does not touch player_ratings when the reversal insert is a no-op (already compensated)", async () => {
-		manager.query.mockResolvedValueOnce([]); // ON CONFLICT DO NOTHING — no row inserted
+		manager.query
+			.mockResolvedValueOnce(undefined) // advisory lock
+			.mockResolvedValueOnce([]); // ON CONFLICT DO NOTHING — no row inserted
 
 		const applied = await repository.insertReversal(appliedRow(), -15);
 
 		expect(applied).toBe(false);
-		expect(manager.query).toHaveBeenCalledTimes(1);
+		expect(manager.query).toHaveBeenCalledTimes(2);
+	});
+
+	it("acquires an advisory lock scoped to user/ban_list/season before reading rating_history, so the projection read-recompute-write is race-free even when player_ratings has no row yet", async () => {
+		manager.query
+			.mockResolvedValueOnce(undefined) // advisory lock
+			.mockResolvedValueOnce([{ id: "reversal-row-1" }]) // reversal insert
+			.mockResolvedValueOnce([{ kind: "applied", delta: 15 }]); // history for reprojection
+
+		await repository.insertReversal(appliedRow(), -15);
+
+		const [lockSql, lockParams] = manager.query.mock.calls[0] as [string, unknown[]];
+		const [historySql] = manager.query.mock.calls[2] as [string, unknown[]];
+
+		expect(lockSql).toContain("pg_advisory_xact_lock");
+		expect(lockParams).toEqual(["user-1", "Global", 5]);
+		expect(historySql).toContain("FROM rating_history");
 	});
 
 	it("recomputes rating and peak from the full rating_history chronology, not by patching peak incrementally", async () => {
@@ -59,6 +78,7 @@ describe("RatingCompensationPostgresRepository — insertReversal", () => {
 		// then the reversal must bring rating back down AND recompute peak
 		// from history — not leave the stale 1080 peak in place.
 		manager.query
+			.mockResolvedValueOnce(undefined) // advisory lock
 			.mockResolvedValueOnce([{ id: "reversal-row-1" }]) // reversal insert succeeds
 			.mockResolvedValueOnce([
 				{ kind: "applied", delta: 80 }, // rating 1080, peak 1080
@@ -67,22 +87,25 @@ describe("RatingCompensationPostgresRepository — insertReversal", () => {
 
 		await repository.insertReversal(appliedRow({ delta: 80 }), -80);
 
-		const projectionCall = manager.query.mock.calls[2] as [string, unknown[]];
+		const projectionCall = manager.query.mock.calls[3] as [string, unknown[]];
 		const [sql, params] = projectionCall;
 		expect(sql).toContain("player_ratings");
 		expect(params).toEqual(["user-1", "Global", 5, 1000, 0, 1080]);
 	});
 
 	it("rolls games_played back to applied-minus-reversed rows, floored at zero", async () => {
-		manager.query.mockResolvedValueOnce([{ id: "reversal-row-1" }]).mockResolvedValueOnce([
-			{ kind: "applied", delta: 10 },
-			{ kind: "applied", delta: 5 },
-			{ kind: "reversal", delta: -10 },
-		]);
+		manager.query
+			.mockResolvedValueOnce(undefined) // advisory lock
+			.mockResolvedValueOnce([{ id: "reversal-row-1" }])
+			.mockResolvedValueOnce([
+				{ kind: "applied", delta: 10 },
+				{ kind: "applied", delta: 5 },
+				{ kind: "reversal", delta: -10 },
+			]);
 
 		await repository.insertReversal(appliedRow(), -10);
 
-		const [, params] = manager.query.mock.calls[2] as [string, unknown[]];
+		const [, params] = manager.query.mock.calls[3] as [string, unknown[]];
 		expect(params?.[4]).toBe(1); // 2 applied - 1 reversal
 	});
 });
