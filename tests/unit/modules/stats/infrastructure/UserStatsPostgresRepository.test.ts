@@ -50,6 +50,7 @@ describe("UserStatsPostgresRepository — ratings", () => {
 		expect(querySpy).toHaveBeenCalledTimes(1);
 		const [sql, params] = querySpy.mock.calls[0] as [string, unknown[]];
 		expect(sql).toContain("player_ratings");
+		expect(sql).toContain("INNER JOIN ranks ON ranks.id = player_ratings.rank_id");
 		expect(params).toEqual(["user-1", 5]);
 
 		expect(result?.toJson().ratings).toEqual([
