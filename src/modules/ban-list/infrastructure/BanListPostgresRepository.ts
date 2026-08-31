@@ -8,13 +8,15 @@ export class BanListPostgresRepository implements BanListRepository {
 		const repository = dataSource.getRepository(PlayerStatsEntity);
 
 		const banListNames = await repository
-			.createQueryBuilder()
-			.select("ban_list_name")
-			.where("season = :season", { season: season ?? config.season })
-			.groupBy("ban_list_name")
-			.orderBy("ban_list_name", "ASC")
+			.createQueryBuilder("player_stats")
+			.select("ranks.name", "name")
+			.innerJoin("ranks", "ranks", "ranks.id = player_stats.rank_id")
+			.where("player_stats.season = :season", { season: season ?? config.season })
+			.andWhere("ranks.enabled = true")
+			.groupBy("ranks.name")
+			.orderBy("ranks.name", "ASC")
 			.getRawMany();
 
-		return banListNames.map((item) => item.ban_list_name);
+		return banListNames.map((item) => item.name);
 	}
 }

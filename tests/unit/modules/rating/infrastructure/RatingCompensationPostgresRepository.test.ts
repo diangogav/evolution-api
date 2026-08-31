@@ -10,7 +10,7 @@ function appliedRow(
 	return {
 		matchId: "match-1",
 		userId: "user-1",
-		banListName: "Global",
+		rankId: "rank-global",
 		season: 5,
 		previousRating: 1000,
 		delta: 15,
@@ -57,7 +57,7 @@ describe("RatingCompensationPostgresRepository — insertReversal", () => {
 		expect(manager.query).toHaveBeenCalledTimes(2);
 	});
 
-	it("acquires an advisory lock scoped to user/ban_list/season before reading rating_history, so the projection read-recompute-write is race-free even when player_ratings has no row yet", async () => {
+	it("acquires an advisory lock scoped to user/rank/season before reading rating_history, so the projection read-recompute-write is race-free even when player_ratings has no row yet", async () => {
 		manager.query
 			.mockResolvedValueOnce(undefined) // advisory lock
 			.mockResolvedValueOnce([{ id: "reversal-row-1" }]) // reversal insert
@@ -69,7 +69,7 @@ describe("RatingCompensationPostgresRepository — insertReversal", () => {
 		const [historySql] = manager.query.mock.calls[2] as [string, unknown[]];
 
 		expect(lockSql).toContain("pg_advisory_xact_lock");
-		expect(lockParams).toEqual(["user-1", "Global", 5]);
+		expect(lockParams).toEqual(["user-1", "rank-global", 5]);
 		expect(historySql).toContain("FROM rating_history");
 	});
 
@@ -90,7 +90,7 @@ describe("RatingCompensationPostgresRepository — insertReversal", () => {
 		const projectionCall = manager.query.mock.calls[3] as [string, unknown[]];
 		const [sql, params] = projectionCall;
 		expect(sql).toContain("player_ratings");
-		expect(params).toEqual(["user-1", "Global", 5, 1000, 0, 1080]);
+		expect(params).toEqual(["user-1", "rank-global", 5, 1000, 0, 1080]);
 	});
 
 	it("rolls games_played back to applied-minus-reversed rows, floored at zero", async () => {

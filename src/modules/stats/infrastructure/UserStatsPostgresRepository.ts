@@ -22,13 +22,14 @@ export class UserStatsPostgresRepository implements UserStatsRepository {
 				"player_stats.points AS points",
 				"player_stats.wins AS wins",
 				"player_stats.losses AS losses",
-				"player_stats.ban_list_name AS banListName",
+				"ranks.name AS banListName",
 				"(player_stats.wins::float / NULLIF(player_stats.wins + player_stats.losses, 0)) * 100 AS win_rate",
 				"RANK() OVER (ORDER BY player_stats.points DESC, (player_stats.wins::float / NULLIF(player_stats.wins + player_stats.losses, 0)) DESC) AS position",
 			])
 			.from(PlayerStatsEntity, "player_stats")
+			.innerJoin("ranks", "ranks", "ranks.id = player_stats.rank_id")
 			.innerJoin("users", "users", "users.id = player_stats.user_id")
-			.where("player_stats.ban_list_name = :banListName", { banListName })
+			.where("ranks.name = :banListName", { banListName })
 			.andWhere("player_stats.season = :season", { season });
 
 		const response = await dataSource
@@ -81,10 +82,12 @@ export class UserStatsPostgresRepository implements UserStatsRepository {
 	private async findRatings(userId: string, season: number): Promise<RatingSummary[]> {
 		const rows: { banListName: string; rating: number; gamesPlayed: number; peak: number }[] =
 			await dataSource.query(
-				`SELECT ban_list_name AS "banListName", rating, games_played AS "gamesPlayed", peak
+				`SELECT ranks.name AS "banListName", player_ratings.rating,
+				        player_ratings.games_played AS "gamesPlayed", player_ratings.peak
 				 FROM player_ratings
-				 WHERE user_id = $1 AND season = $2
-				 ORDER BY ban_list_name ASC`,
+				 INNER JOIN ranks ON ranks.id = player_ratings.rank_id
+				 WHERE player_ratings.user_id = $1 AND player_ratings.season = $2
+				 ORDER BY ranks.name ASC`,
 				[userId, season],
 			);
 
@@ -116,7 +119,7 @@ export class UserStatsPostgresRepository implements UserStatsRepository {
 				"player_stats.points AS points",
 				"player_stats.wins AS wins",
 				"player_stats.losses AS losses",
-				"player_stats.ban_list_name AS banListName",
+				"ranks.name AS banListName",
 				"(player_stats.wins::FLOAT / NULLIF(player_stats.losses + player_stats.wins, 0)) * 100 AS winRate",
 				"ROW_NUMBER() OVER (ORDER BY player_stats.points DESC, ((player_stats.wins::FLOAT / NULLIF(player_stats.losses + player_stats.wins, 0)) * 100) DESC) AS position",
 				`COALESCE(
@@ -136,13 +139,14 @@ export class UserStatsPostgresRepository implements UserStatsRepository {
             ) AS achievements`,
 			])
 			.from(PlayerStatsEntity, "player_stats")
+			.innerJoin("ranks", "ranks", "ranks.id = player_stats.rank_id")
 			.innerJoin(UserProfileEntity, "users", "player_stats.userId = users.id")
 			.leftJoin("user_achievements", "ua", "ua.user_id = users.id")
 			.leftJoin("achievements", "a", "a.id = ua.achievement_id")
-			.where("player_stats.ban_list_name = :banListName", { banListName })
+			.where("ranks.name = :banListName", { banListName })
 			.andWhere("player_stats.season = :season", { season })
 			.groupBy(
-				"users.id, users.username, player_stats.points, player_stats.wins, player_stats.losses, player_stats.ban_list_name",
+				"users.id, users.username, player_stats.points, player_stats.wins, player_stats.losses, ranks.name",
 			)
 			.orderBy("player_stats.points", "DESC")
 			.addOrderBy("winRate", "DESC")

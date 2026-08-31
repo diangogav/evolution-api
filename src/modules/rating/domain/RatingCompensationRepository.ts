@@ -1,7 +1,7 @@
 export type AppliedRatingHistoryRecord = {
 	matchId: string;
 	userId: string;
-	banListName: string;
+	rankId: string;
 	season: number;
 	previousRating: number;
 	delta: number;

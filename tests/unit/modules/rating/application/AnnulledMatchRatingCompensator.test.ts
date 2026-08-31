@@ -12,7 +12,7 @@ function appliedRow(
 	return {
 		matchId: "match-1",
 		userId: "user-1",
-		banListName: "Global",
+		rankId: "rank-global",
 		season: 5,
 		previousRating: 1000,
 		delta: 15,

@@ -349,9 +349,10 @@ export class WrappedPostgresRepository implements WrappedRepository {
 			`
 			SELECT points as total_points
 			FROM player_stats
+			INNER JOIN ranks ON ranks.id = player_stats.rank_id
 			WHERE user_id = $1
 				AND season = $2
-                AND ban_list_name = 'Global'
+                AND ranks.name = 'Global'
 		`,
 			[playerId, seasonId],
 		);
@@ -366,8 +367,9 @@ export class WrappedPostgresRepository implements WrappedRepository {
 					user_id,
 					points AS total_points
 				FROM player_stats
+				INNER JOIN ranks ON ranks.id = player_stats.rank_id
 				WHERE season = $1
-                AND ban_list_name = 'Global'
+                AND ranks.name = 'Global'
 			),
 			ranked AS (
 				SELECT
