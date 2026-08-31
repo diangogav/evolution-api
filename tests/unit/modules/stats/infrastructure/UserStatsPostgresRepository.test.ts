@@ -1,6 +1,7 @@
 import { describe, expect, it, mock, spyOn } from "bun:test";
 
 import { dataSource } from "../../../../../src/evolution-types/src/data-source";
+import { RatingSummary } from "../../../../../src/modules/stats/domain/UserStats";
 import { UserStatsPostgresRepository } from "../../../../../src/modules/stats/infrastructure/UserStatsPostgresRepository";
 
 function stubMainQuery(rawOne: Record<string, unknown> | null) {
@@ -99,6 +100,147 @@ describe("UserStatsPostgresRepository — ratings", () => {
 
 		queryBuilderSpy.mockRestore();
 		querySpy.mockRestore();
+	});
+});
+
+describe("UserStatsPostgresRepository — rating members", () => {
+	const rawStatsRow = {
+		username: "duelist",
+		user_id: "user-1",
+		points: 120,
+		wins: 10,
+		losses: 4,
+		banlistname: "Global",
+		win_rate: "71.4",
+		position: 3,
+		achievements: [],
+	};
+
+	function ratingRow(rankId: string, banListName: string, rankType: string) {
+		return { rankId, banListName, rating: 1000, gamesPlayed: 20, peak: 1010, rankType };
+	}
+
+	function stubRatingQueries(ratingRows: unknown[], patternRows: unknown[] = []) {
+		return spyOn(dataSource, "query").mockImplementation((async (sql: string) =>
+			sql.includes("rank_members") ? patternRows : ratingRows) as never);
+	}
+
+	async function ratingsOf(ratingRows: unknown[], patternRows: unknown[] = []) {
+		const queryBuilderSpy = stubMainQuery(rawStatsRow);
+		const querySpy = stubRatingQueries(ratingRows, patternRows);
+
+		const result = await new UserStatsPostgresRepository().find("user-1", "Global", 5);
+		const calls = [...querySpy.mock.calls] as [string, unknown[]][];
+
+		queryBuilderSpy.mockRestore();
+		querySpy.mockRestore();
+
+		return { ratings: result?.toJson().ratings ?? [], calls };
+	}
+
+	function membersOf(ratings: RatingSummary[], banListName: string) {
+		return ratings.find((rating) => rating.banListName === banListName)?.members;
+	}
+
+	it("nests the ban list ladders matched by a group's patterns under that group", async () => {
+		const { ratings } = await ratingsOf(
+			[
+				ratingRow("rank-edison", "2010.03 Edison", "banlist"),
+				ratingRow("rank-edison-group", "Edison", "group"),
+				ratingRow("rank-goat", "Goat", "banlist"),
+			],
+			[{ rankId: "rank-edison-group", pattern: "* Edison" }],
+		);
+
+		expect(membersOf(ratings, "Edison")).toEqual(["2010.03 Edison"]);
+	});
+
+	it("reads every group's patterns with a single query", async () => {
+		const { calls } = await ratingsOf(
+			[
+				ratingRow("rank-edison-group", "Edison", "group"),
+				ratingRow("rank-retro-group", "Retro", "group"),
+				ratingRow("rank-march", "March 2010 Edison", "banlist"),
+			],
+			[
+				{ rankId: "rank-edison-group", pattern: "* Edison" },
+				{ rankId: "rank-retro-group", pattern: "March 2010 Edison" },
+			],
+		);
+
+		expect(calls).toHaveLength(2);
+		const [sql, params] = calls[1];
+		expect(sql).toContain("rank_members");
+		expect(params).toEqual([["rank-edison-group", "rank-retro-group"]]);
+	});
+
+	it("lists a ban list matched by two groups inside both groups", async () => {
+		const { ratings } = await ratingsOf(
+			[
+				ratingRow("rank-edison-group", "Edison", "group"),
+				ratingRow("rank-march", "March 2010 Edison", "banlist"),
+				ratingRow("rank-retro-group", "Retro", "group"),
+			],
+			[
+				{ rankId: "rank-edison-group", pattern: "* Edison" },
+				{ rankId: "rank-retro-group", pattern: "March 2010 Edison" },
+			],
+		);
+
+		expect(membersOf(ratings, "Edison")).toEqual(["March 2010 Edison"]);
+		expect(membersOf(ratings, "Retro")).toEqual(["March 2010 Edison"]);
+	});
+
+	it("keeps a ban list that matches no pattern out of every group's members", async () => {
+		const { ratings } = await ratingsOf(
+			[
+				ratingRow("rank-edison-group", "Edison", "group"),
+				ratingRow("rank-goat", "Goat", "banlist"),
+				ratingRow("rank-tcg-group", "TCG", "group"),
+			],
+			[
+				{ rankId: "rank-edison-group", pattern: "* Edison" },
+				{ rankId: "rank-tcg-group", pattern: "* TCG" },
+			],
+		);
+
+		expect(membersOf(ratings, "Edison")).toEqual([]);
+		expect(membersOf(ratings, "TCG")).toEqual([]);
+	});
+
+	it("orders the members of a group like the ratings list itself", async () => {
+		const { ratings } = await ratingsOf(
+			[
+				ratingRow("rank-march", "2010.03 Edison", "banlist"),
+				ratingRow("rank-september", "2010.09 Edison", "banlist"),
+				ratingRow("rank-edison-group", "Edison", "group"),
+			],
+			[{ rankId: "rank-edison-group", pattern: "* Edison" }],
+		);
+
+		expect(membersOf(ratings, "Edison")).toEqual(["2010.03 Edison", "2010.09 Edison"]);
+	});
+
+	it("does not add a members key to ban list and global entries", async () => {
+		const { ratings } = await ratingsOf(
+			[
+				ratingRow("rank-march", "2010.03 Edison", "banlist"),
+				ratingRow("rank-edison-group", "Edison", "group"),
+				ratingRow("rank-global", "Global", "global"),
+			],
+			[{ rankId: "rank-edison-group", pattern: "* Edison" }],
+		);
+
+		expect(ratings.find((rating) => rating.banListName === "2010.03 Edison")).not.toHaveProperty(
+			"members",
+		);
+		expect(ratings.find((rating) => rating.banListName === "Global")).not.toHaveProperty("members");
+	});
+
+	it("does not read the group patterns when the user has no group rating", async () => {
+		const { calls } = await ratingsOf([ratingRow("rank-global", "Global", "global")]);
+
+		expect(calls).toHaveLength(1);
 	});
 });
 

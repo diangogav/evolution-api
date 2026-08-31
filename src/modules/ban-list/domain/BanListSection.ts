@@ -1,3 +1,5 @@
+export type { RankMemberPattern } from "../../../shared/ranks/RankMemberPatterns";
+
 export type BanListSectionType = "global" | "group" | "banlist";
 
 export type BanListSection = {
@@ -10,9 +12,4 @@ export type RankSummary = {
 	id: string;
 	name: string;
 	type: BanListSectionType;
-};
-
-export type RankMemberPattern = {
-	rankId: string;
-	pattern: string;
 };
