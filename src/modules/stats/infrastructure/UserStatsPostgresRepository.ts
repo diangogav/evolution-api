@@ -1,7 +1,9 @@
 import { dataSource } from "../../../evolution-types/src/data-source";
 import { PlayerStatsEntity } from "../../../evolution-types/src/entities/PlayerStatsEntity";
 import { UserProfileEntity } from "../../../evolution-types/src/entities/UserProfileEntity";
+import { RankMemberPattern } from "../../../shared/ranks/RankMemberPatterns";
 import { PeriodUserStats } from "../domain/PeriodUserStats";
+import { RatingMembers } from "../domain/RatingMembers";
 import { RankType, RatingSummary, UserStats } from "../domain/UserStats";
 import { LeaderboardSortBy, UserStatsRepository } from "../domain/UserStatsRepository";
 
@@ -81,13 +83,14 @@ export class UserStatsPostgresRepository implements UserStatsRepository {
 
 	private async findRatings(userId: string, season: number): Promise<RatingSummary[]> {
 		const rows: {
+			rankId: string;
 			banListName: string;
 			rating: number;
 			gamesPlayed: number;
 			peak: number;
 			rankType: RankType;
 		}[] = await dataSource.query(
-			`SELECT ranks.name AS "banListName", player_ratings.rating,
+			`SELECT ranks.id AS "rankId", ranks.name AS "banListName", player_ratings.rating,
 			        player_ratings.games_played AS "gamesPlayed", player_ratings.peak,
 			        ranks.type AS "rankType"
 			 FROM player_ratings
@@ -97,14 +100,36 @@ export class UserStatsPostgresRepository implements UserStatsRepository {
 			[userId, season],
 		);
 
-		return rows.map((row) => ({
-			banListName: row.banListName,
-			rating: row.rating,
-			gamesPlayed: row.gamesPlayed,
-			peak: row.peak,
-			provisional: row.gamesPlayed < PROVISIONAL_GAMES_THRESHOLD,
-			rankType: row.rankType,
+		const ratings = rows.map((row) => ({
+			rankId: row.rankId,
+			rating: {
+				banListName: row.banListName,
+				rating: row.rating,
+				gamesPlayed: row.gamesPlayed,
+				peak: row.peak,
+				provisional: row.gamesPlayed < PROVISIONAL_GAMES_THRESHOLD,
+				rankType: row.rankType,
+			},
 		}));
+
+		const groupRankIds = ratings
+			.filter(({ rating }) => rating.rankType === "group")
+			.map(({ rankId }) => rankId);
+
+		if (groupRankIds.length === 0) {
+			return ratings.map(({ rating }) => rating);
+		}
+
+		return RatingMembers.attach(ratings, await this.groupPatterns(groupRankIds));
+	}
+
+	private async groupPatterns(rankIds: string[]): Promise<RankMemberPattern[]> {
+		return dataSource.query(
+			`SELECT rank_members.rank_id AS "rankId", rank_members.pattern
+			 FROM rank_members
+			 WHERE rank_members.rank_id = ANY($1)`,
+			[rankIds],
+		);
 	}
 
 	async leaderboard({

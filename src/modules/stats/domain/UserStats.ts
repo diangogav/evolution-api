@@ -19,6 +19,8 @@ export type RatingSummary = {
 	peak: number;
 	provisional: boolean;
 	rankType: RankType;
+	/** Ban list ladders nested under this entry. Only present on "group" entries. */
+	members?: string[];
 };
 
 type UserStatsParams = {
