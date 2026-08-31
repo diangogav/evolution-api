@@ -2,8 +2,8 @@ import { dataSource } from "../../../evolution-types/src/data-source";
 import { PlayerStatsEntity } from "../../../evolution-types/src/entities/PlayerStatsEntity";
 import { UserProfileEntity } from "../../../evolution-types/src/entities/UserProfileEntity";
 import { PeriodUserStats } from "../domain/PeriodUserStats";
-import { RatingSummary, UserStats } from "../domain/UserStats";
-import { UserStatsRepository } from "../domain/UserStatsRepository";
+import { RankType, RatingSummary, UserStats } from "../domain/UserStats";
+import { LeaderboardSortBy, UserStatsRepository } from "../domain/UserStatsRepository";
 
 const PROVISIONAL_GAMES_THRESHOLD = 10;
 
@@ -80,16 +80,22 @@ export class UserStatsPostgresRepository implements UserStatsRepository {
 	}
 
 	private async findRatings(userId: string, season: number): Promise<RatingSummary[]> {
-		const rows: { banListName: string; rating: number; gamesPlayed: number; peak: number }[] =
-			await dataSource.query(
-				`SELECT ranks.name AS "banListName", player_ratings.rating,
-				        player_ratings.games_played AS "gamesPlayed", player_ratings.peak
-				 FROM player_ratings
-				 INNER JOIN ranks ON ranks.id = player_ratings.rank_id
-				 WHERE player_ratings.user_id = $1 AND player_ratings.season = $2
-				 ORDER BY ranks.name ASC`,
-				[userId, season],
-			);
+		const rows: {
+			banListName: string;
+			rating: number;
+			gamesPlayed: number;
+			peak: number;
+			rankType: RankType;
+		}[] = await dataSource.query(
+			`SELECT ranks.name AS "banListName", player_ratings.rating,
+			        player_ratings.games_played AS "gamesPlayed", player_ratings.peak,
+			        ranks.type AS "rankType"
+			 FROM player_ratings
+			 INNER JOIN ranks ON ranks.id = player_ratings.rank_id
+			 WHERE player_ratings.user_id = $1 AND player_ratings.season = $2
+			 ORDER BY ranks.name ASC`,
+			[userId, season],
+		);
 
 		return rows.map((row) => ({
 			banListName: row.banListName,
@@ -97,6 +103,7 @@ export class UserStatsPostgresRepository implements UserStatsRepository {
 			gamesPlayed: row.gamesPlayed,
 			peak: row.peak,
 			provisional: row.gamesPlayed < PROVISIONAL_GAMES_THRESHOLD,
+			rankType: row.rankType,
 		}));
 	}
 
@@ -105,13 +112,24 @@ export class UserStatsPostgresRepository implements UserStatsRepository {
 		limit,
 		banListName,
 		season,
+		sortBy = "points",
 	}: {
 		page: number;
 		limit: number;
 		banListName: string;
 		season: number;
+		sortBy?: LeaderboardSortBy;
 	}): Promise<UserStats[]> {
-		const leaderboard = await dataSource
+		const winRateExpression =
+			"(player_stats.wins::FLOAT / NULLIF(player_stats.losses + player_stats.wins, 0)) * 100";
+		const ratingExpression = "MAX(player_ratings.rating)";
+		const pointsOrdering = `player_stats.points DESC, (${winRateExpression}) DESC`;
+		const positionOrdering =
+			sortBy === "rating"
+				? `${ratingExpression} DESC NULLS LAST, ${pointsOrdering}`
+				: pointsOrdering;
+
+		const query = dataSource
 			.createQueryBuilder()
 			.select([
 				"users.id AS userId",
@@ -120,8 +138,11 @@ export class UserStatsPostgresRepository implements UserStatsRepository {
 				"player_stats.wins AS wins",
 				"player_stats.losses AS losses",
 				"ranks.name AS banListName",
-				"(player_stats.wins::FLOAT / NULLIF(player_stats.losses + player_stats.wins, 0)) * 100 AS winRate",
-				"ROW_NUMBER() OVER (ORDER BY player_stats.points DESC, ((player_stats.wins::FLOAT / NULLIF(player_stats.losses + player_stats.wins, 0)) * 100) DESC) AS position",
+				`${winRateExpression} AS winRate`,
+				`${ratingExpression} AS rating`,
+				"MAX(player_ratings.peak) AS peak",
+				'MAX(player_ratings.games_played) AS "gamesPlayed"',
+				`ROW_NUMBER() OVER (ORDER BY ${positionOrdering}) AS position`,
 				`COALESCE(
                 jsonb_agg(
                     CASE
@@ -141,14 +162,28 @@ export class UserStatsPostgresRepository implements UserStatsRepository {
 			.from(PlayerStatsEntity, "player_stats")
 			.innerJoin("ranks", "ranks", "ranks.id = player_stats.rank_id")
 			.innerJoin(UserProfileEntity, "users", "player_stats.userId = users.id")
+			.leftJoin(
+				"player_ratings",
+				"player_ratings",
+				"player_ratings.user_id = player_stats.user_id AND player_ratings.rank_id = player_stats.rank_id AND player_ratings.season = player_stats.season",
+			)
 			.leftJoin("user_achievements", "ua", "ua.user_id = users.id")
 			.leftJoin("achievements", "a", "a.id = ua.achievement_id")
 			.where("ranks.name = :banListName", { banListName })
 			.andWhere("player_stats.season = :season", { season })
 			.groupBy(
 				"users.id, users.username, player_stats.points, player_stats.wins, player_stats.losses, ranks.name",
-			)
-			.orderBy("player_stats.points", "DESC")
+			);
+
+		if (sortBy === "rating") {
+			query
+				.orderBy(ratingExpression, "DESC", "NULLS LAST")
+				.addOrderBy("player_stats.points", "DESC");
+		} else {
+			query.orderBy("player_stats.points", "DESC");
+		}
+
+		const leaderboard = await query
 			.addOrderBy("winRate", "DESC")
 			.offset((page - 1) * limit)
 			.limit(limit)
@@ -156,7 +191,17 @@ export class UserStatsPostgresRepository implements UserStatsRepository {
 			.getRawMany();
 
 		return leaderboard.map((item) =>
-			UserStats.from({ ...item, userId: item.userid, winRate: item.winrate }),
+			UserStats.from({
+				...item,
+				userId: item.userid,
+				winRate: item.winrate,
+				rating: item.rating ?? null,
+				peak: item.peak ?? null,
+				provisional:
+					item.gamesPlayed === null || item.gamesPlayed === undefined
+						? null
+						: item.gamesPlayed < PROVISIONAL_GAMES_THRESHOLD,
+			}),
 		);
 	}
 

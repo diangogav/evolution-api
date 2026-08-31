@@ -19,7 +19,7 @@ export const leaderboardRouter = new Elysia({ prefix: "/stats" })
 				tags: ["Leaderboard"],
 				summary: "Get leaderboard",
 				description:
-					"Retrieves paginated leaderboard with player rankings for a specific season and ban list",
+					"Retrieves paginated leaderboard with player rankings for a specific season and ban list, sorted by points or by Elo rating",
 				responses: {
 					200: {
 						description: "Leaderboard retrieved successfully",
@@ -35,6 +35,9 @@ export const leaderboardRouter = new Elysia({ prefix: "/stats" })
 											tournamentsWon: 5,
 											tournamentsPlayed: 20,
 											rank: 1,
+											rating: 1120,
+											peak: 1180,
+											provisional: false,
 										},
 									],
 									total: 100,
@@ -51,6 +54,9 @@ export const leaderboardRouter = new Elysia({ prefix: "/stats" })
 				limit: t.Number({ default: 100, maximum: 100 }),
 				banListName: t.String({ default: "Global" }),
 				season: t.Number({ default: config.season }),
+				sortBy: t.Optional(
+					t.Union([t.Literal("points"), t.Literal("rating")], { default: "points" }),
+				),
 			}),
 		},
 	)
