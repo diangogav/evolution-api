@@ -9,6 +9,15 @@ type UserAchievementParams = {
 	description: string;
 	earnedPoints: number;
 };
+
+export type RatingSummary = {
+	banListName: string;
+	rating: number;
+	gamesPlayed: number;
+	peak: number;
+	provisional: boolean;
+};
+
 export class UserStats {
 	public readonly userId: string;
 	public readonly username: string;
@@ -18,6 +27,7 @@ export class UserStats {
 	public readonly winRate: string;
 	public readonly position: number;
 	private readonly achievements: UserAchievement[];
+	private readonly ratings: RatingSummary[];
 
 	private constructor({
 		userId,
@@ -28,6 +38,7 @@ export class UserStats {
 		winRate,
 		position,
 		achievements = [],
+		ratings = [],
 	}: {
 		userId: string;
 		username: string;
@@ -37,6 +48,7 @@ export class UserStats {
 		winRate: string;
 		position: number;
 		achievements?: UserAchievement[];
+		ratings?: RatingSummary[];
 	}) {
 		this.userId = userId;
 		this.username = username;
@@ -46,6 +58,7 @@ export class UserStats {
 		this.winRate = winRate;
 		this.position = position;
 		this.achievements = achievements;
+		this.ratings = ratings;
 	}
 
 	static create({
@@ -57,6 +70,7 @@ export class UserStats {
 		position,
 		winRate,
 		achievements = [],
+		ratings = [],
 	}: {
 		userId: string;
 		username: string;
@@ -66,6 +80,7 @@ export class UserStats {
 		position: number;
 		winRate: string;
 		achievements?: UserAchievementParams[];
+		ratings?: RatingSummary[];
 	}): UserStats {
 		return new UserStats({
 			userId,
@@ -76,6 +91,7 @@ export class UserStats {
 			winRate,
 			position,
 			achievements: achievements.map((achievement) => UserAchievement.create(achievement)),
+			ratings,
 		});
 	}
 
@@ -88,10 +104,12 @@ export class UserStats {
 		position: number;
 		winRate: string;
 		achievements?: UserAchievementParams[];
+		ratings?: RatingSummary[];
 	}): UserStats {
 		return new UserStats({
 			...data,
 			achievements: data.achievements?.map((achievement) => UserAchievement.from(achievement)),
+			ratings: data.ratings,
 		});
 	}
 
@@ -104,6 +122,7 @@ export class UserStats {
 		winRate: string;
 		position: number;
 		achievements: UserAchievementParams[];
+		ratings: RatingSummary[];
 	} {
 		return {
 			userId: this.userId,
@@ -114,6 +133,7 @@ export class UserStats {
 			winRate: this.winRate,
 			position: this.position,
 			achievements: this.achievements.map((achievement) => achievement.toJson()),
+			ratings: this.ratings,
 		};
 	}
 }
