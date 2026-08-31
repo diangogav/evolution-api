@@ -10,12 +10,30 @@ type UserAchievementParams = {
 	earnedPoints: number;
 };
 
+export type RankType = "banlist" | "group" | "global";
+
 export type RatingSummary = {
 	banListName: string;
 	rating: number;
 	gamesPlayed: number;
 	peak: number;
 	provisional: boolean;
+	rankType: RankType;
+};
+
+type UserStatsParams = {
+	userId: string;
+	username: string;
+	points: number;
+	wins: number;
+	losses: number;
+	position: number;
+	winRate: string;
+	achievements?: UserAchievementParams[];
+	ratings?: RatingSummary[];
+	rating?: number | null;
+	peak?: number | null;
+	provisional?: boolean | null;
 };
 
 export class UserStats {
@@ -28,6 +46,9 @@ export class UserStats {
 	public readonly position: number;
 	private readonly achievements: UserAchievement[];
 	private readonly ratings: RatingSummary[];
+	private readonly rating?: number | null;
+	private readonly peak?: number | null;
+	private readonly provisional?: boolean | null;
 
 	private constructor({
 		userId,
@@ -39,6 +60,9 @@ export class UserStats {
 		position,
 		achievements = [],
 		ratings = [],
+		rating,
+		peak,
+		provisional,
 	}: {
 		userId: string;
 		username: string;
@@ -49,6 +73,9 @@ export class UserStats {
 		position: number;
 		achievements?: UserAchievement[];
 		ratings?: RatingSummary[];
+		rating?: number | null;
+		peak?: number | null;
+		provisional?: boolean | null;
 	}) {
 		this.userId = userId;
 		this.username = username;
@@ -59,6 +86,9 @@ export class UserStats {
 		this.position = position;
 		this.achievements = achievements;
 		this.ratings = ratings;
+		this.rating = rating;
+		this.peak = peak;
+		this.provisional = provisional;
 	}
 
 	static create({
@@ -71,17 +101,10 @@ export class UserStats {
 		winRate,
 		achievements = [],
 		ratings = [],
-	}: {
-		userId: string;
-		username: string;
-		points: number;
-		wins: number;
-		losses: number;
-		position: number;
-		winRate: string;
-		achievements?: UserAchievementParams[];
-		ratings?: RatingSummary[];
-	}): UserStats {
+		rating,
+		peak,
+		provisional,
+	}: UserStatsParams): UserStats {
 		return new UserStats({
 			userId,
 			username,
@@ -92,20 +115,13 @@ export class UserStats {
 			position,
 			achievements: achievements.map((achievement) => UserAchievement.create(achievement)),
 			ratings,
+			rating,
+			peak,
+			provisional,
 		});
 	}
 
-	static from(data: {
-		userId: string;
-		username: string;
-		points: number;
-		wins: number;
-		losses: number;
-		position: number;
-		winRate: string;
-		achievements?: UserAchievementParams[];
-		ratings?: RatingSummary[];
-	}): UserStats {
+	static from(data: UserStatsParams): UserStats {
 		return new UserStats({
 			...data,
 			achievements: data.achievements?.map((achievement) => UserAchievement.from(achievement)),
@@ -123,6 +139,9 @@ export class UserStats {
 		position: number;
 		achievements: UserAchievementParams[];
 		ratings: RatingSummary[];
+		rating?: number | null;
+		peak?: number | null;
+		provisional?: boolean | null;
 	} {
 		return {
 			userId: this.userId,
@@ -134,6 +153,9 @@ export class UserStats {
 			position: this.position,
 			achievements: this.achievements.map((achievement) => achievement.toJson()),
 			ratings: this.ratings,
+			rating: this.rating,
+			peak: this.peak,
+			provisional: this.provisional,
 		};
 	}
 }

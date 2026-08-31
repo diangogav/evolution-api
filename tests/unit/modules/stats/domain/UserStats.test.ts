@@ -17,14 +17,42 @@ describe("UserStats", () => {
 		const userStats = UserStats.from({
 			...base,
 			ratings: [
-				{ banListName: "Global", rating: 1050, gamesPlayed: 12, peak: 1080, provisional: false },
-				{ banListName: "Edison", rating: 980, gamesPlayed: 3, peak: 1020, provisional: true },
+				{
+					banListName: "Global",
+					rating: 1050,
+					gamesPlayed: 12,
+					peak: 1080,
+					provisional: false,
+					rankType: "global" as const,
+				},
+				{
+					banListName: "Edison",
+					rating: 980,
+					gamesPlayed: 3,
+					peak: 1020,
+					provisional: true,
+					rankType: "banlist" as const,
+				},
 			],
 		});
 
 		expect(userStats.toJson().ratings).toEqual([
-			{ banListName: "Global", rating: 1050, gamesPlayed: 12, peak: 1080, provisional: false },
-			{ banListName: "Edison", rating: 980, gamesPlayed: 3, peak: 1020, provisional: true },
+			{
+				banListName: "Global",
+				rating: 1050,
+				gamesPlayed: 12,
+				peak: 1080,
+				provisional: false,
+				rankType: "global" as const,
+			},
+			{
+				banListName: "Edison",
+				rating: 980,
+				gamesPlayed: 3,
+				peak: 1020,
+				provisional: true,
+				rankType: "banlist" as const,
+			},
 		]);
 	});
 
