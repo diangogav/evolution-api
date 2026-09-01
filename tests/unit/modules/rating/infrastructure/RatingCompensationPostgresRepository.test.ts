@@ -73,6 +73,31 @@ describe("RatingCompensationPostgresRepository — insertReversal", () => {
 		expect(historySql).toContain("FROM rating_history");
 	});
 
+	it("scopes the reversal ON CONFLICT key by rank_id, so a match annulled across two ladders reverses both", async () => {
+		manager.query
+			.mockResolvedValueOnce(undefined) // advisory lock — ban list ladder
+			.mockResolvedValueOnce([{ id: "reversal-row-banlist" }])
+			.mockResolvedValueOnce([{ kind: "applied", delta: 15 }])
+			.mockResolvedValueOnce(undefined) // projection upsert
+			.mockResolvedValueOnce(undefined) // advisory lock — group ladder
+			.mockResolvedValueOnce([{ id: "reversal-row-group" }])
+			.mockResolvedValueOnce([{ kind: "applied", delta: 15 }]);
+
+		const banList = await repository.insertReversal(appliedRow({ rankId: "rank-banlist" }), -15);
+		const group = await repository.insertReversal(appliedRow({ rankId: "rank-group" }), -15);
+
+		expect(banList).toBe(true);
+		expect(group).toBe(true);
+
+		const [banListSql, banListParams] = manager.query.mock.calls[1] as [string, unknown[]];
+		const [groupSql, groupParams] = manager.query.mock.calls[5] as [string, unknown[]];
+
+		expect(banListSql).toContain("ON CONFLICT (match_id, user_id, kind, rank_id) DO NOTHING");
+		expect(groupSql).toContain("ON CONFLICT (match_id, user_id, kind, rank_id) DO NOTHING");
+		expect(banListParams?.[2]).toBe("rank-banlist");
+		expect(groupParams?.[2]).toBe("rank-group");
+	});
+
 	it("recomputes rating and peak from the full rating_history chronology, not by patching peak incrementally", async () => {
 		// Original match pushed the player to a season-high of 1080 (peak),
 		// then the reversal must bring rating back down AND recompute peak

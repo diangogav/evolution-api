@@ -20,7 +20,6 @@ import { statsRouter } from "./routes/stats-router";
 import { ticketRouter } from "./routes/ticket-router";
 import { tournamentRouter } from "./routes/tournament-router";
 import { userRouter } from "./routes/user-router";
-import { wrappedRouter } from "./routes/wrapped-router";
 
 export class Server {
 	private readonly app: Elysia;
@@ -75,10 +74,6 @@ export class Server {
 								description: "Endpoints for managing match results and match data",
 							},
 							{
-								name: "Season Wrapped",
-								description: "Season summary reports and statistics visualization",
-							},
-							{
 								name: "Statistics",
 								description: "Global statistics and historical data",
 							},
@@ -130,7 +125,6 @@ export class Server {
 				.use(banListRouter)
 				.use(tournamentRouter)
 				.use(statsRouter)
-				.use(wrappedRouter)
 				.use(ticketRouter)
 				.use(cosmeticsRouter)
 				.use(meCosmeticsRouter)
