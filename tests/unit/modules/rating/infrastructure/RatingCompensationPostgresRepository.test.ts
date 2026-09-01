@@ -148,6 +148,28 @@ describe("RatingCompensationPostgresRepository — insertReversal", () => {
 		expect(projectionParams?.[3]).toBe(1000);
 	});
 
+	it("records the rating the reversal starts from, so the row reconciles with what it produces", async () => {
+		// The applied row started from 110; the reversal starts from where the
+		// player stands now, 100. Copying 110 across would describe a starting
+		// point this row never had, and 110 + 10 would not be the 110 it lands on.
+		manager.query
+			.mockResolvedValueOnce(undefined) // advisory lock
+			.mockResolvedValueOnce([
+				{ kind: "applied", delta: -890 }, // rating 110
+				{ kind: "applied", delta: -10 }, // floored loss — rating 100
+			])
+			.mockResolvedValueOnce([{ id: "reversal-row-1" }]);
+
+		await repository.insertReversal(appliedRow({ previousRating: 110, delta: -10 }), 10);
+
+		const [, insertParams] = manager.query.mock.calls[2] as [string, unknown[]];
+		const previousRating = insertParams?.[4] as number;
+		const delta = insertParams?.[5] as number;
+
+		expect(previousRating).toBe(100);
+		expect(previousRating + delta).toBe(110);
+	});
+
 	it("restores exactly the pre-loss rating when reversing a loss the floor truncated", async () => {
 		// The applied row recorded the -10 the rating absorbed, not the -30 the
 		// Elo curve produced, so undoing it lands on 110 and not on 130.
