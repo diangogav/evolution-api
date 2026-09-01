@@ -7,12 +7,26 @@ const SUFFIX_PATTERN_PREFIX = "* ";
 
 export class RankMemberPatterns {
 	/**
+	 * The name suffix a "* X" pattern requires (" X"), or null when the pattern is
+	 * an exact rank name.
+	 */
+	static suffixOf(pattern: string): string | null {
+		if (!pattern.startsWith(SUFFIX_PATTERN_PREFIX)) {
+			return null;
+		}
+
+		return ` ${pattern.slice(SUFFIX_PATTERN_PREFIX.length)}`;
+	}
+
+	/**
 	 * A "* X" pattern matches every rank name ending with " X".
 	 * Any other pattern is an exact rank name match.
 	 */
 	static matches(pattern: string, rankName: string): boolean {
-		if (pattern.startsWith(SUFFIX_PATTERN_PREFIX)) {
-			return rankName.endsWith(` ${pattern.slice(SUFFIX_PATTERN_PREFIX.length)}`);
+		const suffix = RankMemberPatterns.suffixOf(pattern);
+
+		if (suffix !== null) {
+			return rankName.endsWith(suffix);
 		}
 
 		return pattern === rankName;
