@@ -50,6 +50,24 @@ describe("AnnulledMatchRatingCompensator", () => {
 		expect(result).toEqual({ reversed: 2, skipped: 0 });
 	});
 
+	it("reverses every ladder a match fed, not just the first one", async () => {
+		const rows = [
+			appliedRow({ userId: "user-1", rankId: "rank-banlist", delta: 15 }),
+			appliedRow({ userId: "user-2", rankId: "rank-banlist", delta: -15 }),
+			appliedRow({ userId: "user-1", rankId: "rank-group", delta: 12 }),
+			appliedRow({ userId: "user-2", rankId: "rank-group", delta: -12 }),
+		];
+		spyOn(repository, "findAppliedHistory").mockResolvedValue(rows);
+		const insertReversalSpy = spyOn(repository, "insertReversal").mockResolvedValue(true);
+
+		const result = await compensator.compensate("match-1");
+
+		expect(insertReversalSpy).toHaveBeenCalledTimes(4);
+		expect(insertReversalSpy).toHaveBeenNthCalledWith(3, rows[2], -12);
+		expect(insertReversalSpy).toHaveBeenNthCalledWith(4, rows[3], 12);
+		expect(result).toEqual({ reversed: 4, skipped: 0 });
+	});
+
 	it("is idempotent — re-running an already-compensated match writes no duplicate reversal", async () => {
 		const rows = [appliedRow({ userId: "user-1", delta: 15 })];
 		spyOn(repository, "findAppliedHistory").mockResolvedValue(rows);

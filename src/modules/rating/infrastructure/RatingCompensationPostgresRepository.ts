@@ -17,7 +17,7 @@ const INSERT_REVERSAL_QUERY = `
 	INSERT INTO rating_history
 	   (match_id, user_id, rank_id, season, kind, previous_rating, delta, k_factor, opponent_rating)
 	 VALUES ($1, $2, $3, $4, 'reversal', $5, $6, $7, $8)
-	 ON CONFLICT (match_id, user_id, kind) DO NOTHING
+	 ON CONFLICT (match_id, user_id, kind, rank_id) DO NOTHING
 	 RETURNING id
 `;
 
