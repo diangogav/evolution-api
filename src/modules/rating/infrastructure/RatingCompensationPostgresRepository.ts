@@ -74,14 +74,18 @@ export class RatingCompensationPostgresRepository implements RatingCompensationR
 			// Read inside the lock: the floor is applied against the rating the
 			// player holds now, which matches after the applied row was written.
 			const history = await this.readHistory(manager, entry.userId, entry.rankId, entry.season);
-			const storedDelta = effectiveDelta(projectRating(history).rating, requestedDelta);
+			const liveRating = projectRating(history).rating;
+			const storedDelta = effectiveDelta(liveRating, requestedDelta);
 
+			// previous_rating is the rating this row starts from, so a reversal
+			// records the live one rather than the applied row's: copying that
+			// would describe a starting point the reversal never had.
 			const inserted: { id: string }[] = await manager.query(INSERT_REVERSAL_QUERY, [
 				entry.matchId,
 				entry.userId,
 				entry.rankId,
 				entry.season,
-				entry.previousRating,
+				liveRating,
 				storedDelta,
 				entry.kFactor,
 				entry.opponentRating,
