@@ -3,6 +3,7 @@ import {
 	AppliedRatingHistoryRecord,
 	RatingCompensationRepository,
 } from "../domain/RatingCompensationRepository";
+import { RatingHistoryEntry, effectiveDelta, projectRating } from "../domain/RatingProjection";
 
 // Serializes the read-recompute-write projection sequence per (user, rank,
 // season) for the lifetime of the transaction. pg_advisory_xact_lock works
@@ -35,9 +36,7 @@ const UPSERT_RATING_QUERY = `
 	DO UPDATE SET rating = EXCLUDED.rating, games_played = EXCLUDED.games_played, peak = EXCLUDED.peak, updated_at = now()
 `;
 
-type HistoryRow = { kind: "applied" | "reversal"; delta: number };
-
-// Structural type covering only what reprojectRating needs from the
+// Structural type covering only what the projection needs from the
 // transaction's EntityManager, avoiding a nominal mismatch between this
 // package's typeorm install and evolution-types' separately installed one.
 type QueryableManager = { query: (sql: string, parameters?: unknown[]) => Promise<unknown> };
@@ -65,9 +64,17 @@ export class RatingCompensationPostgresRepository implements RatingCompensationR
 		return rows;
 	}
 
-	async insertReversal(entry: AppliedRatingHistoryRecord, reversalDelta: number): Promise<boolean> {
+	async insertReversal(
+		entry: AppliedRatingHistoryRecord,
+		requestedDelta: number,
+	): Promise<boolean> {
 		return dataSource.transaction(async (manager) => {
 			await manager.query(ADVISORY_LOCK_QUERY, [entry.userId, entry.rankId, entry.season]);
+
+			// Read inside the lock: the floor is applied against the rating the
+			// player holds now, which matches after the applied row was written.
+			const history = await this.readHistory(manager, entry.userId, entry.rankId, entry.season);
+			const storedDelta = effectiveDelta(projectRating(history).rating, requestedDelta);
 
 			const inserted: { id: string }[] = await manager.query(INSERT_REVERSAL_QUERY, [
 				entry.matchId,
@@ -75,7 +82,7 @@ export class RatingCompensationPostgresRepository implements RatingCompensationR
 				entry.rankId,
 				entry.season,
 				entry.previousRating,
-				reversalDelta,
+				storedDelta,
 				entry.kFactor,
 				entry.opponentRating,
 			]);
@@ -84,42 +91,42 @@ export class RatingCompensationPostgresRepository implements RatingCompensationR
 				return false;
 			}
 
-			await this.reprojectRating(manager, entry.userId, entry.rankId, entry.season);
+			await this.reprojectRating(manager, entry, [
+				...history,
+				{ kind: "reversal", delta: storedDelta },
+			]);
 
 			return true;
 		});
 	}
 
-	private async reprojectRating(
+	private async readHistory(
 		manager: QueryableManager,
 		userId: string,
 		rankId: string,
 		season: number,
-	): Promise<void> {
-		const rows = (await manager.query(HISTORY_FOR_PROJECTION_QUERY, [
+	): Promise<RatingHistoryEntry[]> {
+		return (await manager.query(HISTORY_FOR_PROJECTION_QUERY, [
 			userId,
 			rankId,
 			season,
-		])) as HistoryRow[];
+		])) as RatingHistoryEntry[];
+	}
 
-		let rating = 1000;
-		let peak = 1000;
-		let appliedCount = 0;
-		let reversalCount = 0;
+	private async reprojectRating(
+		manager: QueryableManager,
+		entry: AppliedRatingHistoryRecord,
+		history: RatingHistoryEntry[],
+	): Promise<void> {
+		const projected = projectRating(history);
 
-		for (const row of rows) {
-			rating += row.delta;
-			peak = Math.max(peak, rating);
-
-			if (row.kind === "applied") {
-				appliedCount++;
-			} else {
-				reversalCount++;
-			}
-		}
-
-		const gamesPlayed = Math.max(appliedCount - reversalCount, 0);
-
-		await manager.query(UPSERT_RATING_QUERY, [userId, rankId, season, rating, gamesPlayed, peak]);
+		await manager.query(UPSERT_RATING_QUERY, [
+			entry.userId,
+			entry.rankId,
+			entry.season,
+			projected.rating,
+			projected.gamesPlayed,
+			projected.peak,
+		]);
 	}
 }

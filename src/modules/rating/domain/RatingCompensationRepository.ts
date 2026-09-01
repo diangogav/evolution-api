@@ -11,5 +11,11 @@ export type AppliedRatingHistoryRecord = {
 
 export interface RatingCompensationRepository {
 	findAppliedHistory(matchId: string): Promise<AppliedRatingHistoryRecord[]>;
-	insertReversal(entry: AppliedRatingHistoryRecord, reversalDelta: number): Promise<boolean>;
+	/**
+	 * Writes the reversal of `entry`. `requestedDelta` is the movement the
+	 * reversal asks for; the implementation stores only the part the rating can
+	 * absorb under the floor, measured against the rating the player holds when
+	 * the row is written. Returns false when the reversal already exists.
+	 */
+	insertReversal(entry: AppliedRatingHistoryRecord, requestedDelta: number): Promise<boolean>;
 }
