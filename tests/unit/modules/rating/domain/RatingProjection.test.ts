@@ -76,4 +76,34 @@ describe("projectRating", () => {
 	it("never reports negative games played when reversals outnumber applied rows", () => {
 		expect(projectRating([{ kind: "reversal", delta: -15 }]).gamesPlayed).toBe(0);
 	});
+
+	it("counts a reinstatement back into gamesPlayed, undoing what its reversal removed", () => {
+		const projected = projectRating([
+			{ kind: "applied", delta: 15 },
+			{ kind: "reversal", delta: -15 },
+			{ kind: "reinstatement", delta: 15 },
+		]);
+
+		expect(projected.gamesPlayed).toBe(1);
+	});
+
+	it("leaves rating and peak driven purely by the delta sum, unaffected by the kind change", () => {
+		const projected = projectRating([
+			{ kind: "applied", delta: 80 },
+			{ kind: "reversal", delta: -80 },
+			{ kind: "reinstatement", delta: 80 },
+		]);
+
+		expect(projected).toEqual({ rating: 1080, gamesPlayed: 1, peak: 1080 });
+	});
+
+	it("never reports negative games played when reversals outnumber applied-plus-reinstated rows", () => {
+		const projected = projectRating([
+			{ kind: "applied", delta: 10 },
+			{ kind: "reversal", delta: -10 },
+			{ kind: "reversal", delta: 5 },
+		]);
+
+		expect(projected.gamesPlayed).toBe(0);
+	});
 });

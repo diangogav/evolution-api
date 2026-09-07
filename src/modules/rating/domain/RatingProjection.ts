@@ -14,7 +14,10 @@ export const INITIAL_RATING = 1000;
  */
 export const RATING_FLOOR = 100;
 
-export type RatingHistoryEntry = { kind: "applied" | "reversal"; delta: number };
+export type RatingHistoryEntry = {
+	kind: "applied" | "reversal" | "reinstatement";
+	delta: number;
+};
 
 export type ProjectedRating = { rating: number; gamesPlayed: number; peak: number };
 
@@ -36,13 +39,16 @@ export function effectiveDelta(rating: number, delta: number): number {
  * and deliberately applies no floor of its own: clamping here would compute a
  * value the live path never stored, and it would make the result depend on the
  * order the rows are read in. The sum itself does not — only `peak`, a running
- * maximum, is order-sensitive.
+ * maximum, is order-sensitive. `gamesPlayed` is the only field a reinstatement
+ * changes: it undoes what its reversal removed, so it adds back rather than
+ * subtracting like `applied`/`reversal` do.
  */
 export function projectRating(entries: RatingHistoryEntry[]): ProjectedRating {
 	let rating = INITIAL_RATING;
 	let peak = INITIAL_RATING;
 	let applied = 0;
 	let reversals = 0;
+	let reinstatements = 0;
 
 	for (const entry of entries) {
 		rating += entry.delta;
@@ -50,10 +56,12 @@ export function projectRating(entries: RatingHistoryEntry[]): ProjectedRating {
 
 		if (entry.kind === "applied") {
 			applied++;
-		} else {
+		} else if (entry.kind === "reversal") {
 			reversals++;
+		} else {
+			reinstatements++;
 		}
 	}
 
-	return { rating, gamesPlayed: Math.max(applied - reversals, 0), peak };
+	return { rating, gamesPlayed: Math.max(applied - reversals + reinstatements, 0), peak };
 }
