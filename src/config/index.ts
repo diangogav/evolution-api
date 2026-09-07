@@ -52,6 +52,7 @@ export const config = {
 		signedUrlTtlSeconds: Number(process.env.R2_SIGNED_URL_TTL ?? "600"),
 	},
 	season: Number(ensureEnvVariable(process.env.SEASON as string, "SEASON")),
+	annulment: { enabled: process.env.ANNULMENT_ENABLED === "true" },
 	tournaments: {
 		apiUrl: ensureEnvVariable(process.env.TOURNAMENTS_API_URL as string, "TOURNAMENTS_API_URL"),
 		webhookUrl: ensureEnvVariable(
