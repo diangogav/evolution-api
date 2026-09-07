@@ -10,6 +10,8 @@ export class Match {
 	public readonly winner: boolean;
 	public readonly date: Date;
 	public readonly season: number;
+	public readonly anulled: boolean;
+	public readonly anulledReason: string | null;
 
 	private constructor({
 		userId,
@@ -23,6 +25,8 @@ export class Match {
 		winner,
 		date,
 		season,
+		anulled,
+		anulledReason,
 	}: {
 		userId: string;
 		bestOf: number;
@@ -35,6 +39,8 @@ export class Match {
 		winner: boolean;
 		date: Date;
 		season: number;
+		anulled: boolean;
+		anulledReason: string | null;
 	}) {
 		this.userId = userId;
 		this.bestOf = bestOf;
@@ -47,6 +53,8 @@ export class Match {
 		this.winner = winner;
 		this.date = date;
 		this.season = season;
+		this.anulled = anulled;
+		this.anulledReason = anulledReason;
 	}
 
 	static create({
@@ -61,6 +69,8 @@ export class Match {
 		winner,
 		date,
 		season,
+		anulled,
+		anulledReason,
 	}: {
 		userId: string;
 		bestOf: number;
@@ -73,6 +83,8 @@ export class Match {
 		winner: boolean;
 		date: Date;
 		season: number;
+		anulled: boolean;
+		anulledReason: string | null;
 	}): Match {
 		return new Match({
 			userId,
@@ -86,6 +98,8 @@ export class Match {
 			winner,
 			date,
 			season,
+			anulled,
+			anulledReason,
 		});
 	}
 
@@ -101,6 +115,8 @@ export class Match {
 		winner: boolean;
 		date: Date;
 		season: number;
+		anulled: boolean;
+		anulledReason: string | null;
 	}): Match {
 		return Match.create(data);
 	}
@@ -117,6 +133,8 @@ export class Match {
 		winner: boolean;
 		date: Date;
 		season: number;
+		anulled: boolean;
+		anulledReason: string | null;
 	} {
 		return {
 			userId: this.userId,
@@ -130,6 +148,8 @@ export class Match {
 			winner: this.winner,
 			date: this.date,
 			season: this.season,
+			anulled: this.anulled,
+			anulledReason: this.anulledReason,
 		};
 	}
 }
