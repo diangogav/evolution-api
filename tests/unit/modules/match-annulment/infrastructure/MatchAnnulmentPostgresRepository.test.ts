@@ -32,6 +32,7 @@ type Responses = {
 	summaryKeys?: { day: string; banListName: string; season: number }[];
 	reversedFlag?: { reversed: boolean }[];
 	playerStats?: { wins: number; losses: number; points: number }[];
+	reversalRows?: PointsLedgerEntry[];
 };
 
 function manager(responses: Responses, calls: string[]) {
@@ -48,6 +49,13 @@ function manager(responses: Responses, calls: string[]) {
 			return responses.reversedFlag ?? [{ reversed: false }];
 		if (sql.startsWith("SELECT name FROM ranks")) return [{ name: "Master Duel" }];
 		if (sql.startsWith("SELECT wins, losses, points")) return responses.playerStats ?? [];
+		if (sql.startsWith("SELECT game_id AS")) {
+			return (
+				responses.reversalRows ?? [
+					row({ kind: "reversal", pointsDelta: -15, winsDelta: -1, lossesDelta: 0 }),
+				]
+			);
+		}
 		return [];
 	});
 	return { query };
@@ -170,5 +178,100 @@ describe("MatchAnnulmentPostgresRepository — annulPhaseOne", () => {
 		const inserted = (ledger.insertEntry as ReturnType<typeof mock>).mock
 			.calls[0][0] as PointsLedgerEntry;
 		expect(inserted.cycle).toBe(2);
+	});
+
+	it("derives reversal#1 (not reversal#0) after a prior annul-then-un-annul cycle", async () => {
+		const { repo, ledger } = setup({ playerStats: [{ wins: 1, losses: 0, points: 15 }] });
+		(ledger.countByKind as ReturnType<typeof mock>).mockImplementation(async () => 1);
+
+		await repo.annulPhaseOne(REQUEST);
+
+		const inserted = (ledger.insertEntry as ReturnType<typeof mock>).mock
+			.calls[0][0] as PointsLedgerEntry;
+		expect(inserted.kind).toBe("reversal");
+		expect(inserted.cycle).toBe(1);
+	});
+});
+
+describe("MatchAnnulmentPostgresRepository — unannulPhaseOne", () => {
+	afterEach(() => mock.restore());
+
+	it("rejects before any write: no matches row, or a game that was never annulled", async () => {
+		const notFound = setup({ existence: [{ rows: 0, flagged: false }] });
+		expect(await notFound.repo.unannulPhaseOne("game-1")).toEqual({ outcome: "not-found" });
+
+		const notAnnulled = setup({ existence: [{ rows: 2, flagged: false }] });
+		expect(await notAnnulled.repo.unannulPhaseOne("game-1")).toEqual({ outcome: "not-annulled" });
+		expect(notAnnulled.calls.some((sql) => sql.startsWith("UPDATE matches"))).toBe(false);
+		expect(notAnnulled.ledger.insertEntry).not.toHaveBeenCalled();
+	});
+
+	it("reports conflict and writes nothing when the game's two rows disagree on the summary key", async () => {
+		const { repo, calls } = setup({
+			existence: [{ rows: 2, flagged: true }],
+			summaryKeys: [
+				{ day: "2026-09-01", banListName: "Master Duel", season: 5 },
+				{ day: "2026-09-02", banListName: "Master Duel", season: 5 },
+			],
+		});
+		expect(await repo.unannulPhaseOne("game-1")).toEqual({
+			outcome: "conflict",
+			reason: "summary-key-mismatch",
+		});
+		expect(calls.some((sql) => sql.startsWith("UPDATE matches"))).toBe(false);
+	});
+
+	it("clears the flag but writes no reinstatement and does not touch the summary for a legacy flagged game with no committed reversal", async () => {
+		const { repo, calls, ledger, mgr } = setup({
+			existence: [{ rows: 2, flagged: true }],
+			reversedFlag: [{ reversed: false }],
+			reversalRows: [],
+		});
+
+		const result = await repo.unannulPhaseOne("game-1");
+		expect(result).toEqual({ outcome: "un-annulled", touchedKeys: [], reversed: false });
+		expect(ledger.insertEntry).not.toHaveBeenCalled();
+		expect(
+			calls.some(
+				(sql) =>
+					sql.startsWith("UPDATE stats_daily_summary") ||
+					sql.startsWith("INSERT INTO stats_daily_summary"),
+			),
+		).toBe(false);
+		expect(gate(mgr)[0]).toContain("anulled_user_id = NULL");
+	});
+
+	it("on the happy path locks, nulls the audit fields, reinstates the ledger in order, reprojects, re-increments the summary, and derives cycle = reversalCount - 1", async () => {
+		const { repo, calls, ledger, mgr } = setup({
+			existence: [{ rows: 2, flagged: true }],
+			reversedFlag: [{ reversed: true }],
+			playerStats: [{ wins: 1, losses: 0, points: 15 }],
+		});
+		(ledger.countByKind as ReturnType<typeof mock>).mockImplementation(
+			async (_g, _u, _r, kind: string) => (kind === "reversal" ? 2 : 3),
+		);
+
+		const result = await repo.unannulPhaseOne("game-1");
+		expect(result).toEqual({
+			outcome: "un-annulled",
+			touchedKeys: [{ userId: "user-1", rankId: "rank-global", season: 5 }],
+			reversed: true,
+		});
+
+		const order = (match: string) => calls.findIndex((c) => c.includes(match));
+		expect(order("game:")).toBe(0);
+		expect(order("count(*)::int AS rows")).toBeLessThan(order("DISTINCT date_trunc"));
+		expect(order("DISTINCT date_trunc")).toBeLessThan(order("UPDATE matches"));
+		expect(order("UPDATE matches")).toBeLessThan(order("insertEntry"));
+		expect(order("insertEntry")).toBeLessThan(order("reprojectPlayerStats"));
+		expect(order("reprojectPlayerStats")).toBeLessThan(order("INSERT INTO stats_daily_summary"));
+
+		const [gateSql] = gate(mgr);
+		expect(gateSql).toContain("anulled_reason = NULL");
+
+		const inserted = (ledger.insertEntry as ReturnType<typeof mock>).mock
+			.calls[0][0] as PointsLedgerEntry;
+		expect(inserted.kind).toBe("reinstatement");
+		expect(inserted.cycle).toBe(1);
 	});
 });
