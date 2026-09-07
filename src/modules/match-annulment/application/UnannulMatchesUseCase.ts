@@ -8,9 +8,15 @@ import {
 	UnannulMatchesResponse,
 } from "./dtos/UnannulMatches";
 
+// Structural port matching ReinstatedMatchRatingCompensator's Elo phase-2 shape.
+export type EloReinstatementCompensator = {
+	reinstate(gameId: string): Promise<{ reinstated: number; skipped: number }>;
+};
+
 export class UnannulMatchesUseCase {
 	constructor(
 		private readonly repository: MatchAnnulmentRepository,
+		private readonly compensator: EloReinstatementCompensator,
 		private readonly enabled: boolean,
 	) {}
 
@@ -23,8 +29,15 @@ export class UnannulMatchesUseCase {
 			results.push(await this.processGame(gameId));
 		}
 
-		// Elo reinstatement ships in unit 11 — reported explicitly, not omitted.
-		return { results, totals: { eloReinstated: 0 } };
+		const totals = results.reduce(
+			(acc, result) => ({
+				eloReinstated: acc.eloReinstated + result.eloReinstated,
+				eloSkipped: acc.eloSkipped + result.eloSkipped,
+			}),
+			{ eloReinstated: 0, eloSkipped: 0 },
+		);
+
+		return { results, totals };
 	}
 
 	private async processGame(gameId: string): Promise<UnannulGameResult> {
@@ -37,7 +50,19 @@ export class UnannulMatchesUseCase {
 
 		const unannulled = phaseOne.outcome === "un-annulled";
 		const pointsRows = unannulled ? phaseOne.touchedKeys.length : 0;
-		return { ...base, outcome: unannulled ? "un-annulled" : "not-annulled", pointsRows };
+
+		try {
+			const { reinstated, skipped } = await this.compensator.reinstate(gameId);
+			return {
+				...base,
+				outcome: unannulled ? "un-annulled" : "not-annulled",
+				pointsRows,
+				eloReinstated: reinstated,
+				eloSkipped: skipped,
+			};
+		} catch (error) {
+			return { ...base, outcome: "partial", pointsRows, error: errorMessage(error) };
+		}
 	}
 
 	// Same reasoning as AnnulMatchesUseCase.runPhaseOne (see there).
@@ -51,4 +76,8 @@ export class UnannulMatchesUseCase {
 			};
 		}
 	}
+}
+
+function errorMessage(error: unknown): string {
+	return error instanceof Error ? error.message : String(error);
 }

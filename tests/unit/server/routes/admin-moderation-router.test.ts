@@ -37,7 +37,7 @@ const UNANNUL_RESPONSE: UnannulMatchesResponse = {
 			eloReinstated: 0,
 		},
 	],
-	totals: { eloReinstated: 0 },
+	totals: { eloReinstated: 0, eloSkipped: 0 },
 };
 
 function buildApp(

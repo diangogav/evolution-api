@@ -7,6 +7,7 @@ import { UnannulMatchesUseCase } from "../../modules/match-annulment/application
 import { MatchAnnulmentPostgresRepository } from "../../modules/match-annulment/infrastructure/MatchAnnulmentPostgresRepository";
 import { PointsLedgerPostgresRepository } from "../../modules/points-ledger/infrastructure/PointsLedgerPostgresRepository";
 import { AnnulledMatchRatingCompensator } from "../../modules/rating/application/AnnulledMatchRatingCompensator";
+import { ReinstatedMatchRatingCompensator } from "../../modules/rating/application/ReinstatedMatchRatingCompensator";
 import { RatingCompensationPostgresRepository } from "../../modules/rating/infrastructure/RatingCompensationPostgresRepository";
 import { JWT } from "../../shared/JWT";
 import type { AdminAuthorizer } from "../auth/AdminAuthorizer";
@@ -64,7 +65,9 @@ export function createAdminModerationRouter(deps: AdminModerationRouterDependenc
 
 const ledger = new PointsLedgerPostgresRepository();
 const matchAnnulmentRepository = new MatchAnnulmentPostgresRepository(ledger);
-const compensator = new AnnulledMatchRatingCompensator(new RatingCompensationPostgresRepository());
+const ratingCompensationRepository = new RatingCompensationPostgresRepository();
+const compensator = new AnnulledMatchRatingCompensator(ratingCompensationRepository);
+const reinstatementCompensator = new ReinstatedMatchRatingCompensator(ratingCompensationRepository);
 
 export const adminModerationRouter = createAdminModerationRouter({
 	authorizer: new JwtAdminAuthorizer(new JWT(config.jwt)),
@@ -73,5 +76,9 @@ export const adminModerationRouter = createAdminModerationRouter({
 		compensator,
 		config.annulment.enabled,
 	),
-	unannulMatches: new UnannulMatchesUseCase(matchAnnulmentRepository, config.annulment.enabled),
+	unannulMatches: new UnannulMatchesUseCase(
+		matchAnnulmentRepository,
+		reinstatementCompensator,
+		config.annulment.enabled,
+	),
 });
