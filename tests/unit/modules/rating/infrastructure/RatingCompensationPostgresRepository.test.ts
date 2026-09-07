@@ -46,6 +46,21 @@ describe("RatingCompensationPostgresRepository — insertReversal", () => {
 		expect(manager.query).toHaveBeenCalledTimes(4);
 	});
 
+	it("issues a target-less ON CONFLICT DO NOTHING, so the insert resolves against whichever unique index on rating_history is currently declared, and writes cycle 0", async () => {
+		manager.query
+			.mockResolvedValueOnce(undefined) // advisory lock
+			.mockResolvedValueOnce([{ kind: "applied", delta: 15 }]) // history for reprojection
+			.mockResolvedValueOnce([{ id: "history-row-1" }]); // reversal insert
+
+		await repository.insertReversal(appliedRow(), -15);
+
+		const [insertSql, insertParams] = manager.query.mock.calls[2] as [string, unknown[]];
+
+		expect(insertSql).toContain("ON CONFLICT DO NOTHING");
+		expect(insertSql).not.toEqual(expect.stringContaining("ON CONFLICT ("));
+		expect(insertParams?.[insertParams.length - 1]).toBe(0);
+	});
+
 	it("does not touch player_ratings when the reversal insert is a no-op (already compensated)", async () => {
 		manager.query
 			.mockResolvedValueOnce(undefined) // advisory lock
@@ -95,8 +110,8 @@ describe("RatingCompensationPostgresRepository — insertReversal", () => {
 		const [banListSql, banListParams] = manager.query.mock.calls[2] as [string, unknown[]];
 		const [groupSql, groupParams] = manager.query.mock.calls[6] as [string, unknown[]];
 
-		expect(banListSql).toContain("ON CONFLICT (match_id, user_id, kind, rank_id) DO NOTHING");
-		expect(groupSql).toContain("ON CONFLICT (match_id, user_id, kind, rank_id) DO NOTHING");
+		expect(banListSql).toContain("ON CONFLICT DO NOTHING");
+		expect(groupSql).toContain("ON CONFLICT DO NOTHING");
 		expect(banListParams?.[2]).toBe("rank-banlist");
 		expect(groupParams?.[2]).toBe("rank-group");
 	});

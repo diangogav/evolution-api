@@ -14,11 +14,18 @@ const ADVISORY_LOCK_QUERY = `
 	SELECT pg_advisory_xact_lock(hashtextextended($1 || '|' || $2 || '|' || $3, 0))
 `;
 
+// Target-less ON CONFLICT DO NOTHING: Postgres resolves it against whichever
+// unique index on this row shape is currently declared, so this insert keeps
+// working unchanged whether the 4-column or the 5-column rating_history
+// index is the one enforcing uniqueness (see the ExpandRatingHistoryCycleIndex
+// migration, which adds the 5-column index alongside the existing one).
+// cycle is written as 0 here; deriving a non-zero cycle for a reversal is out
+// of scope for this expand step (see the match-annulment-ledger design).
 const INSERT_REVERSAL_QUERY = `
 	INSERT INTO rating_history
-	   (match_id, user_id, rank_id, season, kind, previous_rating, delta, k_factor, opponent_rating)
-	 VALUES ($1, $2, $3, $4, 'reversal', $5, $6, $7, $8)
-	 ON CONFLICT (match_id, user_id, kind, rank_id) DO NOTHING
+	   (match_id, user_id, rank_id, season, kind, previous_rating, delta, k_factor, opponent_rating, cycle)
+	 VALUES ($1, $2, $3, $4, 'reversal', $5, $6, $7, $8, $9)
+	 ON CONFLICT DO NOTHING
 	 RETURNING id
 `;
 
@@ -89,6 +96,7 @@ export class RatingCompensationPostgresRepository implements RatingCompensationR
 				storedDelta,
 				entry.kFactor,
 				entry.opponentRating,
+				0,
 			]);
 
 			if (inserted.length === 0) {
