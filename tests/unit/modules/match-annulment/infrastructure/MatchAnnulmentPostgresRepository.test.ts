@@ -178,6 +178,14 @@ describe("MatchAnnulmentPostgresRepository — annulPhaseOne", () => {
 		const inserted = (ledger.insertEntry as ReturnType<typeof mock>).mock
 			.calls[0][0] as PointsLedgerEntry;
 		expect(inserted.cycle).toBe(2);
+
+		const ladderLockCall = (mgr.query.mock.calls as unknown as [string, unknown[]][]).find(
+			([sql]) => sql.includes("hashtextextended") && !sql.includes("game:"),
+		);
+		const [ladderLockSql, ladderLockParams] = ladderLockCall as [string, unknown[]];
+		expect(ladderLockSql).not.toContain("'|'");
+		expect(ladderLockSql).toContain("length($2)::text");
+		expect(ladderLockParams).toEqual(["user-1", "rank-global", 5]);
 	});
 
 	it("derives reversal#1 (not reversal#0) after a prior annul-then-un-annul cycle", async () => {

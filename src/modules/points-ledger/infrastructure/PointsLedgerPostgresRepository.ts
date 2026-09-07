@@ -1,4 +1,5 @@
 import { dataSource } from "../../../evolution-types/src/data-source";
+import { LADDER_ADVISORY_LOCK_QUERY as ADVISORY_LOCK_QUERY } from "../../../shared/database/advisoryLockQuery";
 import { PointsLedgerEntry, PointsLedgerKind } from "../domain/PointsLedgerEntry";
 import {
 	InsertLedgerEntryResult,
@@ -6,10 +7,6 @@ import {
 	QueryableManager,
 } from "../domain/PointsLedgerRepository";
 import { projectPlayerStats } from "../domain/PointsProjection";
-
-// Same pipe-joined encoding RatingCompensationPostgresRepository already
-// uses; the game server's differs (pre-existing, out of scope here).
-const ADVISORY_LOCK_QUERY = `SELECT pg_advisory_xact_lock(hashtextextended($1 || '|' || $2 || '|' || $3, 0))`;
 
 const LEDGER_COLUMNS = `game_id AS "gameId", user_id AS "userId", rank_id AS "rankId", season,
 	kind, cycle, points_delta AS "pointsDelta", wins_delta AS "winsDelta", losses_delta AS "lossesDelta"`;

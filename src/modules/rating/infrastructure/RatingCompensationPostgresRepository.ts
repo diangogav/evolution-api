@@ -1,4 +1,5 @@
 import { dataSource } from "../../../evolution-types/src/data-source";
+import { LADDER_ADVISORY_LOCK_QUERY as ADVISORY_LOCK_QUERY } from "../../../shared/database/advisoryLockQuery";
 import {
 	AppliedRatingHistoryRecord,
 	OpenReversalRecord,
@@ -11,9 +12,6 @@ import { effectiveDelta, projectRating } from "../domain/RatingProjection";
 // even when no player_ratings row exists yet, unlike SELECT ... FOR UPDATE,
 // which closes the concurrent-reversal lost-update window that a row lock
 // alone cannot cover.
-const ADVISORY_LOCK_QUERY = `
-	SELECT pg_advisory_xact_lock(hashtextextended($1 || '|' || $2 || '|' || $3, 0))
-`;
 
 // Target-less ON CONFLICT DO NOTHING: the 4-column rating_history index is
 // gone (ContractRatingHistoryUniqueIndex migration) — only the 5-column
