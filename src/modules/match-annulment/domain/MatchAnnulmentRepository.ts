@@ -6,8 +6,7 @@ import { PhaseOneResult } from "./PhaseOneResult";
 // compose these calls inside its own transaction if it ever needs to.
 export type QueryableManager = { query: (sql: string, parameters?: unknown[]) => Promise<unknown> };
 
-// Un-annul (unannulPhaseOne) ships in a follow-up slice; the parametrised
-// design keeps this a clean, additive cut (see D1.1/D5).
 export interface MatchAnnulmentRepository {
 	annulPhaseOne(request: AnnulmentRequest, manager?: QueryableManager): Promise<PhaseOneResult>;
+	unannulPhaseOne(gameId: string, manager?: QueryableManager): Promise<PhaseOneResult>;
 }
