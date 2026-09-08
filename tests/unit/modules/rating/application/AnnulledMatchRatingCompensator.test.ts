@@ -30,6 +30,8 @@ describe("AnnulledMatchRatingCompensator", () => {
 		repository = {
 			findAppliedHistory: async () => [],
 			insertReversal: async () => true,
+			findOpenReversals: async () => [],
+			insertReinstatement: async () => true,
 		};
 		compensator = new AnnulledMatchRatingCompensator(repository);
 	});
