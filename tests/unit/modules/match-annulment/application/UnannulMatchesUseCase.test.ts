@@ -34,9 +34,15 @@ function repo(byGame: Record<string, PhaseOneResult>): MatchAnnulmentRepository 
 	};
 }
 
+function elo(fn: (id: string) => Promise<{ reinstated: number; skipped: number }>) {
+	return { reinstate: fn };
+}
+
+const NO_ELO = elo(async () => ({ reinstated: 0, skipped: 0 }));
+
 describe("UnannulMatchesUseCase", () => {
 	it("rejects an empty game id list before touching the repository", async () => {
-		const useCase = new UnannulMatchesUseCase(repo({}), true);
+		const useCase = new UnannulMatchesUseCase(repo({}), NO_ELO, true);
 		await expect(useCase.run({ gameIds: [] })).rejects.toThrow(InvalidArgumentError);
 	});
 
@@ -49,40 +55,66 @@ describe("UnannulMatchesUseCase", () => {
 				return { outcome: "not-found" };
 			},
 		};
-		const useCase = new UnannulMatchesUseCase(repository, false);
+		const useCase = new UnannulMatchesUseCase(repository, NO_ELO, false);
 		await expect(useCase.run({ gameIds: ["game-1"] })).rejects.toThrow(ConflictError);
 		expect(calls).toBe(0);
 	});
 
-	it("reports not-found, not-annulled and conflict per game, isolating one game's infra failure", async () => {
+	it("reports not-found and conflict without running Elo, isolating one game's infra failure", async () => {
+		let compensated = false;
 		const repository: MatchAnnulmentRepository = {
 			annulPhaseOne: async () => ({ outcome: "not-found" }),
 			unannulPhaseOne: async (gameId: string) => {
 				if (gameId === "game-1") return { outcome: "not-found" };
-				if (gameId === "game-2") return { outcome: "not-annulled" };
-				if (gameId === "game-3") return { outcome: "conflict", reason: "summary-key-mismatch" };
+				if (gameId === "game-2") return { outcome: "conflict", reason: "summary-key-mismatch" };
 				throw new Error("connection reset");
 			},
 		};
-		const useCase = new UnannulMatchesUseCase(repository, true);
-		const response = await useCase.run({ gameIds: ["game-1", "game-2", "game-3", "game-4"] });
+		const useCase = new UnannulMatchesUseCase(
+			repository,
+			elo(async () => {
+				compensated = true;
+				return { reinstated: 0, skipped: 0 };
+			}),
+			true,
+		);
+		const response = await useCase.run({ gameIds: ["game-1", "game-2", "game-3"] });
 		expect(response.results).toEqual([
 			row(),
-			row({ gameId: "game-2", outcome: "not-annulled" }),
-			row({ gameId: "game-3", outcome: "conflict", reason: "summary-key-mismatch" }),
-			row({ gameId: "game-4", outcome: "conflict", reason: "connection reset" }),
+			row({ gameId: "game-2", outcome: "conflict", reason: "summary-key-mismatch" }),
+			row({ gameId: "game-3", outcome: "conflict", reason: "connection reset" }),
 		]);
+		expect(compensated).toBe(false);
 	});
 
-	it("reports un-annulled with pointsRows from touched keys, eloReinstated explicitly 0", async () => {
-		const fixture: PhaseOneResult = {
-			outcome: "un-annulled",
-			touchedKeys: [KEY, { ...KEY, userId: "user-2" }],
-			reversed: true,
-		};
-		const useCase = new UnannulMatchesUseCase(repo({ "game-1": fixture }), true);
-		const response = await useCase.run({ gameIds: ["game-1"] });
-		expect(response.results).toEqual([row({ outcome: "un-annulled", pointsRows: 2 })]);
-		expect(response.totals).toEqual({ eloReinstated: 0 });
+	it("runs Elo for un-annulled and not-annulled (repair path), reporting partial on Elo failure", async () => {
+		const useCase = new UnannulMatchesUseCase(
+			repo({
+				"game-1": {
+					outcome: "un-annulled",
+					touchedKeys: [KEY, { ...KEY, userId: "user-2" }],
+					reversed: true,
+				},
+				"game-2": { outcome: "not-annulled" },
+				"game-3": { outcome: "un-annulled", touchedKeys: [KEY], reversed: true },
+			}),
+			elo(async (id) => {
+				if (id === "game-3") throw new Error("rating service unavailable");
+				return id === "game-1" ? { reinstated: 2, skipped: 0 } : { reinstated: 1, skipped: 0 };
+			}),
+			true,
+		);
+		const response = await useCase.run({ gameIds: ["game-1", "game-2", "game-3"] });
+		expect(response.results).toEqual([
+			row({ outcome: "un-annulled", pointsRows: 2, eloReinstated: 2 }),
+			row({ gameId: "game-2", outcome: "not-annulled", eloReinstated: 1 }),
+			row({
+				gameId: "game-3",
+				outcome: "partial",
+				pointsRows: 1,
+				error: "rating service unavailable",
+			}),
+		]);
+		expect(response.totals).toEqual({ eloReinstated: 3, eloSkipped: 0 });
 	});
 });

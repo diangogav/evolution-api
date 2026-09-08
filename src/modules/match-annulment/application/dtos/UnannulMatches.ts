@@ -6,5 +6,5 @@ export type UnannulGameResult = GameOutcomeResult<UnannulOutcome>;
 
 export type UnannulMatchesResponse = {
 	results: UnannulGameResult[];
-	totals: { eloReinstated: number };
+	totals: { eloReinstated: number; eloSkipped: number };
 };
