@@ -9,6 +9,20 @@ type RankRow = { type: string; pattern: string | null };
 
 const REQUEST = { userId: "user-1", limit: 10, page: 1, season: 5 };
 
+const MATCH_ROW = {
+	userId: "user-1",
+	bestOf: 3,
+	banListName: "2026.05 TCG",
+	playerNames: ["Player1"],
+	opponentNames: ["Player2"],
+	playerScore: 2,
+	opponentScore: 1,
+	points: 10,
+	winner: true,
+	date: new Date("2026-05-01T00:00:00Z"),
+	season: 5,
+};
+
 function createChain(): QueryChain {
 	const chain: QueryChain = {};
 	for (const method of ["where", "andWhere", "orderBy", "offset", "limit"]) {
@@ -176,6 +190,33 @@ describe("MatchPostgresRepository", () => {
 
 		expect(banListCondition(chain)).toBeNull();
 		expect(querySpy).not.toHaveBeenCalled();
+
+		restore();
+	});
+
+	it("keeps an annulled match listed and exposes its annulment reason", async () => {
+		const { chain, restore } = stubDataSource([]);
+		chain.getMany = mock(async () => [
+			{ ...MATCH_ROW, anulled: true, anulledReason: "duplicate account farming" },
+		]);
+
+		const matches = await new MatchPostgresRepository().get(REQUEST);
+
+		expect(matches).toHaveLength(1);
+		expect(matches[0]?.anulled).toBe(true);
+		expect(matches[0]?.anulledReason).toBe("duplicate account farming");
+
+		restore();
+	});
+
+	it("maps a non-annulled match with anulled false and a null reason", async () => {
+		const { chain, restore } = stubDataSource([]);
+		chain.getMany = mock(async () => [{ ...MATCH_ROW, anulled: false, anulledReason: null }]);
+
+		const matches = await new MatchPostgresRepository().get(REQUEST);
+
+		expect(matches[0]?.anulled).toBe(false);
+		expect(matches[0]?.anulledReason).toBeNull();
 
 		restore();
 	});

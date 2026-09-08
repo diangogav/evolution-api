@@ -2,7 +2,10 @@ import { beforeEach, describe, expect, it, mock, spyOn } from "bun:test";
 
 import { dataSource } from "../../../../../src/evolution-types/src/data-source";
 import { RatingCompensationPostgresRepository } from "../../../../../src/modules/rating/infrastructure/RatingCompensationPostgresRepository";
-import { AppliedRatingHistoryRecord } from "../../../../../src/modules/rating/domain/RatingCompensationRepository";
+import {
+	AppliedRatingHistoryRecord,
+	OpenReversalRecord,
+} from "../../../../../src/modules/rating/domain/RatingCompensationRepository";
 
 function appliedRow(
 	overrides: Partial<AppliedRatingHistoryRecord> = {},
@@ -46,6 +49,40 @@ describe("RatingCompensationPostgresRepository — insertReversal", () => {
 		expect(manager.query).toHaveBeenCalledTimes(4);
 	});
 
+	it("issues a target-less ON CONFLICT DO NOTHING, so the insert resolves against whichever unique index on rating_history is currently declared, and writes cycle 0", async () => {
+		manager.query
+			.mockResolvedValueOnce(undefined) // advisory lock
+			.mockResolvedValueOnce([{ kind: "applied", delta: 15 }]) // history for reprojection
+			.mockResolvedValueOnce([{ id: "history-row-1" }]); // reversal insert
+
+		await repository.insertReversal(appliedRow(), -15);
+
+		const [insertSql, insertParams] = manager.query.mock.calls[2] as [string, unknown[]];
+
+		expect(insertSql).toContain("ON CONFLICT DO NOTHING");
+		expect(insertSql).not.toEqual(expect.stringContaining("ON CONFLICT ("));
+		expect(insertParams?.[insertParams.length - 1]).toBe(0);
+	});
+
+	it("derives the reversal's cycle from the count of reinstatement rows already recorded for this match/user/rank", async () => {
+		manager.query
+			.mockResolvedValueOnce(undefined) // advisory lock
+			.mockResolvedValueOnce([
+				{ matchId: "match-1", kind: "applied", delta: 15 },
+				{ matchId: "match-1", kind: "reversal", delta: -15 },
+				{ matchId: "match-1", kind: "reinstatement", delta: 15 },
+				// A different match's reinstatement in the same season must not count.
+				{ matchId: "match-other", kind: "reinstatement", delta: 10 },
+			]) // history for reprojection, scoped by user/rank/season across matches
+			.mockResolvedValueOnce([{ id: "history-row-2" }]); // reversal insert
+
+		await repository.insertReversal(appliedRow(), -15);
+
+		const [, insertParams] = manager.query.mock.calls[2] as [string, unknown[]];
+
+		expect(insertParams?.[insertParams.length - 1]).toBe(1);
+	});
+
 	it("does not touch player_ratings when the reversal insert is a no-op (already compensated)", async () => {
 		manager.query
 			.mockResolvedValueOnce(undefined) // advisory lock
@@ -72,6 +109,8 @@ describe("RatingCompensationPostgresRepository — insertReversal", () => {
 		const [historySql] = manager.query.mock.calls[1] as [string, unknown[]];
 
 		expect(lockSql).toContain("pg_advisory_xact_lock");
+		expect(lockSql).not.toContain("'|'");
+		expect(lockSql).toContain("length($2)::text");
 		expect(lockParams).toEqual(["user-1", "rank-global", 5]);
 		expect(historySql).toContain("FROM rating_history");
 	});
@@ -95,8 +134,8 @@ describe("RatingCompensationPostgresRepository — insertReversal", () => {
 		const [banListSql, banListParams] = manager.query.mock.calls[2] as [string, unknown[]];
 		const [groupSql, groupParams] = manager.query.mock.calls[6] as [string, unknown[]];
 
-		expect(banListSql).toContain("ON CONFLICT (match_id, user_id, kind, rank_id) DO NOTHING");
-		expect(groupSql).toContain("ON CONFLICT (match_id, user_id, kind, rank_id) DO NOTHING");
+		expect(banListSql).toContain("ON CONFLICT DO NOTHING");
+		expect(groupSql).toContain("ON CONFLICT DO NOTHING");
 		expect(banListParams?.[2]).toBe("rank-banlist");
 		expect(groupParams?.[2]).toBe("rank-group");
 	});
@@ -231,5 +270,115 @@ describe("RatingCompensationPostgresRepository — insertReversal", () => {
 		);
 
 		expect(projectionParams?.[3]).toBe(replayed);
+	});
+});
+
+describe("RatingCompensationPostgresRepository — findOpenReversals", () => {
+	it("excludes a reversal already reinstated at the same cycle, via a same-cycle anti-join", async () => {
+		const querySpy = spyOn(dataSource, "query").mockResolvedValue([]);
+		const repository = new RatingCompensationPostgresRepository();
+
+		await repository.findOpenReversals("match-1");
+
+		expect(querySpy).toHaveBeenCalledTimes(1);
+		const [sql, params] = querySpy.mock.calls[0] as [string, unknown[]];
+		expect(sql).toContain("kind = 'reversal'");
+		expect(sql).toContain("kind = 'reinstatement'");
+		expect(sql).toContain("cycle = r.cycle");
+		expect(params).toEqual(["match-1"]);
+
+		querySpy.mockRestore();
+	});
+});
+
+describe("RatingCompensationPostgresRepository — insertReinstatement", () => {
+	let manager: { query: ReturnType<typeof mock> };
+	let repository: RatingCompensationPostgresRepository;
+
+	function openReversal(overrides: Partial<OpenReversalRecord> = {}): OpenReversalRecord {
+		return { ...appliedRow(), cycle: 0, ...overrides };
+	}
+
+	beforeEach(() => {
+		manager = { query: mock() };
+		spyOn(dataSource, "transaction").mockImplementation((async (
+			work: (manager: unknown) => Promise<unknown>,
+		) => work(manager)) as never);
+		repository = new RatingCompensationPostgresRepository();
+	});
+
+	it("derives the reinstatement's cycle as this match's reversal count minus one", async () => {
+		manager.query
+			.mockResolvedValueOnce(undefined) // advisory lock
+			.mockResolvedValueOnce([
+				{ matchId: "match-1", kind: "applied", delta: 15 },
+				{ matchId: "match-1", kind: "reversal", delta: -15 },
+			]) // history for reprojection
+			.mockResolvedValueOnce([{ id: "reinstatement-row-1" }]); // reinstatement insert
+
+		const applied = await repository.insertReinstatement(openReversal({ delta: -15 }), 15);
+
+		expect(applied).toBe(true);
+		const [insertSql, insertParams] = manager.query.mock.calls[2] as [string, unknown[]];
+		expect(insertSql).toContain("'reinstatement'");
+		expect(insertSql).toContain("ON CONFLICT DO NOTHING");
+		expect(insertParams?.[insertParams.length - 1]).toBe(0); // 1 reversal - 1
+	});
+
+	it("restores exactly the pre-reversal rating when negating an unfloored reversal", async () => {
+		manager.query
+			.mockResolvedValueOnce(undefined) // advisory lock
+			.mockResolvedValueOnce([
+				{ matchId: "match-1", kind: "applied", delta: -890 }, // rating 110
+				{ matchId: "match-1", kind: "reversal", delta: 15 }, // rating 125
+			])
+			.mockResolvedValueOnce([{ id: "reinstatement-row-1" }]);
+
+		await repository.insertReinstatement(openReversal({ delta: 15 }), -15);
+
+		const [, insertParams] = manager.query.mock.calls[2] as [string, unknown[]];
+		const [, projectionParams] = manager.query.mock.calls[3] as [string, unknown[]];
+
+		expect(insertParams?.[5]).toBe(-15);
+		expect(projectionParams?.[3]).toBe(110);
+	});
+
+	it("floors the reinstatement's negation against the live rating, same as a reversal", async () => {
+		manager.query
+			.mockResolvedValueOnce(undefined) // advisory lock
+			.mockResolvedValueOnce([
+				{ matchId: "match-1", kind: "applied", delta: -890 }, // rating 110
+				{ matchId: "match-1", kind: "reversal", delta: -10 }, // floored reversal — rating 100
+			])
+			.mockResolvedValueOnce([{ id: "reinstatement-row-1" }]);
+
+		// Undoing the reversal asks for +10 back, but the reversal itself only
+		// ever took -10 (not the full -15 the reversal wanted), so asking to
+		// give back what the *reversal* row stored (10) lands exactly on 110 —
+		// the pre-annul rating — even though nothing here is floored again.
+		await repository.insertReinstatement(openReversal({ delta: -10 }), 10);
+
+		const [, insertParams] = manager.query.mock.calls[2] as [string, unknown[]];
+		const [, projectionParams] = manager.query.mock.calls[3] as [string, unknown[]];
+
+		expect(insertParams?.[5]).toBe(10);
+		expect(projectionParams?.[3]).toBe(110);
+	});
+
+	it("does not touch player_ratings when the reinstatement insert is a no-op (already reinstated)", async () => {
+		manager.query
+			.mockResolvedValueOnce(undefined) // advisory lock
+			.mockResolvedValueOnce([
+				{ matchId: "match-1", kind: "applied", delta: 15 },
+				{ matchId: "match-1", kind: "reversal", delta: -15 },
+			])
+			.mockResolvedValueOnce([]); // ON CONFLICT DO NOTHING — no row inserted
+
+		const applied = await repository.insertReinstatement(openReversal({ delta: -15 }), 15);
+
+		expect(applied).toBe(false);
+		expect(manager.query).toHaveBeenCalledTimes(3);
+		const executedSql = manager.query.mock.calls.map(([sql]) => sql as string);
+		expect(executedSql.some((sql) => sql.includes("player_ratings"))).toBe(false);
 	});
 });
