@@ -1,4 +1,5 @@
 import { dataSource } from "../../../evolution-types/src/data-source";
+import { LADDER_ADVISORY_LOCK_QUERY as LADDER_LOCK_QUERY } from "../../../shared/database/advisoryLockQuery";
 import { PointsLedgerEntry, PointsLedgerKind } from "../../points-ledger/domain/PointsLedgerEntry";
 import { PointsLedgerRepository } from "../../points-ledger/domain/PointsLedgerRepository";
 import { nextCycle, projectPlayerStats } from "../../points-ledger/domain/PointsProjection";
@@ -10,7 +11,6 @@ type Direction = "annul" | "unannul";
 type SummaryKey = { day: string; banListName: string; season: number };
 
 const GAME_LOCK_QUERY = `SELECT pg_advisory_xact_lock(hashtextextended('game:' || length($1)::text || ':' || $1, 0))`;
-const LADDER_LOCK_QUERY = `SELECT pg_advisory_xact_lock(hashtextextended($1 || '|' || $2 || '|' || $3, 0))`;
 const EXISTENCE_QUERY = `SELECT count(*)::int AS rows, bool_or(anulled) AS flagged FROM matches WHERE game_id = $1 AND deleted_at IS NULL`;
 const SUMMARY_KEY_QUERY = `SELECT DISTINCT date_trunc('day', date)::date AS day, ban_list_name AS "banListName", season FROM matches WHERE game_id = $1`;
 const REVERSED_QUERY = `SELECT EXISTS (SELECT 1 FROM points_ledger WHERE game_id = $1 AND kind = 'reversal') AS reversed`;

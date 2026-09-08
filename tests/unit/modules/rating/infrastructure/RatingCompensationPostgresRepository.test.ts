@@ -109,6 +109,8 @@ describe("RatingCompensationPostgresRepository — insertReversal", () => {
 		const [historySql] = manager.query.mock.calls[1] as [string, unknown[]];
 
 		expect(lockSql).toContain("pg_advisory_xact_lock");
+		expect(lockSql).not.toContain("'|'");
+		expect(lockSql).toContain("length($2)::text");
 		expect(lockParams).toEqual(["user-1", "rank-global", 5]);
 		expect(historySql).toContain("FROM rating_history");
 	});
