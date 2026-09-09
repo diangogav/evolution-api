@@ -235,42 +235,38 @@ export class UserStatsPostgresRepository implements UserStatsRepository {
 			WITH current_utc AS (
 				SELECT NOW() AT TIME ZONE 'UTC' AS now_utc
 			),
-			last_sunday AS (
-				SELECT DATE_TRUNC('week', now_utc)::date AS this_sunday
+			current_week AS (
+				SELECT DATE_TRUNC('week', now_utc)::date AS week_start
 				FROM current_utc
 			),
 			target_week AS (
 				SELECT
-					this_sunday - INTERVAL '7 days' AS week_start,
-					this_sunday - INTERVAL '1 day'  AS week_end
-				FROM last_sunday
+					cw.week_start - INTERVAL '7 days' AS week_start,
+					cw.week_start - INTERVAL '1 day'  AS week_end,
+					cw.week_start                     AS week_end_exclusive
+				FROM current_week cw
 			),
 			week_matches AS (
 				SELECT
 					m.user_id,
-					DATE_TRUNC('week', m.date AT TIME ZONE 'UTC')::date AS match_week,
+					tw.week_start,
+					tw.week_end,
 					SUM(m.points) AS total_points,
 					COUNT(*) FILTER (WHERE m.winner = true) AS wins,
 					COUNT(*) FILTER (WHERE m.winner = false) AS losses
 				FROM matches m
+				CROSS JOIN target_week tw
 				JOIN users u ON u.id = m.user_id AND u.deleted_at IS NULL
-				GROUP BY m.user_id, match_week
-			),
-			filtered_matches AS (
-				SELECT
-					wm.user_id,
-					tw.week_start,
-					tw.week_end,
-					wm.total_points,
-					wm.wins,
-					wm.losses
-				FROM week_matches wm
-				JOIN target_week tw ON wm.match_week = tw.week_start
+				WHERE m.date >= tw.week_start
+					AND m.date < tw.week_end_exclusive
+					AND m.anulled = false
+					AND m.deleted_at IS NULL
+				GROUP BY m.user_id, tw.week_start, tw.week_end
 			),
 			ranked AS (
 				SELECT *,
 					DENSE_RANK() OVER (ORDER BY total_points DESC) AS rank
-				FROM filtered_matches
+				FROM week_matches
 			)
 			SELECT
 				r.user_id,
