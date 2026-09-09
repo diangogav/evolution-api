@@ -1,6 +1,7 @@
-import { describe, expect, it, mock, spyOn } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from "bun:test";
 
 import { dataSource } from "../../../../../src/evolution-types/src/data-source";
+import { PeriodUserStats } from "../../../../../src/modules/stats/domain/PeriodUserStats";
 import { RatingSummary } from "../../../../../src/modules/stats/domain/UserStats";
 import { UserStatsPostgresRepository } from "../../../../../src/modules/stats/infrastructure/UserStatsPostgresRepository";
 
@@ -366,5 +367,122 @@ describe("UserStatsPostgresRepository — leaderboard", () => {
 		expect(result.map((stats) => stats.toJson().provisional)).toEqual([true, null]);
 
 		queryBuilderSpy.mockRestore();
+	});
+});
+
+function bestPlayerRow(overrides: Record<string, unknown> = {}) {
+	return {
+		user_id: "user-fuku",
+		username: "Fuku",
+		week_start: "2026-08-31",
+		week_end: "2026-09-06",
+		total_points: 33,
+		wins: 11,
+		losses: 4,
+		...overrides,
+	};
+}
+
+function normalizeSql(sql: string): string {
+	return sql.replace(/\s+/g, " ").trim();
+}
+
+function cteBody(sql: string, name: string): string {
+	const normalized = normalizeSql(sql);
+	const start = normalized.indexOf(`${name} AS (`);
+	expect(start).toBeGreaterThanOrEqual(0);
+	const rest = normalized.slice(start);
+	const end = rest.search(/\)\s*,\s*\w+ AS \(|\)\s*SELECT/);
+	expect(end).toBeGreaterThan(0);
+	return rest.slice(0, end);
+}
+
+describe("UserStatsPostgresRepository — getBestPlayerOfLastCompletedWeek", () => {
+	let querySpy: ReturnType<typeof spyOn>;
+	let repository: UserStatsPostgresRepository;
+
+	beforeEach(() => {
+		querySpy = spyOn(dataSource, "query").mockResolvedValue([]);
+		repository = new UserStatsPostgresRepository();
+	});
+
+	afterEach(() => {
+		mock.restore();
+	});
+
+	async function executedSql(): Promise<string> {
+		await repository.getBestPlayerOfLastCompletedWeek();
+		expect(querySpy).toHaveBeenCalledTimes(1);
+		const [sql] = querySpy.mock.calls[0] as [string];
+		return sql;
+	}
+
+	it("ignores annulled matches when aggregating a player's week", async () => {
+		const aggregation = cteBody(await executedSql(), "week_matches");
+
+		expect(aggregation).toContain("m.anulled = false");
+	});
+
+	it("ignores soft-deleted matches when aggregating a player's week", async () => {
+		const aggregation = cteBody(await executedSql(), "week_matches");
+
+		expect(aggregation).toContain("m.deleted_at IS NULL");
+	});
+
+	it("restricts the aggregation to the target week before grouping instead of scanning every match", async () => {
+		const aggregation = cteBody(await executedSql(), "week_matches");
+
+		expect(aggregation).toMatch(/m\.date >= \w+\.week_start/);
+		expect(aggregation).toMatch(/m\.date < \w+\.week_end_exclusive/);
+		expect(aggregation).toContain("GROUP BY");
+		expect(aggregation.indexOf("WHERE")).toBeLessThan(aggregation.indexOf("GROUP BY"));
+	});
+
+	it("derives the target week from the Monday-based week start and names it as such", async () => {
+		const sql = normalizeSql(await executedSql());
+
+		expect(sql).toContain("DATE_TRUNC('week'");
+		expect(sql).toContain("week_start");
+		expect(sql).toContain("week_end_exclusive");
+		expect(sql).not.toMatch(/sunday/i);
+	});
+
+	it("keeps excluding deleted users and keeps DENSE_RANK ties for the top spot", async () => {
+		const sql = normalizeSql(await executedSql());
+
+		expect(sql).toContain("u.deleted_at IS NULL");
+		expect(sql).toContain("DENSE_RANK() OVER (ORDER BY total_points DESC)");
+		expect(sql).toContain("rank = 1");
+	});
+
+	it("maps every returned row into PeriodUserStats with the week bounds as from/to", async () => {
+		querySpy.mockResolvedValueOnce([
+			bestPlayerRow(),
+			bestPlayerRow({ user_id: "user-tied", username: "Tied", wins: 12, losses: 3 }),
+		]);
+
+		const result = await repository.getBestPlayerOfLastCompletedWeek();
+
+		expect(result).toHaveLength(2);
+		expect(result[0]).toBeInstanceOf(PeriodUserStats);
+		expect(result[0]).toEqual(
+			PeriodUserStats.from({
+				userId: "user-fuku",
+				username: "Fuku",
+				points: 33,
+				wins: 11,
+				losses: 4,
+				from: "2026-08-31",
+				to: "2026-09-06",
+			}),
+		);
+		expect(result[1].userId).toBe("user-tied");
+		expect(result[1].points).toBe(33);
+	});
+
+	it("returns an empty list when nobody played in the target week", async () => {
+		querySpy.mockResolvedValueOnce([]);
+
+		expect(await repository.getBestPlayerOfLastCompletedWeek()).toEqual([]);
 	});
 });
