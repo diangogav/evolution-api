@@ -96,6 +96,7 @@ describe("SeedStandardCosmetics", () => {
 		it("ships only the painted 2D stages as playmats", () => {
 			const playmats = STANDARD_COSMETICS.filter((entry) => entry.type === CosmeticType.PLAYMAT);
 			expect(playmats.map((entry) => entry.assetRef).sort()).toEqual([
+				"playmats/arcane/",
 				"playmats/frog-pond/",
 				"playmats/kagura-castle/",
 				"playmats/mystic-forest/",

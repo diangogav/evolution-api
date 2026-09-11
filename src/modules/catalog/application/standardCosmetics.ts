@@ -56,6 +56,14 @@ export const STANDARD_COSMETICS: StandardCosmeticSeed[] = [
 	// background.webp (the arena backdrop) and theme.json (the palette). The
 	// client reads those three basenames. The old glTF playmats (plaque, pallet-*)
 	// were deactivated in the database when the 3D renderer was retired.
+	// The arcane hall is also the client's bundled default; it is hosted here so a
+	// logged-in player keeps it once the server catalog replaces the bundled list.
+	{
+		type: CosmeticType.PLAYMAT,
+		tier: CosmeticTier.STANDARD,
+		assetRef: "playmats/arcane/",
+		displayName: "Salón arcano",
+	},
 	{
 		type: CosmeticType.PLAYMAT,
 		tier: CosmeticTier.STANDARD,
