@@ -1,7 +1,6 @@
 import type { CosmeticAssetStorage } from "../../assets/domain/CosmeticAssetStorage";
 import { ConflictError } from "../../../shared/errors/ConflictError";
 import { InvalidArgumentError } from "../../../shared/errors/InvalidArgumentError";
-import type { CompanionAnimationDescriptor } from "../domain/CompanionAnimation";
 import { Cosmetic } from "../domain/Cosmetic";
 import type { CosmeticRepository } from "../domain/CosmeticRepository";
 import { CosmeticTier } from "../domain/CosmeticTier";
@@ -11,12 +10,12 @@ const MAX_FILES = 8;
 const MAX_TOTAL_BYTES = 25 * 1024 * 1024;
 const SAFE_FILE_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 const SAFE_SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const SURFACE_FILE = /^surface\.(?:webp|png|jpe?g)$/;
 
 const PREFIX_BY_TYPE: Partial<Record<CosmeticType, string>> = {
 	[CosmeticType.SLEEVE]: "sleeves",
 	[CosmeticType.PLAYMAT]: "playmats",
 	[CosmeticType.AVATAR]: "avatars",
-	[CosmeticType.COMPANION]: "companions",
 };
 
 export interface PublishCosmeticFile {
@@ -30,7 +29,6 @@ export interface PublishCosmeticInput {
 	readonly assetRef: string;
 	readonly displayName: string;
 	readonly files: readonly PublishCosmeticFile[];
-	readonly animation?: CompanionAnimationDescriptor;
 }
 
 export interface PublishedCosmeticDto {
@@ -46,10 +44,6 @@ export interface PublishedCosmeticDto {
 function contentTypeFor(fileName: string): string {
 	const extension = fileName.split(".").pop()?.toLowerCase();
 	switch (extension) {
-		case "glb":
-			return "model/gltf-binary";
-		case "gltf":
-			return "model/gltf+json";
 		case "jpg":
 		case "jpeg":
 			return "image/jpeg";
@@ -57,6 +51,8 @@ function contentTypeFor(fileName: string): string {
 			return "image/png";
 		case "webp":
 			return "image/webp";
+		case "json":
+			return "application/json";
 		default:
 			return "application/octet-stream";
 	}
@@ -80,15 +76,10 @@ function assertRequiredFiles(type: CosmeticType, names: ReadonlySet<string>): vo
 		throw new InvalidArgumentError(`${type} requires render.jpg`);
 	}
 
-	if (
-		type === CosmeticType.PLAYMAT &&
-		![...lower].some((name) => name.endsWith(".gltf") || name.endsWith(".glb"))
-	) {
-		throw new InvalidArgumentError("PLAYMAT requires a .gltf or .glb entry file");
-	}
-
-	if (type === CosmeticType.COMPANION && ![...lower].some((name) => name.endsWith(".glb"))) {
-		throw new InvalidArgumentError("COMPANION requires at least one .glb file");
+	// A playmat is a painted 2D stage: surface.<image> is the only file the DOM
+	// board needs; background.<image> and theme.json are optional extras.
+	if (type === CosmeticType.PLAYMAT && ![...lower].some((name) => SURFACE_FILE.test(name))) {
+		throw new InvalidArgumentError("PLAYMAT requires surface.webp, surface.png or surface.jpg");
 	}
 }
 
@@ -139,7 +130,6 @@ export class PublishCosmetic {
 			tier: input.tier,
 			assetRef: input.assetRef,
 			displayName: input.displayName,
-			animation: input.animation,
 			assetFiles: [...names],
 		});
 

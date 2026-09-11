@@ -6,7 +6,6 @@ import {
 	UpdateDateColumn,
 } from "typeorm";
 
-import type { CompanionAnimationDescriptor } from "../domain/CompanionAnimation";
 import { CosmeticTier } from "../domain/CosmeticTier";
 import { CosmeticType } from "../domain/CosmeticType";
 
@@ -29,9 +28,6 @@ export class CosmeticEntity {
 
 	@Column({ default: true })
 	active: boolean;
-
-	@Column({ name: "animation", type: "jsonb", nullable: true })
-	animation?: CompanionAnimationDescriptor | null;
 
 	@Column({ name: "asset_files", type: "text", array: true, nullable: true })
 	assetFiles: string[] | null;

@@ -26,15 +26,14 @@ function cosmetic(tier: CosmeticTier): Cosmetic {
 	});
 }
 
-function companion(): Cosmetic {
+function avatar(): Cosmetic {
 	return Cosmetic.from({
-		id: "companion-1",
-		type: CosmeticType.COMPANION,
+		id: "avatar-1",
+		type: CosmeticType.AVATAR,
 		tier: CosmeticTier.STANDARD,
-		assetRef: "companions/kaykit-warrior/",
-		displayName: "Warrior",
+		assetRef: "avatars/kagura/",
+		displayName: "Kagura",
 		active: true,
-		animation: { rigFile: "Rig_Medium_General.glb", clips: { idle: "Idle_A" } },
 	});
 }
 
@@ -101,17 +100,17 @@ describe("EquipCosmetic", () => {
 		).rejects.toBeInstanceOf(InvalidArgumentError);
 	});
 
-	it("equips a COMPANION the user is entitled to", async () => {
-		const { equip, saved } = build({ found: companion() });
+	it("equips an AVATAR the user is entitled to", async () => {
+		const { equip, saved } = build({ found: avatar() });
 
 		await equip.run({
 			userId: "user-1",
-			cosmeticType: CosmeticType.COMPANION,
-			cosmeticId: "companion-1",
+			cosmeticType: CosmeticType.AVATAR,
+			cosmeticId: "avatar-1",
 		});
 
 		expect(saved).toHaveLength(1);
-		expect(saved[0].equippedCosmeticId(CosmeticType.COMPANION)).toBe("companion-1");
+		expect(saved[0].equippedCosmeticId(CosmeticType.AVATAR)).toBe("avatar-1");
 	});
 
 	// An unknown/non-uuid cosmeticId must resolve to a graceful NotFound (4xx), never a
@@ -125,7 +124,7 @@ describe("EquipCosmetic", () => {
 		await expect(
 			equip.run({
 				userId: "user-1",
-				cosmeticType: CosmeticType.COMPANION,
+				cosmeticType: CosmeticType.AVATAR,
 				cosmeticId: "skeleton-mage",
 			}),
 		).rejects.toBeInstanceOf(NotFoundError);

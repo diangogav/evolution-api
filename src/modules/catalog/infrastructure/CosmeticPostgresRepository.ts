@@ -21,7 +21,6 @@ export class CosmeticPostgresRepository implements CosmeticRepository {
 				assetRef: entity.assetRef,
 				displayName: entity.displayName,
 				active: entity.active,
-				animation: entity.animation ?? undefined,
 				assetFiles: entity.assetFiles,
 			}),
 		);
@@ -46,7 +45,6 @@ export class CosmeticPostgresRepository implements CosmeticRepository {
 			assetRef: entity.assetRef,
 			displayName: entity.displayName,
 			active: entity.active,
-			animation: entity.animation ?? undefined,
 			assetFiles: entity.assetFiles,
 		});
 	}
@@ -62,7 +60,6 @@ export class CosmeticPostgresRepository implements CosmeticRepository {
 			assetRef: data.assetRef,
 			displayName: data.displayName,
 			active: data.active,
-			animation: data.animation ?? null,
 			assetFiles: data.assetFiles ? [...data.assetFiles] : null,
 		});
 

@@ -1,6 +1,5 @@
 import { AssetUrlSigner } from "../../assets/domain/AssetUrlSigner";
 import { EntitlementsGatekeeper } from "../../entitlements/application/EntitlementsGatekeeper";
-import type { CompanionAnimationDescriptor } from "../domain/CompanionAnimation";
 import { CosmeticRepository } from "../domain/CosmeticRepository";
 import { CosmeticTier } from "../domain/CosmeticTier";
 import { CosmeticType } from "../domain/CosmeticType";
@@ -12,7 +11,6 @@ export interface CatalogCosmetic {
 	displayName: string;
 	assets: Record<string, string>;
 	assetsExpiresAt: string;
-	animation?: CompanionAnimationDescriptor;
 }
 
 export interface CatalogFilters {
@@ -54,7 +52,6 @@ export class GetCosmeticsCatalog {
 					displayName: cosmetic.displayName,
 					assets: signedManifest.assets,
 					assetsExpiresAt: signedManifest.expiresAt,
-					animation: cosmetic.animation,
 				};
 			}),
 		);

@@ -17,23 +17,18 @@ const sleeve = Cosmetic.from({
 	displayName: "A",
 	active: true,
 });
-const companionAnimation = {
-	rigFile: "Rig_Medium_General.glb",
-	clips: { idle: "Idle_A", attack: "Throw" },
-};
-const companion = Cosmetic.from({
-	id: "companion-1",
-	type: CosmeticType.COMPANION,
+const avatar = Cosmetic.from({
+	id: "avatar-1",
+	type: CosmeticType.AVATAR,
 	tier: CosmeticTier.STANDARD,
-	assetRef: "companions/kaykit-warrior/",
-	displayName: "Warrior",
+	assetRef: "avatars/kagura/",
+	displayName: "Kagura",
 	active: true,
-	animation: companionAnimation,
 });
 
 const catalog = new Map<string, Cosmetic>([
 	[sleeve.id, sleeve],
-	[companion.id, companion],
+	[avatar.id, avatar],
 ]);
 
 function build(loadout: Loadout) {
@@ -79,18 +74,16 @@ describe("GetMyLoadout", () => {
 		expect(result).toEqual([]);
 	});
 
-	it("includes both signed assets and the animation descriptor for an equipped COMPANION", async () => {
+	it("includes signed assets and no animation field for an equipped AVATAR", async () => {
 		const loadout = Loadout.from("user-1", [
-			{ cosmeticType: CosmeticType.COMPANION, cosmeticId: "companion-1" },
+			{ cosmeticType: CosmeticType.AVATAR, cosmeticId: "avatar-1" },
 		]);
 
 		const result = await build(loadout).run("user-1");
 
 		expect(result).toHaveLength(1);
-		expect(result[0].cosmeticType).toBe(CosmeticType.COMPANION);
-		expect(result[0].assets).toEqual({
-			"render.jpg": "signed:companions/kaykit-warrior/render.jpg",
-		});
-		expect(result[0].animation).toEqual(companionAnimation);
+		expect(result[0].cosmeticType).toBe(CosmeticType.AVATAR);
+		expect(result[0].assets).toEqual({ "render.jpg": "signed:avatars/kagura/render.jpg" });
+		expect(result[0]).not.toHaveProperty("animation");
 	});
 });

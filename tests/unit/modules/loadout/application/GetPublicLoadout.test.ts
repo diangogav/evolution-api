@@ -20,23 +20,18 @@ const sleeve = Cosmetic.from({
 	displayName: "A",
 	active: true,
 });
-const companionAnimation = {
-	rigFile: "Rig_Medium_General.glb",
-	clips: { idle: "Idle_A", attack: "Throw" },
-};
-const companion = Cosmetic.from({
-	id: "companion-1",
-	type: CosmeticType.COMPANION,
+const avatar = Cosmetic.from({
+	id: "avatar-1",
+	type: CosmeticType.AVATAR,
 	tier: CosmeticTier.STANDARD,
-	assetRef: "companions/kaykit-warrior/",
-	displayName: "Warrior",
+	assetRef: "avatars/kagura/",
+	displayName: "Kagura",
 	active: true,
-	animation: companionAnimation,
 });
 
 const catalog = new Map<string, Cosmetic>([
 	[sleeve.id, sleeve],
-	[companion.id, companion],
+	[avatar.id, avatar],
 ]);
 
 function build(directory: UserDirectory, equipped: Cosmetic = sleeve): GetPublicLoadout {
@@ -75,16 +70,16 @@ describe("GetPublicLoadout", () => {
 		expect(result[0].assetsExpiresAt).toBe("2030-01-01T00:00:00.000Z");
 	});
 
-	it("carries the COMPANION animation descriptor through the public gate (opponent/spectator render)", async () => {
+	it("exposes no animation field through the public gate", async () => {
 		const directory: UserDirectory = {
 			findUserIdByUsername: async (username) => (username === "rival" ? "user-rival" : null),
 		};
 
-		const result = await build(directory, companion).run("rival");
+		const result = await build(directory, avatar).run("rival");
 
 		expect(result).toHaveLength(1);
-		expect(result[0].cosmeticType).toBe(CosmeticType.COMPANION);
-		expect(result[0].animation).toEqual(companionAnimation);
+		expect(result[0].cosmeticType).toBe(CosmeticType.AVATAR);
+		expect(result[0]).not.toHaveProperty("animation");
 	});
 
 	it("throws NotFound when the username does not exist (client falls back to standard)", async () => {

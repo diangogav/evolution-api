@@ -46,8 +46,8 @@ describe("R2AssetUrlSigner", () => {
 			list: async () => ({
 				contents: [
 					{ key: "playmats/arena/" },
-					{ key: "playmats/arena/model.gltf" },
-					{ key: "playmats/arena/model.bin" },
+					{ key: "playmats/arena/surface.webp" },
+					{ key: "playmats/arena/background.webp" },
 				],
 			}),
 			presign: (key: string) => `signed:${key}`,
@@ -58,8 +58,8 @@ describe("R2AssetUrlSigner", () => {
 
 		expect(result).toEqual({
 			assets: {
-				"model.gltf": "signed:playmats/arena/model.gltf",
-				"model.bin": "signed:playmats/arena/model.bin",
+				"surface.webp": "signed:playmats/arena/surface.webp",
+				"background.webp": "signed:playmats/arena/background.webp",
 			},
 			expiresAt: "2030-01-01T00:00:00.000Z",
 		});
@@ -74,11 +74,14 @@ describe("R2AssetUrlSigner", () => {
 		} as unknown as S3Client;
 		const signer = new R2AssetUrlSigner(fakeClient, ttlSeconds, () => 0);
 
-		const result = await signer.signManifest("playmats/arena/", ["model.gltf", "model.bin"]);
+		const result = await signer.signManifest("playmats/arena/", [
+			"surface.webp",
+			"background.webp",
+		]);
 
 		expect(result.assets).toEqual({
-			"model.gltf": "signed:playmats/arena/model.gltf",
-			"model.bin": "signed:playmats/arena/model.bin",
+			"surface.webp": "signed:playmats/arena/surface.webp",
+			"background.webp": "signed:playmats/arena/background.webp",
 		});
 	});
 });

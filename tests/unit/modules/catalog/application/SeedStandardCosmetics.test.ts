@@ -1,12 +1,10 @@
 import { describe, expect, it } from "bun:test";
 
 import { SeedStandardCosmetics } from "../../../../../src/modules/catalog/application/SeedStandardCosmetics";
-import {
-	KAYKIT_COMPANIONS,
-	STANDARD_COSMETICS,
-} from "../../../../../src/modules/catalog/application/standardCosmetics";
+import { STANDARD_COSMETICS } from "../../../../../src/modules/catalog/application/standardCosmetics";
 import { Cosmetic } from "../../../../../src/modules/catalog/domain/Cosmetic";
 import { CosmeticRepository } from "../../../../../src/modules/catalog/domain/CosmeticRepository";
+import { CosmeticTier } from "../../../../../src/modules/catalog/domain/CosmeticTier";
 import { CosmeticType } from "../../../../../src/modules/catalog/domain/CosmeticType";
 
 function fakeRepository(existing: Cosmetic[]): {
@@ -67,44 +65,41 @@ describe("SeedStandardCosmetics", () => {
 		).toBe(false);
 	});
 
-	// Assets are uploaded to R2, so KAYKIT_COMPANIONS now ships in the active seed. These
-	// assertions lock the seed data shape and that the companions are actually enabled.
-	describe("KAYKIT_COMPANIONS", () => {
-		it("registers all four companion entries in the active seed", () => {
-			expect(KAYKIT_COMPANIONS).toHaveLength(4);
-			for (const entry of KAYKIT_COMPANIONS) {
-				expect(STANDARD_COSMETICS).toContain(entry);
-			}
-			// Mage ships as the client's offline default, yet it is still hosted server-side
-			// so it is equippable and visible to opponents like every other companion.
-			expect(STANDARD_COSMETICS.map((entry) => entry.assetRef)).toContain(
-				"companions/kaykit-mage/",
+	it("ships the three painted 2D stages as STANDARD playmats", () => {
+		const stages = STANDARD_COSMETICS.filter((c) =>
+			["playmats/kagura-castle/", "playmats/mystic-forest/", "playmats/frog-pond/"].includes(
+				c.assetRef,
+			),
+		);
+
+		expect(stages.map((c) => c.displayName)).toEqual([
+			"Castillo de Kagura",
+			"Bosque místico",
+			"Estanque de la Rana",
+		]);
+		for (const stage of stages) {
+			expect(stage.type).toBe(CosmeticType.PLAYMAT);
+			expect(stage.tier).toBe(CosmeticTier.STANDARD);
+		}
+	});
+
+	// The 3D renderer is gone: companions have nothing to render and glTF playmats
+	// have no 2D surface, so neither may come back through a fresh seed.
+	describe("retired 3D cosmetics", () => {
+		it("ships no COMPANION cosmetic", () => {
+			expect(STANDARD_COSMETICS.some((entry) => entry.assetRef.startsWith("companions/"))).toBe(
+				false,
 			);
+			expect(Object.values(CosmeticType)).not.toContain("COMPANION");
 		});
 
-		it("each entry is a COMPANION folder prefix with a usable animation descriptor", () => {
-			for (const entry of KAYKIT_COMPANIONS) {
-				expect(entry.type).toBe(CosmeticType.COMPANION);
-				expect(entry.assetRef.endsWith("/")).toBe(true);
-				expect(entry.animation?.rigFile).toBeTruthy();
-				expect(Object.keys(entry.animation?.clips ?? {}).length).toBeGreaterThan(0);
-			}
-		});
-
-		it("builds a COMPANION cosmetic carrying its animation through Cosmetic.create (seed path)", () => {
-			for (const entry of KAYKIT_COMPANIONS) {
-				const cosmetic = Cosmetic.create({
-					id: crypto.randomUUID(),
-					type: entry.type,
-					tier: entry.tier,
-					assetRef: entry.assetRef,
-					displayName: entry.displayName,
-					animation: entry.animation,
-				});
-
-				expect(cosmetic.type).toBe(CosmeticType.COMPANION);
-				expect(cosmetic.animation).toEqual(entry.animation);
-			}
+		it("ships only the painted 2D stages as playmats", () => {
+			const playmats = STANDARD_COSMETICS.filter((entry) => entry.type === CosmeticType.PLAYMAT);
+			expect(playmats.map((entry) => entry.assetRef).sort()).toEqual([
+				"playmats/frog-pond/",
+				"playmats/kagura-castle/",
+				"playmats/mystic-forest/",
+			]);
 		});
 	});
 });

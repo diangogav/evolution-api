@@ -34,22 +34,42 @@ function setup({ failSave = false, existing = [] as Cosmetic[] } = {}) {
 }
 
 describe("PublishCosmetic", () => {
-	it("uploads a self-contained playmat and persists its indexed catalog row", async () => {
+	it("rejects a playmat that only ships a glTF model, before touching storage", async () => {
 		const { publish, uploads, saved } = setup();
-		const result = await publish.run({
+
+		await expect(
+			publish.run({
+				type: CosmeticType.PLAYMAT,
+				tier: CosmeticTier.EXCLUSIVE,
+				assetRef: "playmats/ember-vault/",
+				displayName: "Ember Vault",
+				files: [{ name: "ember-vault.glb", bytes: new Uint8Array([1, 2, 3]) }],
+			}),
+		).rejects.toThrow("PLAYMAT requires surface.webp, surface.png or surface.jpg");
+
+		expect(uploads).toHaveLength(0);
+		expect(saved).toHaveLength(0);
+	});
+
+	it("stores a 2D stage's images and theme.json with their real content types", async () => {
+		const { publish, uploads } = setup();
+		await publish.run({
 			type: CosmeticType.PLAYMAT,
-			tier: CosmeticTier.EXCLUSIVE,
-			assetRef: "playmats/ember-vault/",
-			displayName: "Ember Vault",
-			files: [{ name: "ember-vault.glb", bytes: new Uint8Array([1, 2, 3]) }],
+			tier: CosmeticTier.STANDARD,
+			assetRef: "playmats/kagura-castle/",
+			displayName: "Castillo de Kagura",
+			files: [
+				{ name: "surface.webp", bytes: new Uint8Array([1]) },
+				{ name: "background.webp", bytes: new Uint8Array([2]) },
+				{ name: "theme.json", bytes: new Uint8Array([3]) },
+			],
 		});
 
-		expect(result.assetFiles).toEqual(["ember-vault.glb"]);
-		expect(result.active).toBe(true);
-		expect(uploads).toHaveLength(1);
-		expect(uploads[0]?.key).toBe("playmats/ember-vault/ember-vault.glb");
-		expect(uploads[0]?.contentType).toBe("model/gltf-binary");
-		expect(saved[0]?.assetFiles).toEqual(["ember-vault.glb"]);
+		expect(uploads.map((u) => [u.key, u.contentType])).toEqual([
+			["playmats/kagura-castle/surface.webp", "image/webp"],
+			["playmats/kagura-castle/background.webp", "image/webp"],
+			["playmats/kagura-castle/theme.json", "application/json"],
+		]);
 	});
 
 	it("rolls back uploaded objects when catalog persistence fails", async () => {
@@ -80,7 +100,7 @@ describe("PublishCosmetic", () => {
 				tier: CosmeticTier.STANDARD,
 				assetRef: "playmats/../escape/",
 				displayName: "Unsafe",
-				files: [{ name: "model.glb", bytes: new Uint8Array([1]) }],
+				files: [{ name: "surface.webp", bytes: new Uint8Array([1]) }],
 			}),
 		).rejects.toThrow("assetRef");
 
@@ -103,7 +123,7 @@ describe("PublishCosmetic", () => {
 				tier: CosmeticTier.STANDARD,
 				assetRef: "playmats/existing/",
 				displayName: "Duplicate",
-				files: [{ name: "model.glb", bytes: new Uint8Array([1]) }],
+				files: [{ name: "surface.webp", bytes: new Uint8Array([1]) }],
 			}),
 		).rejects.toThrow("already uses assetRef");
 	});

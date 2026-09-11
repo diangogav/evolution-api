@@ -61,19 +61,6 @@ const retiredSleeve = Cosmetic.from({
 	displayName: "Retired",
 	active: false,
 });
-const companionAnimation = {
-	rigFile: "Rig_Medium_General.glb",
-	clips: { idle: "Idle_A", attack: "Throw" },
-};
-const companion = Cosmetic.from({
-	id: "companion-1",
-	type: CosmeticType.COMPANION,
-	tier: CosmeticTier.STANDARD,
-	assetRef: "companions/kaykit-warrior/",
-	displayName: "Warrior",
-	active: true,
-	animation: companionAnimation,
-});
 
 const signer: AssetUrlSigner = {
 	sign: () => "",
@@ -243,23 +230,13 @@ describe("GetCosmeticsCatalog", () => {
 		expect(result.map((c) => c.id)).not.toContain("retired-sleeve");
 	});
 
-	it("surfaces the animation descriptor for a COMPANION cosmetic", async () => {
-		const catalog = catalogOf([companion]);
+	it("exposes no animation field on catalog entries", async () => {
+		const catalog = catalogOf([sleeve]);
 
 		const result = await catalog.run({}, null);
 
 		expect(result).toHaveLength(1);
-		expect(result[0].type).toBe(CosmeticType.COMPANION);
-		expect(result[0].animation).toEqual(companionAnimation);
-	});
-
-	it("filters the catalog by COMPANION type", async () => {
-		const catalog = catalogOf([sleeve, companion]);
-
-		const result = await catalog.run({ type: CosmeticType.COMPANION }, null);
-
-		expect(result).toHaveLength(1);
-		expect(result[0].id).toBe("companion-1");
+		expect(result[0]).not.toHaveProperty("animation");
 	});
 
 	it("N+1 guard: only one accessFor call regardless of cosmetic count", async () => {

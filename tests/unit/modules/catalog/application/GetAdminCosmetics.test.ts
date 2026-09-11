@@ -15,7 +15,7 @@ describe("GetAdminCosmetics", () => {
 			tier: CosmeticTier.EXCLUSIVE,
 			assetRef: "playmats/magma-forge/",
 			displayName: "Magma Forge",
-			assetFiles: ["magma-forge.glb"],
+			assetFiles: ["surface.webp"],
 		});
 		const repository: CosmeticRepository = {
 			findAll: async () => [magma],
@@ -26,7 +26,7 @@ describe("GetAdminCosmetics", () => {
 			sign: () => "",
 			signMany: () => ({}),
 			signManifest: async (prefix, files) => ({
-				assets: { "magma-forge.glb": `https://r2.test/${prefix}${files?.[0]}` },
+				assets: { "surface.webp": `https://r2.test/${prefix}${files?.[0]}` },
 				expiresAt: "2026-08-11T20:00:00.000Z",
 			}),
 		};
@@ -41,41 +41,40 @@ describe("GetAdminCosmetics", () => {
 				assetRef: "playmats/magma-forge/",
 				displayName: "Magma Forge",
 				active: true,
-				assetFiles: ["magma-forge.glb"],
+				assetFiles: ["surface.webp"],
 				assets: {
-					"magma-forge.glb": "https://r2.test/playmats/magma-forge/magma-forge.glb",
+					"surface.webp": "https://r2.test/playmats/magma-forge/surface.webp",
 				},
 				assetsExpiresAt: "2026-08-11T20:00:00.000Z",
 			},
 		]);
 	});
 
-	it("surfaces a companion animation profile for editing", async () => {
-		const companion = Cosmetic.create({
-			id: "companion-1",
-			type: CosmeticType.COMPANION,
-			tier: CosmeticTier.EXCLUSIVE,
-			assetRef: "companions/golden-dragon/",
-			displayName: "Golden Dragon",
-			animation: { motion: { preset: "hover", intensity: 0.8 } },
-			assetFiles: ["dragon.glb"],
+	it("exposes no animation field on admin rows", async () => {
+		const stage = Cosmetic.create({
+			id: "stage-1",
+			type: CosmeticType.PLAYMAT,
+			tier: CosmeticTier.STANDARD,
+			assetRef: "playmats/kagura-castle/",
+			displayName: "Castillo de Kagura",
+			assetFiles: ["surface.webp"],
 		});
 		const repository: CosmeticRepository = {
-			findAll: async () => [companion],
-			findById: async () => companion,
+			findAll: async () => [stage],
+			findById: async () => stage,
 			save: async () => undefined,
 		};
 		const signer: AssetUrlSigner = {
 			sign: () => "",
 			signMany: () => ({}),
 			signManifest: async () => ({
-				assets: { "dragon.glb": "https://r2.test/dragon.glb" },
+				assets: { "surface.webp": "https://r2.test/surface.webp" },
 				expiresAt: "2026-08-11T20:00:00.000Z",
 			}),
 		};
 
 		const [result] = await new GetAdminCosmetics(repository, signer).run();
 
-		expect(result?.animation?.motion).toEqual({ preset: "hover", intensity: 0.8 });
+		expect(result).not.toHaveProperty("animation");
 	});
 });

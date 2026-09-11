@@ -13,11 +13,11 @@ import { EntitlementPostgresRepository } from "../modules/entitlements/infrastru
 //   bun run src/scripts/assign-cosmetic.ts <userId> <assetRef> <source>
 //
 //   userId    the target user's id (users.id is varchar in the shared schema)
-//   assetRef  R2 folder prefix of the cosmetic (e.g. companions/terminator/)
+//   assetRef  R2 folder prefix of the cosmetic (e.g. playmats/kagura-castle/)
 //   source    EntitlementSource: REGISTRATION | DONATION | PURCHASE | CAMPAIGN
 //
 // Example:
-//   bun run src/scripts/assign-cosmetic.ts 1a2b3c companions/terminator/ CAMPAIGN
+//   bun run src/scripts/assign-cosmetic.ts 1a2b3c playmats/kagura-castle/ CAMPAIGN
 
 const USAGE = "Usage: bun run src/scripts/assign-cosmetic.ts <userId> <assetRef> <source>";
 

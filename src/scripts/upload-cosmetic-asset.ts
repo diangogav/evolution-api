@@ -6,7 +6,7 @@ dotenv.config();
 
 const USAGE =
 	"Usage: bun run upload:cosmetic-asset <local-file> <r2-key>\n" +
-	"Example: bun run upload:cosmetic-asset assets/playmats/magma-forge/magma-forge.glb playmats/magma-forge/magma-forge.glb";
+	"Example: bun run upload:cosmetic-asset stages/kagura-castle/surface.webp playmats/kagura-castle/surface.webp";
 
 const [localPath, key] = process.argv.slice(2);
 if (!localPath || !key) throw new Error(USAGE);
@@ -22,10 +22,6 @@ function requiredEnv(name: string): string {
 
 function contentTypeFor(path: string): string {
 	switch (extname(path).toLowerCase()) {
-		case ".glb":
-			return "model/gltf-binary";
-		case ".gltf":
-			return "model/gltf+json";
 		case ".jpg":
 		case ".jpeg":
 			return "image/jpeg";
@@ -33,6 +29,8 @@ function contentTypeFor(path: string): string {
 			return "image/png";
 		case ".webp":
 			return "image/webp";
+		case ".json":
+			return "application/json";
 		default:
 			return "application/octet-stream";
 	}
@@ -48,18 +46,27 @@ const client = new S3Client({
 	endpoint: requiredEnv("R2_ENDPOINT"),
 });
 
-const target = client.file(key);
-if (await target.exists()) {
-	const current = await target.stat();
-	throw new Error(`Refusing to overwrite existing R2 object "${key}" (${current.size} bytes)`);
+// R2 answers HEAD with a 0 content-length for some small objects (seen with theme.json),
+// so the stored size is taken from a listing instead of stat().
+async function storedSize(objectKey: string): Promise<number | undefined> {
+	const listed = await client.list({ prefix: objectKey });
+	return listed.contents?.find((object) => object.key === objectKey)?.size;
 }
 
-const written = await client.write(key, source, { type: contentTypeFor(localPath) });
-const uploaded = await target.stat();
-if (written !== source.size || uploaded.size !== source.size) {
+const existing = await storedSize(key);
+if (existing !== undefined && existing > 0) {
+	throw new Error(`Refusing to overwrite existing R2 object "${key}" (${existing} bytes)`);
+}
+if (existing === 0) console.log(`Replacing empty R2 object "${key}"`);
+
+// Read the bytes first: handing the BunFile straight to S3 uploaded small files empty.
+const bytes = await source.bytes();
+const written = await client.write(key, bytes, { type: contentTypeFor(localPath) });
+const uploaded = await storedSize(key);
+if (written !== bytes.length || uploaded !== bytes.length) {
 	throw new Error(
-		`Upload size mismatch for "${key}": local=${source.size}, write=${written}, remote=${uploaded.size}`,
+		`Upload size mismatch for "${key}": local=${bytes.length}, write=${written}, remote=${uploaded ?? "missing"}`,
 	);
 }
 
-console.log(`Uploaded ${key} (${uploaded.size} bytes)`);
+console.log(`Uploaded ${key} (${uploaded} bytes)`);

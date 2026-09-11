@@ -29,7 +29,7 @@ function build(cosmetic: Cosmetic | null): GetCosmeticAssets {
 		sign: () => "",
 		signMany: () => ({}),
 		signManifest: async (prefix) => ({
-			assets: { "model.gltf": `signed:${prefix}model.gltf` },
+			assets: { "surface.webp": `signed:${prefix}surface.webp` },
 			expiresAt: "2030-01-01T00:00:00.000Z",
 		}),
 	};
@@ -45,7 +45,7 @@ describe("GetCosmeticAssets", () => {
 		const result = await build(standard).run(standard.id, null);
 
 		expect(result).toEqual({
-			assets: { "model.gltf": "signed:playmats/standard/model.gltf" },
+			assets: { "surface.webp": "signed:playmats/standard/surface.webp" },
 			assetsExpiresAt: "2030-01-01T00:00:00.000Z",
 		});
 	});

@@ -6,5 +6,4 @@ export enum CosmeticType {
 	SUMMON_EFFECT = "SUMMON_EFFECT",
 	MUSIC = "MUSIC",
 	TITLE = "TITLE",
-	COMPANION = "COMPANION",
 }

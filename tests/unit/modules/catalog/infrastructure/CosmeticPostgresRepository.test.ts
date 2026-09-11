@@ -28,18 +28,16 @@ describe("CosmeticPostgresRepository", () => {
 		spy.mockRestore();
 	});
 
-	it("maps the animation descriptor when loading a COMPANION by uuid", async () => {
-		const animation = { rigFile: "Rig_Medium_General.glb", clips: { idle: "Idle_A" } };
-		const assetFiles = ["Warrior.glb", "Rig_Medium_General.glb", "preview.jpg"];
+	it("maps the asset file index and carries no animation when loading by uuid", async () => {
+		const assetFiles = ["surface.webp", "background.webp", "theme.json"];
 		const id = "11111111-1111-4111-8111-111111111111";
 		const findOne = mock(async () => ({
 			id,
-			type: CosmeticType.COMPANION,
+			type: CosmeticType.PLAYMAT,
 			tier: CosmeticTier.STANDARD,
-			assetRef: "companions/kaykit-warrior/",
-			displayName: "Warrior",
+			assetRef: "playmats/kagura-castle/",
+			displayName: "Castillo de Kagura",
 			active: true,
-			animation,
 			assetFiles,
 		}));
 		const spy = stubRepository({ findOne });
@@ -47,8 +45,8 @@ describe("CosmeticPostgresRepository", () => {
 		const result = await new CosmeticPostgresRepository().findById(id);
 
 		expect(result).toBeInstanceOf(Cosmetic);
-		expect(result?.animation).toEqual(animation);
 		expect(result?.assetFiles).toEqual(assetFiles);
+		expect(result).not.toHaveProperty("animation");
 
 		spy.mockRestore();
 	});
