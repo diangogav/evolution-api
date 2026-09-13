@@ -82,6 +82,14 @@ export const STANDARD_COSMETICS: StandardCosmeticSeed[] = [
 		assetRef: "playmats/frog-pond/",
 		displayName: "Estanque de la Rana",
 	},
+	// Terrain without zones: the field comes from the separately equipped lane,
+	// and its theme.json projects the environment onto the table's own ground.
+	{
+		type: CosmeticType.PLAYMAT,
+		tier: CosmeticTier.STANDARD,
+		assetRef: "playmats/mossy-ruins/",
+		displayName: "Ruinas de musgo",
+	},
 	// Lanes: the frame a player's zones wear, worn beside the playmat so any
 	// stage pairs with any frame. Only painted lanes need a row — "engraved"
 	// (the plaque the board generates) and "bare" (deliberately none) are
@@ -91,6 +99,12 @@ export const STANDARD_COSMETICS: StandardCosmeticSeed[] = [
 		tier: CosmeticTier.STANDARD,
 		assetRef: "lanes/stone/",
 		displayName: "Losa de piedra",
+	},
+	{
+		type: CosmeticType.LANE,
+		tier: CosmeticTier.STANDARD,
+		assetRef: "lanes/mossy-ruins/",
+		displayName: "Piedra musgosa",
 	},
 	{
 		type: CosmeticType.AVATAR,

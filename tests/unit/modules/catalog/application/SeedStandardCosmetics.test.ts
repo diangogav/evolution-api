@@ -99,6 +99,7 @@ describe("SeedStandardCosmetics", () => {
 				"playmats/arcane/",
 				"playmats/frog-pond/",
 				"playmats/kagura-castle/",
+				"playmats/mossy-ruins/",
 				"playmats/mystic-forest/",
 			]);
 		});
@@ -107,10 +108,10 @@ describe("SeedStandardCosmetics", () => {
 	// Lanes ship as their own cosmetic so a player can pair any stage with any
 	// frame; the two art-less choices live in the client and need no row here.
 	describe("lanes", () => {
-		it("ships the painted lane as a STANDARD cosmetic under its own prefix", () => {
+		it("ships the painted lanes as STANDARD cosmetics under their own prefix", () => {
 			const lanes = STANDARD_COSMETICS.filter((entry) => entry.type === CosmeticType.LANE);
 
-			expect(lanes.map((entry) => entry.assetRef)).toEqual(["lanes/stone/"]);
+			expect(lanes.map((entry) => entry.assetRef)).toEqual(["lanes/stone/", "lanes/mossy-ruins/"]);
 			for (const lane of lanes) {
 				expect(lane.tier).toBe(CosmeticTier.STANDARD);
 				expect(lane.displayName.trim()).not.toBe("");
