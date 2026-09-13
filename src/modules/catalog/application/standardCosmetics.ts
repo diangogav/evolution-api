@@ -125,6 +125,12 @@ export const STANDARD_COSMETICS: StandardCosmeticSeed[] = [
 		displayName: "Hierro de Kagura",
 	},
 	{
+		type: CosmeticType.LANE,
+		tier: CosmeticTier.STANDARD,
+		assetRef: "lanes/pond-pebbles/",
+		displayName: "Guijarros del estanque",
+	},
+	{
 		type: CosmeticType.AVATAR,
 		tier: CosmeticTier.REGISTERED,
 		assetRef: "avatars/baby-frog/",
