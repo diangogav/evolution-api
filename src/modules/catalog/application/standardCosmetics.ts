@@ -113,6 +113,12 @@ export const STANDARD_COSMETICS: StandardCosmeticSeed[] = [
 		displayName: "Bronce arcano",
 	},
 	{
+		type: CosmeticType.LANE,
+		tier: CosmeticTier.STANDARD,
+		assetRef: "lanes/forest-roots/",
+		displayName: "Raíces del bosque",
+	},
+	{
 		type: CosmeticType.AVATAR,
 		tier: CosmeticTier.REGISTERED,
 		assetRef: "avatars/baby-frog/",
