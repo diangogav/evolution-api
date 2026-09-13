@@ -107,6 +107,12 @@ export const STANDARD_COSMETICS: StandardCosmeticSeed[] = [
 		displayName: "Piedra musgosa",
 	},
 	{
+		type: CosmeticType.LANE,
+		tier: CosmeticTier.STANDARD,
+		assetRef: "lanes/arcane-bronze/",
+		displayName: "Bronce arcano",
+	},
+	{
 		type: CosmeticType.AVATAR,
 		tier: CosmeticTier.REGISTERED,
 		assetRef: "avatars/baby-frog/",

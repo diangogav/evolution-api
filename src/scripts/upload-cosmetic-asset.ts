@@ -5,10 +5,14 @@ import { extname } from "node:path";
 dotenv.config();
 
 const USAGE =
-	"Usage: bun run upload:cosmetic-asset <local-file> <r2-key>\n" +
-	"Example: bun run upload:cosmetic-asset stages/kagura-castle/surface.webp playmats/kagura-castle/surface.webp";
+	"Usage: bun run upload:cosmetic-asset <local-file> <r2-key> [--replace]\n" +
+	"Example: bun run upload:cosmetic-asset stages/kagura-castle/surface.webp playmats/kagura-castle/surface.webp\n" +
+	"  --replace  overwrite an existing object. Renewing a theme's artwork is the\n" +
+	"             only routine reason to; without it an existing object is kept.";
 
-const [localPath, key] = process.argv.slice(2);
+const args = process.argv.slice(2);
+const replace = args.includes("--replace");
+const [localPath, key] = args.filter((arg) => arg !== "--replace");
 if (!localPath || !key) throw new Error(USAGE);
 if (key.startsWith("/") || key.includes("..") || !key.includes("/")) {
 	throw new Error(`Invalid R2 key "${key}". Keys must be relative cosmetic paths.`);
@@ -54,10 +58,14 @@ async function storedSize(objectKey: string): Promise<number | undefined> {
 }
 
 const existing = await storedSize(key);
-if (existing !== undefined && existing > 0) {
-	throw new Error(`Refusing to overwrite existing R2 object "${key}" (${existing} bytes)`);
+if (existing !== undefined && existing > 0 && !replace) {
+	throw new Error(
+		`Refusing to overwrite existing R2 object "${key}" (${existing} bytes). Pass --replace to renew it.`,
+	);
 }
-if (existing === 0) console.log(`Replacing empty R2 object "${key}"`);
+if (existing !== undefined) {
+	console.log(`Replacing R2 object "${key}" (${existing} bytes)`);
+}
 
 // Read the bytes first: handing the BunFile straight to S3 uploaded small files empty.
 const bytes = await source.bytes();

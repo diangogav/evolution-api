@@ -111,7 +111,11 @@ describe("SeedStandardCosmetics", () => {
 		it("ships the painted lanes as STANDARD cosmetics under their own prefix", () => {
 			const lanes = STANDARD_COSMETICS.filter((entry) => entry.type === CosmeticType.LANE);
 
-			expect(lanes.map((entry) => entry.assetRef)).toEqual(["lanes/stone/", "lanes/mossy-ruins/"]);
+			expect(lanes.map((entry) => entry.assetRef)).toEqual([
+				"lanes/stone/",
+				"lanes/mossy-ruins/",
+				"lanes/arcane-bronze/",
+			]);
 			for (const lane of lanes) {
 				expect(lane.tier).toBe(CosmeticTier.STANDARD);
 				expect(lane.displayName.trim()).not.toBe("");
