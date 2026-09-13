@@ -119,6 +119,12 @@ export const STANDARD_COSMETICS: StandardCosmeticSeed[] = [
 		displayName: "Raíces del bosque",
 	},
 	{
+		type: CosmeticType.LANE,
+		tier: CosmeticTier.STANDARD,
+		assetRef: "lanes/kagura-iron/",
+		displayName: "Hierro de Kagura",
+	},
+	{
 		type: CosmeticType.AVATAR,
 		tier: CosmeticTier.REGISTERED,
 		assetRef: "avatars/baby-frog/",

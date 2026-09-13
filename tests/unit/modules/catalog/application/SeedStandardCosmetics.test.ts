@@ -116,6 +116,7 @@ describe("SeedStandardCosmetics", () => {
 				"lanes/mossy-ruins/",
 				"lanes/arcane-bronze/",
 				"lanes/forest-roots/",
+				"lanes/kagura-iron/",
 			]);
 			for (const lane of lanes) {
 				expect(lane.tier).toBe(CosmeticTier.STANDARD);
