@@ -127,4 +127,53 @@ describe("PublishCosmetic", () => {
 			}),
 		).rejects.toThrow("already uses assetRef");
 	});
+
+	// Lanes are the frame a player's zones wear — a cosmetic of their own, so
+	// any stage pairs with any lane.
+	it("stores a lane's frame under its own prefix", async () => {
+		const { publish, uploads, saved } = setup();
+
+		const result = await publish.run({
+			type: CosmeticType.LANE,
+			tier: CosmeticTier.STANDARD,
+			assetRef: "lanes/stone/",
+			displayName: "Losa de piedra",
+			files: [{ name: "frame.webp", bytes: new Uint8Array([1, 2, 3]) }],
+		});
+
+		expect(result.assetFiles).toEqual(["frame.webp"]);
+		expect(uploads[0]?.key).toBe("lanes/stone/frame.webp");
+		expect(uploads[0]?.contentType).toBe("image/webp");
+		expect(saved[0]?.type).toBe(CosmeticType.LANE);
+	});
+
+	it("rejects a lane with no frame, before touching storage", async () => {
+		const { publish, uploads } = setup();
+
+		await expect(
+			publish.run({
+				type: CosmeticType.LANE,
+				tier: CosmeticTier.STANDARD,
+				assetRef: "lanes/stone/",
+				displayName: "Losa de piedra",
+				files: [{ name: "readme.txt", bytes: new Uint8Array([1]) }],
+			}),
+		).rejects.toThrow("LANE requires frame.webp, frame.png or frame.jpg");
+
+		expect(uploads).toHaveLength(0);
+	});
+
+	it("keeps lanes out of the playmat prefix", async () => {
+		const { publish } = setup();
+
+		await expect(
+			publish.run({
+				type: CosmeticType.LANE,
+				tier: CosmeticTier.STANDARD,
+				assetRef: "playmats/stone/",
+				displayName: "Losa de piedra",
+				files: [{ name: "frame.webp", bytes: new Uint8Array([1]) }],
+			}),
+		).rejects.toThrow("assetRef for LANE must match lanes/kebab-case-slug/");
+	});
 });

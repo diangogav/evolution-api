@@ -82,6 +82,16 @@ export const STANDARD_COSMETICS: StandardCosmeticSeed[] = [
 		assetRef: "playmats/frog-pond/",
 		displayName: "Estanque de la Rana",
 	},
+	// Lanes: the frame a player's zones wear, worn beside the playmat so any
+	// stage pairs with any frame. Only painted lanes need a row — "engraved"
+	// (the plaque the board generates) and "bare" (deliberately none) are
+	// choices the client already ships.
+	{
+		type: CosmeticType.LANE,
+		tier: CosmeticTier.STANDARD,
+		assetRef: "lanes/stone/",
+		displayName: "Losa de piedra",
+	},
 	{
 		type: CosmeticType.AVATAR,
 		tier: CosmeticTier.REGISTERED,
