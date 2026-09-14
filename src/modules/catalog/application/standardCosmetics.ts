@@ -90,6 +90,12 @@ export const STANDARD_COSMETICS: StandardCosmeticSeed[] = [
 		assetRef: "playmats/mossy-ruins/",
 		displayName: "Ruinas de musgo",
 	},
+	{
+		type: CosmeticType.PLAYMAT,
+		tier: CosmeticTier.STANDARD,
+		assetRef: "playmats/halloween-graveyard/",
+		displayName: "Cementerio de Halloween",
+	},
 	// Lanes: the frame a player's zones wear, worn beside the playmat so any
 	// stage pairs with any frame. Only painted lanes need a row — "engraved"
 	// (the plaque the board generates) and "bare" (deliberately none) are
@@ -129,6 +135,12 @@ export const STANDARD_COSMETICS: StandardCosmeticSeed[] = [
 		tier: CosmeticTier.STANDARD,
 		assetRef: "lanes/pond-pebbles/",
 		displayName: "Guijarros del estanque",
+	},
+	{
+		type: CosmeticType.LANE,
+		tier: CosmeticTier.STANDARD,
+		assetRef: "lanes/halloween-bones/",
+		displayName: "Huesos de Halloween",
 	},
 	{
 		type: CosmeticType.AVATAR,

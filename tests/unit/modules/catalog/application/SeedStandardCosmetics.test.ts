@@ -98,6 +98,7 @@ describe("SeedStandardCosmetics", () => {
 			expect(playmats.map((entry) => entry.assetRef).sort()).toEqual([
 				"playmats/arcane/",
 				"playmats/frog-pond/",
+				"playmats/halloween-graveyard/",
 				"playmats/kagura-castle/",
 				"playmats/mossy-ruins/",
 				"playmats/mystic-forest/",
@@ -118,6 +119,7 @@ describe("SeedStandardCosmetics", () => {
 				"lanes/forest-roots/",
 				"lanes/kagura-iron/",
 				"lanes/pond-pebbles/",
+				"lanes/halloween-bones/",
 			]);
 			for (const lane of lanes) {
 				expect(lane.tier).toBe(CosmeticTier.STANDARD);
