@@ -8,6 +8,8 @@ import { MatchesGetter } from "../../modules/match/application/MatchesGetter";
 import { MatchPostgresRepository } from "../../modules/match/infrastructure/MatchPostgresRepository";
 import { UserStatsFinder } from "../../modules/stats/application/UserStatsFinder";
 import { UserStatsPostgresRepository } from "../../modules/stats/infrastructure/UserStatsPostgresRepository";
+import { TierResolver } from "../../modules/tiers/application/TierResolver";
+import { TiersPostgresRepository } from "../../modules/tiers/infrastructure/TiersPostgresRepository";
 import { UserForgotPassword } from "../../modules/user/application/UserForgotPassword";
 import { UserGamePasswordGenerator } from "../../modules/user/application/UserGamePasswordGenerator";
 import { UserRegister } from "../../modules/user/application/UserRegister";
@@ -37,6 +39,7 @@ const logger = new Pino();
 const emailSender = new ResendEmailSender();
 const userRepository = new UserPostgresRepository();
 const userStatsRepository = new UserStatsPostgresRepository();
+const tierResolver = new TierResolver(new TiersPostgresRepository());
 const matchRepository = new MatchPostgresRepository();
 const hash = new Hash();
 const jwt = new JWT(config.jwt);
@@ -270,13 +273,18 @@ export const userRouter = new Elysia({ prefix: "/users" })
 			const banListName = query.banListName;
 			const season = query.season;
 			const userId = params.userId;
-			return new UserStatsFinder(userStatsRepository).find({ banListName, userId, season });
+			return new UserStatsFinder(userStatsRepository, tierResolver).find({
+				banListName,
+				userId,
+				season,
+			});
 		},
 		{
 			detail: {
 				tags: ["User Management"],
 				summary: "Get user statistics",
-				description: "Retrieves user statistics for a specific ban list and season",
+				description:
+					"Retrieves user statistics for a specific ban list and season. Each ratings[] entry carries its live ranked tier (see TierViewSchema); tier is null for ranks without a ladder, such as Global.",
 				responses: {
 					200: {
 						description: "Statistics retrieved successfully",
@@ -284,11 +292,48 @@ export const userRouter = new Elysia({ prefix: "/users" })
 							"application/json": {
 								example: {
 									userId: "user-123",
-									banListName: "Global",
-									season: 1,
-									wins: 15,
-									losses: 5,
-									winRate: 0.75,
+									username: "player1",
+									points: 62,
+									wins: 34,
+									losses: 21,
+									winRate: "61.82",
+									position: 12,
+									achievements: [],
+									ratings: [
+										{
+											banListName: "TCG",
+											rating: 1180,
+											gamesPlayed: 34,
+											peak: 1210,
+											provisional: false,
+											rankType: "banlist",
+											tier: {
+												id: "gold",
+												name: "Gold",
+												effectivePoints: 17,
+												gamesPlayed: 34,
+												progress: {
+													nextTierId: "platinum",
+													unit: "points",
+													current: 17,
+													target: 25,
+													distinctOpponentWins: { current: 4, required: 5 },
+												},
+											},
+										},
+										{
+											banListName: "Global",
+											rating: 1150,
+											gamesPlayed: 55,
+											peak: 1190,
+											provisional: false,
+											rankType: "global",
+											tier: null,
+										},
+									],
+									rating: 1150,
+									peak: 1190,
+									provisional: false,
 								},
 							},
 						},

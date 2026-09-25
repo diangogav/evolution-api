@@ -1,8 +1,6 @@
 import { describe, expect, it } from "bun:test";
 
 import {
-	BACKFILL_CUTOFF,
-	BACKFILL_CUTOFF_MS,
 	compareTierGames,
 	gameTime,
 	utcDay,
@@ -11,33 +9,38 @@ import { edisonBackfillBurst, tierGame } from "../fixtures/season7Slices";
 
 const ids = (games: { gameId: string }[]) => games.map((game) => game.gameId);
 
-describe("BACKFILL_CUTOFF", () => {
-	it("is the UTC midnight that ends the 2026-09-09 bulk backfill, in both representations", () => {
-		expect(BACKFILL_CUTOFF).toBe("2026-09-10 00:00:00");
-		expect(BACKFILL_CUTOFF_MS).toBe(Date.UTC(2026, 8, 10));
-		expect(Date.parse(`${BACKFILL_CUTOFF.replace(" ", "T")}Z`)).toBe(BACKFILL_CUTOFF_MS);
-	});
-});
-
 describe("gameTime", () => {
-	it("uses the duel time for a row written before the cutoff", () => {
-		const game = tierGame({ appliedAt: BACKFILL_CUTOFF_MS - 1, duelAt: Date.UTC(2026, 8, 1) });
+	it("uses the duel time for a row the backfill wrote long after the match", () => {
+		const game = tierGame({
+			appliedAt: Date.UTC(2026, 8, 9, 19, 21),
+			duelAt: Date.UTC(2026, 8, 1),
+		});
 
 		expect(gameTime(game)).toBe(Date.UTC(2026, 8, 1));
 	});
 
-	it("falls back to the applied time when a pre-cutoff row has no duel", () => {
-		const game = tierGame({ appliedAt: BACKFILL_CUTOFF_MS - 1, duelAt: null });
+	it("uses the duel time for a row written live, minutes after the match", () => {
+		const game = tierGame({
+			appliedAt: Date.UTC(2026, 8, 15, 10, 5),
+			duelAt: Date.UTC(2026, 8, 15, 10),
+		});
 
-		expect(gameTime(game)).toBe(BACKFILL_CUTOFF_MS - 1);
+		expect(gameTime(game)).toBe(Date.UTC(2026, 8, 15, 10));
 	});
 
-	it("ignores the duel time from the cutoff onwards", () => {
-		const atCutoff = tierGame({ appliedAt: BACKFILL_CUTOFF_MS, duelAt: Date.UTC(2026, 8, 1) });
-		const later = tierGame({ appliedAt: Date.UTC(2026, 8, 15), duelAt: Date.UTC(2026, 8, 1) });
+	it("uses the duel time even when the ledger row predates it", () => {
+		const game = tierGame({
+			appliedAt: Date.UTC(2026, 8, 15, 10),
+			duelAt: Date.UTC(2026, 8, 15, 10, 1),
+		});
 
-		expect(gameTime(atCutoff)).toBe(BACKFILL_CUTOFF_MS);
-		expect(gameTime(later)).toBe(Date.UTC(2026, 8, 15));
+		expect(gameTime(game)).toBe(Date.UTC(2026, 8, 15, 10, 1));
+	});
+
+	it("falls back to the applied time when the game has no duel row", () => {
+		const game = tierGame({ appliedAt: Date.UTC(2026, 8, 15, 10), duelAt: null });
+
+		expect(gameTime(game)).toBe(Date.UTC(2026, 8, 15, 10));
 	});
 });
 
@@ -70,7 +73,7 @@ describe("compareTierGames", () => {
 			appliedId: "a",
 			appliedAt: Date.UTC(2026, 8, 15, 11),
 		});
-		const pinned = { appliedAt: BACKFILL_CUTOFF_MS - 1, duelAt: Date.UTC(2026, 8, 1) };
+		const pinned = { appliedAt: Date.UTC(2026, 8, 9, 19, 21), duelAt: Date.UTC(2026, 8, 1) };
 
 		expect(ids([second, first].sort(compareTierGames))).toEqual(["early", "late"]);
 		expect(
@@ -81,6 +84,24 @@ describe("compareTierGames", () => {
 				].sort(compareTierGames),
 			),
 		).toEqual(["a", "b"]);
+	});
+
+	it("breaks a full tie by applied id the way Postgres orders the ledger uuids", () => {
+		const pinned = { appliedAt: Date.UTC(2026, 8, 15, 10), duelAt: null };
+		const ids = [
+			"f3b9c2a1-7d4e-4c0b-9a6f-1e2d3c4b5a60",
+			"0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+			"0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4e",
+			"9f8e7d6c-5b4a-4c3d-8e2f-1a0b9c8d7e6f",
+		];
+		const games = ids.map((appliedId) => tierGame({ ...pinned, gameId: appliedId, appliedId }));
+
+		expect(games.sort(compareTierGames).map((game) => game.appliedId)).toEqual([
+			"0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+			"0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4e",
+			"9f8e7d6c-5b4a-4c3d-8e2f-1a0b9c8d7e6f",
+			"f3b9c2a1-7d4e-4c0b-9a6f-1e2d3c4b5a60",
+		]);
 	});
 });
 
