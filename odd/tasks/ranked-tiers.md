@@ -50,18 +50,18 @@ Route per task: `inline` (orchestrator, mechanical) or `delegated` (bounded writ
 
 Focused command: `bun test tests/unit/modules/tiers/domain/ tests/unit/modules/tiers/infrastructure/TierSchemas.test.ts`. Runtime harness: N/A (pure module, no HTTP surface yet). Rollback: delete `src/modules/tiers/**` and `tests/unit/modules/tiers/**`.
 
-- [ ] 1.1 Fixtures `tests/unit/modules/tiers/fixtures/season7Slices.ts`: five anonymized slices (Edison backfill burst with reversed duelAt; Edison same-day session vs one opponent; TCG Gold-then-losses floor; TCG >= 25 points with < 5 distinct opponents; one TCG game with and without reversal+reinstatement) plus a `tierGame()` builder. Synthetic ids only. (delegated)
-- [ ] 1.2 RED `TierCatalog.test.ts`: 7 entries in order, thresholds null/3/10/25/40, kinds, `ladderFor(rankName)` overrides. (delegated)
-- [ ] 1.3 GREEN `src/modules/tiers/domain/TierCatalog.ts`: types, `TIER_CATALOG`, `ladderFor`, constants `DAILY_OPPONENT_CAP=2`, `ROOKIE_MIN_GAMES=5`, `MASTER_MIN_GAMES=20`, `MASTER_SIZE=5`, `DISTINCT_OPPONENT_WINS=5`. (delegated)
-- [ ] 1.4 RED `TierGame.test.ts`: `compareTierGames` order, `gameTime` cutoff rule, `utcDay` at a day boundary; uses the backfill-burst slice. (delegated)
-- [ ] 1.5 GREEN `src/modules/tiers/domain/TierGame.ts`: `TierGame`, `BACKFILL_CUTOFF` ("2026-09-10 00:00:00"), `BACKFILL_CUTOFF_MS`, `gameTime`, `compareTierGames`, `utcDay`. (delegated)
-- [ ] 1.6 RED `TierReplay.test.ts`: Rookie minimum; threshold boundaries 2/3/9/10/24/25/39/40; floors lock only at grant and hold; Platinum gate blocked caps at Gold; 3-3 same-day session; new UTC day resets the cap; cross-day win-trading stays Gold; progress objects; annul/reinstate as present/absent row; null opponent. (delegated)
-- [ ] 1.7 GREEN `src/modules/tiers/domain/TierReplay.ts`: `TierStanding`, `TierProgress`, `replayTier(games, ladder)`. (delegated)
-- [ ] 1.8 RED `MasterSelection.test.ts`: eligibility, strict top 5, boundary tie never expands, fewer than 5 gives empty. (delegated)
-- [ ] 1.9 GREEN `src/modules/tiers/domain/MasterSelection.ts`: `MasterCandidate`, `isMasterEligible`, `selectMaster`. (delegated)
-- [ ] 1.10 RED `tests/unit/modules/tiers/infrastructure/TierSchemas.test.ts`: `Value.Check` on Master/Gold/Diamond views and the default catalog payload. (delegated)
-- [ ] 1.11 GREEN `src/modules/tiers/infrastructure/TierSchemas.ts`: `TierIdSchema`, `TierProgressSchema`, `TierViewSchema`, `TierDefinitionSchema`, `RankedTierCatalogSchema`. (delegated)
-- [ ] 1.12 PR1 gate: `bun test`, `bun run lint`, `bun run build`; diff near ~270 prod / ~410 test; every GREEN commit preceded by its RED commit. (inline)
+- [x] 1.1 Fixtures `tests/unit/modules/tiers/fixtures/season7Slices.ts`: five anonymized slices (Edison backfill burst with reversed duelAt; Edison same-day session vs one opponent; TCG Gold-then-losses floor; TCG >= 25 points with < 5 distinct opponents; one TCG game with and without reversal+reinstatement) plus a `tierGame()` builder. Synthetic ids only. (delegated)
+- [x] 1.2 RED `TierCatalog.test.ts`: 7 entries in order, thresholds null/3/10/25/40, kinds, `ladderFor(rankName)` overrides. (delegated)
+- [x] 1.3 GREEN `src/modules/tiers/domain/TierCatalog.ts`: types, `TIER_CATALOG`, `ladderFor`, constants `DAILY_OPPONENT_CAP=2`, `ROOKIE_MIN_GAMES=5`, `MASTER_MIN_GAMES=20`, `MASTER_SIZE=5`, `DISTINCT_OPPONENT_WINS=5`. (delegated)
+- [x] 1.4 RED `TierGame.test.ts`: `compareTierGames` order, `gameTime` cutoff rule, `utcDay` at a day boundary; uses the backfill-burst slice. (delegated)
+- [x] 1.5 GREEN `src/modules/tiers/domain/TierGame.ts`: `TierGame`, `BACKFILL_CUTOFF` ("2026-09-10 00:00:00"), `BACKFILL_CUTOFF_MS`, `gameTime`, `compareTierGames`, `utcDay`. (delegated)
+- [x] 1.6 RED `TierReplay.test.ts`: Rookie minimum; threshold boundaries 2/3/9/10/24/25/39/40; floors lock only at grant and hold; Platinum gate blocked caps at Gold; 3-3 same-day session; new UTC day resets the cap; cross-day win-trading stays Gold; progress objects; annul/reinstate as present/absent row; null opponent. (delegated)
+- [x] 1.7 GREEN `src/modules/tiers/domain/TierReplay.ts`: `TierStanding`, `TierProgress`, `replayTier(games, ladder)`. (delegated)
+- [x] 1.8 RED `MasterSelection.test.ts`: eligibility, strict top 5, boundary tie never expands, fewer than 5 gives empty. (delegated)
+- [x] 1.9 GREEN `src/modules/tiers/domain/MasterSelection.ts`: `MasterCandidate`, `isMasterEligible`, `selectMaster`. (delegated)
+- [x] 1.10 RED `tests/unit/modules/tiers/infrastructure/TierSchemas.test.ts`: `Value.Check` on Master/Gold/Diamond views and the default catalog payload. (delegated)
+- [x] 1.11 GREEN `src/modules/tiers/infrastructure/TierSchemas.ts`: `TierIdSchema`, `TierProgressSchema`, `TierViewSchema`, `TierDefinitionSchema`, `RankedTierCatalogSchema`. (delegated)
+- [x] 1.12 PR1 gate: `bun test`, `bun run lint`, `bun run build`; diff near ~270 prod / ~410 test; every GREEN commit preceded by its RED commit. (inline)
 
 ### Work unit 2 — PR2 profile read path (`feat/ranked-tiers-02-profile`)
 
@@ -126,14 +126,20 @@ Focused command: `bun test tests/unit/modules/tiers/application/GetTierCatalog.t
 
 | Task | Route | Commit | Focused check | Notes |
 |------|-------|--------|---------------|-------|
-| (none yet) | | | | |
+| 1.1 fixtures | delegated | e1b373f (with 1.4 RED), ecdbd76 | used by 1.4/1.6/1.8 tests | five anonymized slices; slice 4 synthesized (no real TCG player is point-rich and opponent-poor) |
+| 1.2 / 1.3 TierCatalog | delegated | RED 465e094, GREEN f1da570 | `bun test tests/unit/modules/tiers/domain/TierCatalog.test.ts` 9 pass | `ladderFor(rankName?, catalog = TIER_CATALOG)` takes an optional catalog for override tests |
+| 1.4 / 1.5 TierGame | delegated | RED e1b373f, GREEN 67d3a76 | `.../TierGame.test.ts` 9 pass | |
+| 1.6 / 1.7 TierReplay | delegated | RED ecdbd76, 4709d71 (superseded), GREEN 61ed540; correction RED 9df7a86, 91de1df, GREEN e8cca81 | `.../TierReplay.test.ts` 35 pass | effective points may go negative before the first grant (decision #1212); zero clamp reverted |
+| 1.8 / 1.9 MasterSelection | delegated | RED a2682bf, GREEN 2b597c1 | `.../MasterSelection.test.ts` 10 pass | |
+| 1.10 / 1.11 TierSchemas | delegated | RED 324ac6c, GREEN 935ab54, typing fix fe25e53 (test-only) | `.../infrastructure/TierSchemas.test.ts` 10 pass | `@sinclair/typebox/value` resolves through Elysia, no new dependency |
+| 1.12 PR1 gate | inline | tree e8cca81 | `bun test tests/unit/modules/tiers/` 73 pass; `bun test` 368 pass / 0 fail / 68 files; `bun run lint` clean (1 pre-existing biome.json info); `bun run build` clean | authored 1387 lines (391 production, 996 tests); `size:exception` accepted by the user (#1215) |
 
 ## Delivery slices
 
 | PR | Branch | Base | Commits | Authored lines | Status |
 |----|--------|------|---------|----------------|--------|
-| tracker | feat/ranked-tiers | main | | | pending |
-| 1 | feat/ranked-tiers-01-domain | feat/ranked-tiers | | | pending |
+| tracker | feat/ranked-tiers | main (6f8f57d) | | | created, not pushed |
+| 1 | feat/ranked-tiers-01-domain | feat/ranked-tiers | ed93df9..e8cca81 (16 commits) | 1387 authored (391 prod) + 149 odd doc | implemented; size:exception; native review pending |
 | 2 | feat/ranked-tiers-02-profile | feat/ranked-tiers-01-domain | | | pending |
 | 3 | feat/ranked-tiers-03-leaderboard-master | feat/ranked-tiers-02-profile | | | pending |
 | 4 | feat/ranked-tiers-04-catalog | feat/ranked-tiers-03-leaderboard-master | | | pending |
@@ -146,4 +152,4 @@ Focused command: `bun test tests/unit/modules/tiers/application/GetTierCatalog.t
 
 ## Next step
 
-Create the tracker and PR1 branches, then implement work unit 1 through one bounded writer under Strict TDD.
+Run the native review for the PR1 candidate (assess: medium, slice budget reached), then start work unit 2 on `feat/ranked-tiers-02-profile` from the PR1 branch.
