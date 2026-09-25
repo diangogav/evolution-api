@@ -40,8 +40,9 @@ function qualifies(tier: TierDefinition, effectivePoints: number, beaten: number
  * Folds a player's active games, in replay order, into their standing. Each
  * game counts toward the totals; its points move the running value only
  * while it is within the daily per-opponent cap, and the running value never
- * drops below the threshold of the highest tier granted so far. A tier is
- * granted the moment its threshold and its distinct-opponent requirement
+ * drops below the threshold of the highest tier granted so far. Until a tier
+ * is granted there is no floor at all, so the value may go negative. A tier
+ * is granted the moment its threshold and its distinct-opponent requirement
  * hold at once; the Rookie gate is applied last and never touches the floor.
  */
 export function replayTier(games: TierGame[], ladder: TierLadder): TierStanding {
@@ -50,7 +51,7 @@ export function replayTier(games: TierGame[], ladder: TierLadder): TierStanding 
 	const beaten = new Set<string>();
 	const dailyGames = new Map<string, number>();
 	let granted = grantable[0];
-	let lockedFloor = 0;
+	let lockedFloor: number | null = null;
 	let effectivePoints = 0;
 	let gamesPlayed = 0;
 
@@ -65,7 +66,8 @@ export function replayTier(games: TierGame[], ladder: TierLadder): TierStanding 
 			dailyGames.set(key, played + 1);
 			if (played >= ladder.dailyOpponentCap) delta = 0;
 		}
-		effectivePoints = Math.max(lockedFloor, effectivePoints + delta);
+		effectivePoints += delta;
+		if (lockedFloor !== null) effectivePoints = Math.max(lockedFloor, effectivePoints);
 
 		for (const tier of grantable) {
 			if (tier.order > granted.order && qualifies(tier, effectivePoints, beaten.size)) {
