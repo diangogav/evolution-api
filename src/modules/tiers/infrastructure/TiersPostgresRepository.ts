@@ -1,5 +1,5 @@
 import { dataSource } from "../../../evolution-types/src/data-source";
-import { BACKFILL_CUTOFF, TierGame } from "../domain/TierGame";
+import { TierGame } from "../domain/TierGame";
 import { TierGamesQuery, TierRank, TiersRepository } from "../domain/TiersRepository";
 
 const FIND_ELIGIBLE_RANKS_QUERY = `SELECT id, name FROM ranks
@@ -7,8 +7,8 @@ const FIND_ELIGIBLE_RANKS_QUERY = `SELECT id, name FROM ranks
 
 // One netted row per active game: every ledger kind is summed, so an active
 // game carries exactly its applied values, and the kind balance in HAVING is
-// the same arithmetic projectRating uses for gamesPlayed. The duel lookup is
-// gated per row so games written after the backfill cutoff never pay for it.
+// the same arithmetic projectRating uses for gamesPlayed. Every row looks up
+// its duel time: the ledger's created_at only says when the row was written.
 // No ORDER BY: the replay order is a domain rule (compareTierGames).
 const FIND_TIER_GAMES_QUERY = `WITH games AS (
 	SELECT pl.user_id, pl.rank_id, pl.game_id,
@@ -27,9 +27,7 @@ SELECT g.user_id AS "userId", g.rank_id AS "rankId", g.game_id AS "gameId",
        g.points_delta AS "pointsDelta", g.wins_delta > 0 AS "won",
        g.applied_id AS "appliedId",
        (EXTRACT(EPOCH FROM g.applied_at) * 1000)::float8 AS "appliedAt",
-       CASE WHEN g.applied_at < $4 THEN
-         (SELECT (EXTRACT(EPOCH FROM MIN(d.date)) * 1000)::float8 FROM duels d WHERE d.game_id = g.game_id)
-       END AS "duelAt",
+       (SELECT (EXTRACT(EPOCH FROM MIN(d.date)) * 1000)::float8 FROM duels d WHERE d.game_id = g.game_id) AS "duelAt",
        (SELECT MIN(o.user_id) FROM points_ledger o
          WHERE o.game_id = g.game_id AND o.rank_id = g.rank_id
            AND o.kind = 'applied' AND o.user_id <> g.user_id) AS "opponentId"
@@ -45,8 +43,6 @@ export class TiersPostgresRepository implements TiersRepository {
 	async findTierGames({ userIds, rankIds, season }: TierGamesQuery): Promise<TierGame[]> {
 		if (userIds.length === 0 || rankIds.length === 0) return [];
 
-		// The cutoff travels as its literal text: a Date would be serialized in
-		// process-local time against a timestamp without time zone column.
-		return dataSource.query(FIND_TIER_GAMES_QUERY, [userIds, rankIds, season, BACKFILL_CUTOFF]);
+		return dataSource.query(FIND_TIER_GAMES_QUERY, [userIds, rankIds, season]);
 	}
 }

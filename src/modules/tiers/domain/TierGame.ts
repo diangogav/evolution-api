@@ -1,12 +1,3 @@
-/**
- * End of the 2026-09-09 bulk backfill. Ledger rows created before it carry
- * the backfill time, not the match time, so their order comes from the duel
- * they belong to. UTC, and kept as the literal the SQL parameter receives so
- * no process-local time zone is ever involved.
- */
-export const BACKFILL_CUTOFF = "2026-09-10 00:00:00";
-export const BACKFILL_CUTOFF_MS = Date.UTC(2026, 8, 10);
-
 /** One active game as the replay sees it: already netted across ledger kinds. */
 export type TierGame = {
 	gameId: string;
@@ -24,12 +15,17 @@ export type TierGame = {
 	appliedId: string;
 	/** Epoch ms of the applied row. */
 	appliedAt: number;
-	/** Epoch ms of min(duels.date); only fetched for rows before the cutoff. */
+	/** Epoch ms of min(duels.date) for the game, when a duel row exists. */
 	duelAt: number | null;
 };
 
+/**
+ * When the game was played. The ledger's created_at was bulk-written on
+ * 2026-09-09 in dev and will be on another date in production, so it only
+ * says when the row was written; duels.date is the game time everywhere.
+ */
 export function gameTime(game: TierGame): number {
-	return game.appliedAt < BACKFILL_CUTOFF_MS && game.duelAt !== null ? game.duelAt : game.appliedAt;
+	return game.duelAt ?? game.appliedAt;
 }
 
 /** Game time, then the applied row's created_at, then its id: the replay order. */
