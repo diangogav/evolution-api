@@ -1,5 +1,4 @@
 import cors from "@elysiajs/cors";
-import swagger from "@elysiajs/swagger";
 import { Elysia } from "elysia";
 
 import { AuthenticationError } from "../shared/errors/AuthenticationError";
@@ -22,6 +21,7 @@ import { statsRouter } from "./routes/stats-router";
 import { ticketRouter } from "./routes/ticket-router";
 import { tournamentRouter } from "./routes/tournament-router";
 import { userRouter } from "./routes/user-router";
+import { createSwagger } from "./swagger";
 
 export class Server {
 	private readonly app: Elysia;
@@ -30,73 +30,7 @@ export class Server {
 	constructor(logger: Logger) {
 		this.app = new Elysia()
 			.use(cors())
-			.use(
-				swagger({
-					documentation: {
-						info: {
-							title: "Evolution API - Tournaments",
-							version: "1.0.0",
-							description: "API for managing tournaments, matches, participants, and leaderboards",
-						},
-						tags: [
-							{
-								name: "Authentication",
-								description: "User authentication and registration endpoints",
-							},
-							{
-								name: "User Management",
-								description: "User profile and account management",
-							},
-							{
-								name: "User Bans",
-								description: "User ban management (Admin only)",
-							},
-							{
-								name: "Leaderboard",
-								description: "Rankings and statistics endpoints",
-							},
-							{
-								name: "Ban Lists",
-								description: "Game ban list information",
-							},
-							{
-								name: "Tournaments",
-								description: "Tournament management and enrollment",
-							},
-							{
-								name: "Players & Participants",
-								description: "Endpoints for querying player and participant information",
-							},
-							{
-								name: "Bracket Management",
-								description: "Endpoints for generating and retrieving tournament brackets",
-							},
-							{
-								name: "Match Management",
-								description: "Endpoints for managing match results and match data",
-							},
-							{
-								name: "Statistics",
-								description: "Global statistics and historical data",
-							},
-							{
-								name: "Cosmetics",
-								description: "Cosmetics catalog and customization",
-							},
-						],
-						components: {
-							securitySchemes: {
-								bearerAuth: {
-									type: "http",
-									scheme: "bearer",
-									bearerFormat: "JWT",
-									description: "JWT token obtained from authentication endpoint",
-								},
-							},
-						},
-					},
-				}),
-			)
+			.use(createSwagger())
 			.onError(({ error, set }) => {
 				if (error instanceof ConflictError) {
 					set.status = 409;
@@ -119,23 +53,7 @@ export class Server {
 				}
 			});
 
-		// @ts-expect-error linter not config correctly
-		this.app.group("/api/v1", (app: Elysia) => {
-			return app
-				.use(userRouter)
-				.use(leaderboardRouter)
-				.use(rankedTiersRouter)
-				.use(banListRouter)
-				.use(tournamentRouter)
-				.use(statsRouter)
-				.use(ticketRouter)
-				.use(cosmeticsRouter)
-				.use(meCosmeticsRouter)
-				.use(loadoutRouter)
-				.use(publicLoadoutRouter)
-				.use(adminCosmeticsRouter)
-				.use(adminModerationRouter);
-		});
+		mountApiV1Routes(this.app);
 		this.logger = logger;
 	}
 
@@ -144,4 +62,24 @@ export class Server {
 			this.logger.info(`Server started on port ${process.env.PORT ?? 3000}!`);
 		});
 	}
+}
+
+export function mountApiV1Routes(app: Elysia) {
+	// @ts-expect-error linter not config correctly
+	return app.group("/api/v1", (group: Elysia) => {
+		return group
+			.use(userRouter)
+			.use(leaderboardRouter)
+			.use(rankedTiersRouter)
+			.use(banListRouter)
+			.use(tournamentRouter)
+			.use(statsRouter)
+			.use(ticketRouter)
+			.use(cosmeticsRouter)
+			.use(meCosmeticsRouter)
+			.use(loadoutRouter)
+			.use(publicLoadoutRouter)
+			.use(adminCosmeticsRouter)
+			.use(adminModerationRouter);
+	});
 }
