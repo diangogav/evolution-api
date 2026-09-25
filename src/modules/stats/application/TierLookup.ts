@@ -11,4 +11,10 @@ export interface TierLookup {
 		season: number;
 		rankNames: string[];
 	}): Promise<Map<string, TierView>>;
+	/** The tier of each user on one leaderboard page of a rank, keyed by user id; empty for an untiered rank. */
+	forLeaderboardPage(query: {
+		rankName: string;
+		season: number;
+		userIds: string[];
+	}): Promise<Map<string, TierView>>;
 }
