@@ -67,17 +67,17 @@ Focused command: `bun test tests/unit/modules/tiers/domain/ tests/unit/modules/t
 
 Focused command: `bun test tests/unit/modules/tiers/infrastructure/TiersPostgresRepository.test.ts tests/unit/modules/tiers/application/TierResolver.test.ts tests/unit/modules/stats/application/UserStatsFinder.test.ts`. Runtime harness: `GET /api/v1/users/:userId/stats` against the read-only dev DB. Rollback: revert repository, resolver, `TierView`, `TierLookup`, `UserStatsFinder`, `user-router.ts` wiring.
 
-- [ ] 2.1 Port `src/modules/tiers/domain/TiersRepository.ts`: `findEligibleRanks`, `findTierGames`. (delegated)
-- [ ] 2.2 RED `TiersPostgresRepository.test.ts` with `spyOn(dataSource, "query")`: ranks query (`name = ANY($1) AND type IN ('banlist','group')`), games CTE with kind-balance `HAVING`, conditional `CASE WHEN g.applied_at < $4` duels lookup, params `[userIds, rankIds, season, BACKFILL_CUTOFF]`, empty-input short circuit. (delegated)
-- [ ] 2.3 GREEN `src/modules/tiers/infrastructure/TiersPostgresRepository.ts`. (delegated)
-- [ ] 2.4 DTO `src/modules/tiers/application/dtos/TierView.ts` matching `TierViewSchema`. (delegated)
-- [ ] 2.5 RED `TierResolver.test.ts` (fake repository): unknown/global rank absent; no rows means Rookie with 0 games; standing maps via `toTierView`; no Master yet. (delegated)
-- [ ] 2.6 GREEN `src/modules/tiers/application/TierResolver.ts` `forPlayer`. (delegated)
-- [ ] 2.7 Consumer port `src/modules/stats/application/TierLookup.ts` with `forPlayer` only. (delegated)
-- [ ] 2.8 RED modify `UserStatsFinder.test.ts`: `ratings[].tier` from the fake lookup by banListName, `null` when absent, prior fields and order byte-identical. (delegated)
-- [ ] 2.9 GREEN modify `UserStatsFinder.ts`: constructor takes `TierLookup`, attaches `tier` after `toJson()`. (delegated)
-- [ ] 2.10 Wire `user-router.ts` (`new TierResolver(new TiersPostgresRepository())`) and update the Swagger example; no runtime response schema. (delegated)
-- [ ] 2.11 PR2 gate: full gates plus the manual dev read check. (inline)
+- [x] 2.1 Port `src/modules/tiers/domain/TiersRepository.ts`: `findEligibleRanks`, `findTierGames`. (delegated)
+- [x] 2.2 RED `TiersPostgresRepository.test.ts` with `spyOn(dataSource, "query")`: ranks query (`name = ANY($1) AND type IN ('banlist','group')`), games CTE with kind-balance `HAVING`, conditional `CASE WHEN g.applied_at < $4` duels lookup, params `[userIds, rankIds, season, BACKFILL_CUTOFF]`, empty-input short circuit. (delegated)
+- [x] 2.3 GREEN `src/modules/tiers/infrastructure/TiersPostgresRepository.ts`. (delegated)
+- [x] 2.4 DTO `src/modules/tiers/application/dtos/TierView.ts` matching `TierViewSchema`. (delegated)
+- [x] 2.5 RED `TierResolver.test.ts` (fake repository): unknown/global rank absent; no rows means Rookie with 0 games; standing maps via `toTierView`; no Master yet. (delegated)
+- [x] 2.6 GREEN `src/modules/tiers/application/TierResolver.ts` `forPlayer`. (delegated)
+- [x] 2.7 Consumer port `src/modules/stats/application/TierLookup.ts` with `forPlayer` only. (delegated)
+- [x] 2.8 RED modify `UserStatsFinder.test.ts`: `ratings[].tier` from the fake lookup by banListName, `null` when absent, prior fields and order byte-identical. (delegated)
+- [x] 2.9 GREEN modify `UserStatsFinder.ts`: constructor takes `TierLookup`, attaches `tier` after `toJson()`. (delegated)
+- [x] 2.10 Wire `user-router.ts` (`new TierResolver(new TiersPostgresRepository())`) and update the Swagger example; no runtime response schema. (delegated)
+- [x] 2.11 PR2 gate: full gates plus the manual dev read check. (inline)
 
 ### Work unit 3 — PR3 leaderboard read path and Master (`feat/ranked-tiers-03-leaderboard-master`)
 
@@ -108,9 +108,9 @@ Focused command: `bun test tests/unit/modules/tiers/application/GetTierCatalog.t
 
 ### Follow-ups from the PR1 native review (advisory, non-blocking; land with work unit 2)
 
-- [ ] F1 `TierGame.compareTierGames` compares `appliedId` as a string. `points_ledger.id` is a uuid, so lexical order equals Postgres uuid order; document that invariant in the code and add a tie-break test with realistic lowercase uuid-shaped ids. (delegated)
-- [ ] F2 `replayTier` assumes at least one `absolute` tier in the ladder (`grantable[0]`); add a guard that throws a clear error (or narrow `TierOverrides` so `kind` cannot be overridden), with a RED test. (delegated)
-- [ ] F3 Add a `MasterSelection` test where `grantedTierId` and `tierId` disagree with >= 20 games, proving eligibility uses the granted tier. (delegated)
+- [x] F1 `TierGame.compareTierGames` compares `appliedId` as a string. `points_ledger.id` is a uuid, so lexical order equals Postgres uuid order; document that invariant in the code and add a tie-break test with realistic lowercase uuid-shaped ids. (delegated)
+- [x] F2 `replayTier` assumes at least one `absolute` tier in the ladder (`grantable[0]`); add a guard that throws a clear error (or narrow `TierOverrides` so `kind` cannot be overridden), with a RED test. (delegated)
+- [x] F3 Add a `MasterSelection` test where `grantedTierId` and `tierId` disagree with >= 20 games, proving eligibility uses the granted tier. (delegated)
 
 ### Final verification
 
@@ -138,6 +138,14 @@ Focused command: `bun test tests/unit/modules/tiers/application/GetTierCatalog.t
 | 1.6 / 1.7 TierReplay | delegated | RED ecdbd76, 4709d71 (superseded), GREEN 61ed540; correction RED 9df7a86, 91de1df, GREEN e8cca81 | `.../TierReplay.test.ts` 35 pass | effective points may go negative before the first grant (decision #1212); zero clamp reverted |
 | 1.8 / 1.9 MasterSelection | delegated | RED a2682bf, GREEN 2b597c1 | `.../MasterSelection.test.ts` 10 pass | |
 | 1.10 / 1.11 TierSchemas | delegated | RED 324ac6c, GREEN 935ab54, typing fix fe25e53 (test-only) | `.../infrastructure/TierSchemas.test.ts` 10 pass | `@sinclair/typebox/value` resolves through Elysia, no new dependency |
+| F1 uuid tie-break doc + test | delegated | 8500b8d (characterization test), fbb91b3 (doc) | `TierGame.test.ts` 10 pass | no behavior change; points_ledger.id is uuid so lexical order = Postgres order |
+| F2 ladder guard | delegated | RED ad8af21, GREEN 9083b7f | `TierReplay.test.ts` 36 pass | clear Error when a ladder has no absolute tier |
+| F3 Master granted-vs-current | delegated | 57ba72e (characterization test) | `MasterSelection.test.ts` 11 pass | |
+| 2.1-2.3 TiersRepository port + Postgres repo | delegated | RED 1cd5c44, GREEN 5806b16 | repository test 6 pass | design SQL verbatim; params `[userIds, rankIds, season, BACKFILL_CUTOFF]` |
+| 2.4-2.6 TierView + TierResolver.forPlayer | delegated | RED 8c00ae7, GREEN 82addc2 | resolver test 7 pass | no Master yet |
+| 2.7-2.9 TierLookup + UserStatsFinder | delegated | RED 657cd1c, GREEN fb6c713 | finder test 6 pass | tier attached after toJson(); errors propagate |
+| 2.10 user-router wiring + Swagger | delegated | 742d1af | tsc + full suite | no runtime response schema |
+| 2.11 PR2 gate | inline | tree 742d1af | module + finder tests 95 pass; `bun test` 387 pass / 0 fail / 70 files; lint clean (1 pre-existing info); tsc clean. Runtime harness against the read-only dev DB (API on :3102 vs main on :3101): profile of a 50-game TCG player identical apart from `tier`, same ratings order; tiers TCG group Gold (eff 10, 50 games, 17 opponents beaten), 2026.05 TCG Gold, 2026.09 TCG Rookie (eff -2, 3 games), Traditional Rookie. Latency: main 330 ms vs PR2 635 ms from the dev workstation, explained by 2 extra round trips (ranks 0.1 ms, games query 5.7 ms server-side for 102 games across 5 ranks); expected +10-20 ms colocated | authored 716 lines (255 production, 461 tests), 16 over the 700 test-excess allowance |
 | 1.12 PR1 gate | inline | tree e8cca81 | `bun test tests/unit/modules/tiers/` 73 pass; `bun test` 368 pass / 0 fail / 68 files; `bun run lint` clean (1 pre-existing biome.json info); `bun run build` clean | authored 1387 lines (391 production, 996 tests); `size:exception` accepted by the user (#1215) |
 
 ## Delivery slices
@@ -146,7 +154,7 @@ Focused command: `bun test tests/unit/modules/tiers/application/GetTierCatalog.t
 |----|--------|------|---------|----------------|--------|
 | tracker | feat/ranked-tiers | main (6f8f57d) | | | created, not pushed |
 | 1 | feat/ranked-tiers-01-domain | feat/ranked-tiers | ed93df9..9f93d2c (17 commits) | 1387 authored (391 prod) + odd doc | implemented; size:exception; native review approved and acknowledged; not pushed |
-| 2 | feat/ranked-tiers-02-profile | feat/ranked-tiers-01-domain | | | pending |
+| 2 | feat/ranked-tiers-02-profile | feat/ranked-tiers-01-domain | 8500b8d..742d1af (12 commits) | 716 authored (255 prod) | implemented; gate passed; size decision and native review pending |
 | 3 | feat/ranked-tiers-03-leaderboard-master | feat/ranked-tiers-02-profile | | | pending |
 | 4 | feat/ranked-tiers-04-catalog | feat/ranked-tiers-03-leaderboard-master | | | pending |
 
@@ -158,4 +166,4 @@ Focused command: `bun test tests/unit/modules/tiers/application/GetTierCatalog.t
 
 ## Next step
 
-Work unit 2 (profile read path) on `feat/ranked-tiers-02-profile`, branched from the PR1 branch, including follow-ups F1-F3.
+PR2 size decision (716 lines, 16 over the test-excess allowance), then the native review of the PR2 candidate, then work unit 3 on `feat/ranked-tiers-03-leaderboard-master`.
