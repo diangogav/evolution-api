@@ -1,8 +1,11 @@
 import swagger from "@elysiajs/swagger";
 
 import packageJson from "../../package.json";
+import { EVOLUTION_SCALAR_CSS } from "./swagger-theme";
 
 const DESCRIPTION = [
+	"![Evolution YGO](https://evolutionygo.com/logo.svg)",
+	"",
 	"Backend of the Evolution YGO platform: player accounts, ranked play and tiers, tournaments, cosmetics and moderation.",
 	"",
 	"Every endpoint lives under the base path `/api/v1`.",
@@ -88,6 +91,18 @@ const DOCUMENTATION: SwaggerDocumentation & { "x-tagGroups": typeof TAG_GROUPS }
 	},
 };
 
+type ScalarConfig = NonNullable<Parameters<typeof swagger>[0]>["scalarConfig"];
+
+const SCALAR_CONFIG: ScalarConfig = {
+	theme: "none",
+	customCss: EVOLUTION_SCALAR_CSS,
+	layout: "modern",
+	darkMode: true,
+	defaultOpenAllTags: false,
+	favicon: "https://evolutionygo.com/favicon.ico",
+	authentication: { preferredSecurityScheme: "bearerAuth" },
+};
+
 export function createSwagger() {
-	return swagger({ documentation: DOCUMENTATION });
+	return swagger({ documentation: DOCUMENTATION, scalarConfig: SCALAR_CONFIG });
 }
