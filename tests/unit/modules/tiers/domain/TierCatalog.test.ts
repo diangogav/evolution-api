@@ -7,10 +7,19 @@ import {
 	MASTER_SIZE,
 	ROOKIE_MIN_GAMES,
 	TIER_CATALOG,
+	type TierId,
 	ladderFor,
 } from "../../../../../src/modules/tiers/domain/TierCatalog";
 
-const LADDER_IDS = ["rookie", "bronze", "silver", "gold", "platinum", "diamond", "master"];
+const LADDER_IDS: TierId[] = [
+	"rookie",
+	"bronze",
+	"silver",
+	"gold",
+	"platinum",
+	"diamond",
+	"master",
+];
 
 describe("TIER_CATALOG", () => {
 	it("lists exactly the seven ladder ids in ladder order with matching order fields", () => {
