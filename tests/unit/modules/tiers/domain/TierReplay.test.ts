@@ -60,13 +60,13 @@ describe("replayTier: Rookie minimum", () => {
 		expect(replay(games([-1, -1, -1, -1, -1]))).toEqual({
 			tierId: "bronze",
 			grantedTierId: "bronze",
-			effectivePoints: -5,
+			effectivePoints: 0,
 			gamesPlayed: 5,
 			distinctOpponentWins: 0,
 			progress: {
 				nextTierId: "silver",
 				unit: "points",
-				current: -5,
+				current: 0,
 				target: 3,
 				distinctOpponentWins: null,
 			},
@@ -90,19 +90,22 @@ describe("replayTier: Rookie minimum", () => {
 });
 
 describe("replayTier: thresholds", () => {
-	it.each([
-		[2, "bronze"],
-		[3, "silver"],
-		[9, "silver"],
-		[10, "gold"],
-		[24, "gold"],
-		[25, "platinum"],
-		[39, "platinum"],
-		[40, "diamond"],
-	])("assigns %i effective points with five beaten opponents to %s", (points, tierId) => {
-		const standing = replay(games([points - 5, ...ones(5)]));
+	const seesaw = [1, -1, 1, -1, 1, -1, 1, -1, 1, 1];
 
-		expect(standing).toMatchObject({ tierId, effectivePoints: points, distinctOpponentWins: 5 });
+	it.each([
+		[2, "bronze", seesaw],
+		[3, "silver", [...seesaw, 1]],
+		[9, "silver", [4, ...ones(5)]],
+		[10, "gold", [5, ...ones(5)]],
+		[24, "gold", [19, ...ones(5)]],
+		[25, "platinum", [20, ...ones(5)]],
+		[39, "platinum", [34, ...ones(5)]],
+		[40, "diamond", [35, ...ones(5)]],
+	])("assigns %i effective points with five beaten opponents to %s", (points, tierId, deltas) => {
+		const standing = replay(games(deltas));
+
+		expect(standing).toMatchObject({ tierId, effectivePoints: points });
+		expect(standing.distinctOpponentWins).toBeGreaterThanOrEqual(5);
 	});
 
 	it("caps a player at Gold while the Platinum points are met with only four beaten opponents", () => {
@@ -159,10 +162,10 @@ describe("replayTier: floors", () => {
 		});
 	});
 
-	it("has no floor below Silver, so Bronze points go negative", () => {
+	it("clamps points at zero before any tier is granted, so early losses do not linger", () => {
 		expect(replay(games([-2, -2, -2, 1, 1]))).toMatchObject({
 			tierId: "bronze",
-			effectivePoints: -4,
+			effectivePoints: 2,
 		});
 	});
 
@@ -310,13 +313,13 @@ describe("replayTier: annulment and reinstatement", () => {
 
 		expect(replay(tcgReinstatedWindow)).toMatchObject({
 			tierId: "silver",
-			effectivePoints: 4,
+			effectivePoints: 6,
 			gamesPlayed: 7,
 			distinctOpponentWins: 2,
 		});
 		expect(reinstated).toMatchObject({
-			tierId: "silver",
-			effectivePoints: 6,
+			tierId: "gold",
+			effectivePoints: 10,
 			gamesPlayed: 8,
 			distinctOpponentWins: 3,
 		});
