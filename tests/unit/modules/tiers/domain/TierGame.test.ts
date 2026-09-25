@@ -82,6 +82,24 @@ describe("compareTierGames", () => {
 			),
 		).toEqual(["a", "b"]);
 	});
+
+	it("breaks a full tie by applied id the way Postgres orders the ledger uuids", () => {
+		const pinned = { appliedAt: Date.UTC(2026, 8, 15, 10), duelAt: null };
+		const ids = [
+			"f3b9c2a1-7d4e-4c0b-9a6f-1e2d3c4b5a60",
+			"0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+			"0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4e",
+			"9f8e7d6c-5b4a-4c3d-8e2f-1a0b9c8d7e6f",
+		];
+		const games = ids.map((appliedId) => tierGame({ ...pinned, gameId: appliedId, appliedId }));
+
+		expect(games.sort(compareTierGames).map((game) => game.appliedId)).toEqual([
+			"0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+			"0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4e",
+			"9f8e7d6c-5b4a-4c3d-8e2f-1a0b9c8d7e6f",
+			"f3b9c2a1-7d4e-4c0b-9a6f-1e2d3c4b5a60",
+		]);
+	});
 });
 
 describe("utcDay", () => {
