@@ -106,6 +106,12 @@ Focused command: `bun test tests/unit/modules/tiers/application/GetTierCatalog.t
 - [ ] 4.5 Mount `.use(rankedTiersRouter)` in `src/server/server.ts`. (delegated)
 - [ ] 4.6 PR4 gate: full gates plus the two curl checks. (inline)
 
+### Follow-ups from the PR1 native review (advisory, non-blocking; land with work unit 2)
+
+- [ ] F1 `TierGame.compareTierGames` compares `appliedId` as a string. `points_ledger.id` is a uuid, so lexical order equals Postgres uuid order; document that invariant in the code and add a tie-break test with realistic lowercase uuid-shaped ids. (delegated)
+- [ ] F2 `replayTier` assumes at least one `absolute` tier in the ladder (`grantable[0]`); add a guard that throws a clear error (or narrow `TierOverrides` so `kind` cannot be overridden), with a RED test. (delegated)
+- [ ] F3 Add a `MasterSelection` test where `grantedTierId` and `tierId` disagree with >= 20 games, proving eligibility uses the granted tier. (delegated)
+
 ### Final verification
 
 - [ ] 5.1 Strict TDD evidence per PR: every GREEN commit preceded by its RED commit; list exceptions.
@@ -139,7 +145,7 @@ Focused command: `bun test tests/unit/modules/tiers/application/GetTierCatalog.t
 | PR | Branch | Base | Commits | Authored lines | Status |
 |----|--------|------|---------|----------------|--------|
 | tracker | feat/ranked-tiers | main (6f8f57d) | | | created, not pushed |
-| 1 | feat/ranked-tiers-01-domain | feat/ranked-tiers | ed93df9..e8cca81 (16 commits) | 1387 authored (391 prod) + 149 odd doc | implemented; size:exception; native review pending |
+| 1 | feat/ranked-tiers-01-domain | feat/ranked-tiers | ed93df9..9f93d2c (17 commits) | 1387 authored (391 prod) + odd doc | implemented; size:exception; native review approved and acknowledged; not pushed |
 | 2 | feat/ranked-tiers-02-profile | feat/ranked-tiers-01-domain | | | pending |
 | 3 | feat/ranked-tiers-03-leaderboard-master | feat/ranked-tiers-02-profile | | | pending |
 | 4 | feat/ranked-tiers-04-catalog | feat/ranked-tiers-03-leaderboard-master | | | pending |
@@ -148,8 +154,8 @@ Focused command: `bun test tests/unit/modules/tiers/application/GetTierCatalog.t
 
 | Commit | Assessed tier | Outcome |
 |--------|---------------|---------|
-| (none yet) | | |
+| PR1 range ed93df9..9f93d2c (base feat/ranked-tiers 6f8f57d, candidate tree df04e438) | medium (`executable_change` MasterSelection.ts; `slice_budget_reached`) | consent granted by the user; lineage review-41b99773ceea9aa5, one lens (review-reliability), approved with 3 advisory findings, acknowledged (receipt consumed). Advisory findings became follow-ups F1-F3 below. |
 
 ## Next step
 
-Run the native review for the PR1 candidate (assess: medium, slice budget reached), then start work unit 2 on `feat/ranked-tiers-02-profile` from the PR1 branch.
+Work unit 2 (profile read path) on `feat/ranked-tiers-02-profile`, branched from the PR1 branch, including follow-ups F1-F3.
