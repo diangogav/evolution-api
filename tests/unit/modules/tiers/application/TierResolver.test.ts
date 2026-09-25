@@ -5,6 +5,7 @@ import {
 	TierResolver,
 	toTierView,
 } from "../../../../../src/modules/tiers/application/TierResolver";
+import type { TierView } from "../../../../../src/modules/tiers/application/dtos/TierView";
 import { ladderFor } from "../../../../../src/modules/tiers/domain/TierCatalog";
 import type { TierGame } from "../../../../../src/modules/tiers/domain/TierGame";
 import type { TierStanding } from "../../../../../src/modules/tiers/domain/TierReplay";
@@ -92,7 +93,7 @@ const firstBatch = {
 	offset: 0,
 };
 
-const masterView = (effectivePoints: number, rating: MasterRating) => ({
+const masterView = (effectivePoints: number, rating: MasterRating): TierView => ({
 	id: "master",
 	name: "Master",
 	effectivePoints,
