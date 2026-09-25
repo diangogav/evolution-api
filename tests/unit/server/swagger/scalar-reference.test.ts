@@ -11,6 +11,11 @@ type ScalarConfiguration = {
 	favicon?: string;
 	customCss?: string;
 	authentication?: { preferredSecurityScheme?: string };
+	persistAuth?: boolean;
+	showDeveloperTools?: string;
+	agent?: { disabled?: boolean };
+	mcp?: { disabled?: boolean };
+	hideClientButton?: boolean;
 };
 
 describe("Scalar API reference page", () => {
@@ -43,5 +48,22 @@ describe("Scalar API reference page", () => {
 	it("uses the Evolution favicon and preselects the bearer scheme", () => {
 		expect(configuration.favicon).toBe("https://evolutionygo.com/favicon.ico");
 		expect(configuration.authentication?.preferredSecurityScheme).toBe("bearerAuth");
+	});
+
+	it("pins the Scalar bundle so the reference cannot change under us", () => {
+		expect(html).toContain(
+			"https://cdn.jsdelivr.net/npm/@scalar/api-reference@1.72.1/dist/browser/standalone.min.js",
+		);
+	});
+
+	it("hides the Scalar promotional tools and keeps the API client", () => {
+		expect(configuration.showDeveloperTools).toBe("never");
+		expect(configuration.agent?.disabled).toBe(true);
+		expect(configuration.mcp?.disabled).toBe(true);
+		expect(configuration.hideClientButton).not.toBe(true);
+	});
+
+	it("remembers the entered token across reloads", () => {
+		expect(configuration.persistAuth).toBe(true);
 	});
 });

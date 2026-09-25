@@ -91,7 +91,18 @@ const DOCUMENTATION: SwaggerDocumentation & { "x-tagGroups": typeof TAG_GROUPS }
 	},
 };
 
-type ScalarConfig = NonNullable<Parameters<typeof swagger>[0]>["scalarConfig"];
+// Pinned so the reference does not change with every Scalar release; the
+// options below are validated against this version.
+const SCALAR_VERSION = "1.72.1";
+
+// The plugin types the Scalar configuration with an older release, so the
+// options added since then are declared here.
+type ScalarConfig = NonNullable<Parameters<typeof swagger>[0]>["scalarConfig"] & {
+	persistAuth?: boolean;
+	showDeveloperTools?: "localhost" | "always" | "never";
+	agent?: { disabled?: boolean };
+	mcp?: { disabled?: boolean };
+};
 
 const SCALAR_CONFIG: ScalarConfig = {
 	theme: "none",
@@ -101,8 +112,16 @@ const SCALAR_CONFIG: ScalarConfig = {
 	defaultOpenAllTags: false,
 	favicon: "https://evolutionygo.com/favicon.ico",
 	authentication: { preferredSecurityScheme: "bearerAuth" },
+	persistAuth: true,
+	showDeveloperTools: "never",
+	agent: { disabled: true },
+	mcp: { disabled: true },
 };
 
 export function createSwagger() {
-	return swagger({ documentation: DOCUMENTATION, scalarConfig: SCALAR_CONFIG });
+	return swagger({
+		documentation: DOCUMENTATION,
+		scalarVersion: SCALAR_VERSION,
+		scalarConfig: SCALAR_CONFIG,
+	});
 }
