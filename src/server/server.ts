@@ -15,6 +15,7 @@ import { leaderboardRouter } from "./routes/leaderboard-router";
 import { loadoutRouter } from "./routes/loadout-router";
 import { meCosmeticsRouter } from "./routes/me-cosmetics-router";
 import { publicLoadoutRouter } from "./routes/public-loadout-router";
+import { rankedTiersRouter } from "./routes/ranked-tiers-router";
 import { adminCosmeticsRouter } from "./routes/admin-cosmetics-router";
 import { adminModerationRouter } from "./routes/admin-moderation-router";
 import { statsRouter } from "./routes/stats-router";
@@ -123,6 +124,7 @@ export class Server {
 			return app
 				.use(userRouter)
 				.use(leaderboardRouter)
+				.use(rankedTiersRouter)
 				.use(banListRouter)
 				.use(tournamentRouter)
 				.use(statsRouter)
