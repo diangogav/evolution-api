@@ -61,8 +61,8 @@ export const edisonBackfillBurst: TierGame[] = slice("rank-edison", [
 ]);
 
 /**
- * Slice 2. Six consecutive Edison games between the same two players on one
- * UTC day (four wins, two losses for p1).
+ * Slice 2. The seven Edison games between the same two players on one UTC day
+ * (five wins, two losses for p1): six points uncapped, four under the cap.
  */
 export const edisonSameDaySession: TierGame[] = slice("rank-edison", [
 	[1, "p3", 2, "2026-09-09T19:21:38.220Z", "2026-09-09T16:00:00Z"],
@@ -71,6 +71,7 @@ export const edisonSameDaySession: TierGame[] = slice("rank-edison", [
 	[4, "p3", 2, "2026-09-09T19:55:40.023Z", "2026-09-09T16:22:00Z"],
 	[5, "p3", 2, "2026-09-09T19:55:45.271Z", "2026-09-09T16:30:00Z"],
 	[6, "p3", -2, "2026-09-09T19:56:14.378Z", "2026-09-09T16:38:00Z"],
+	[7, "p3", 2, "2026-09-09T19:58:41.607Z", "2026-09-09T16:45:00Z"],
 ]);
 
 /**
