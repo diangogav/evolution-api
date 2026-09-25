@@ -99,12 +99,12 @@ Focused command: `bun test tests/unit/modules/tiers/infrastructure/TiersPostgres
 
 Focused command: `bun test tests/unit/modules/tiers/application/GetTierCatalog.test.ts tests/unit/server/routes/ranked-tiers-router.test.ts`. Runtime harness: `curl /api/v1/ranked-tiers` and `?banListName=TCG`. Rollback: delete router, use case, DTO; remove the `.use(rankedTiersRouter)` line.
 
-- [ ] 4.1 RED `GetTierCatalog.test.ts`: wrapper `{ banListName, dailyOpponentCap, dayBoundary: "UTC", tiers }`, `banListName` echo, override reflection. (delegated)
-- [ ] 4.2 GREEN `dtos/TierCatalogView.ts` and `GetTierCatalog.ts`. (delegated)
-- [ ] 4.3 RED `tests/unit/server/routes/ranked-tiers-router.test.ts` via `rankedTiersRouter.handle(new Request(...))`: 200, seven tiers in order, `banListName` null and "TCG", no auth. (delegated)
-- [ ] 4.4 GREEN `src/server/routes/ranked-tiers-router.ts` (prefix `/ranked-tiers`, tag `Leaderboard`, runtime `response: { 200: RankedTierCatalogSchema }`). (delegated)
-- [ ] 4.5 Mount `.use(rankedTiersRouter)` in `src/server/server.ts`. (delegated)
-- [ ] 4.6 PR4 gate: full gates plus the two curl checks. (inline)
+- [x] 4.1 RED `GetTierCatalog.test.ts`: wrapper `{ banListName, dailyOpponentCap, dayBoundary: "UTC", tiers }`, `banListName` echo, override reflection. (delegated)
+- [x] 4.2 GREEN `dtos/TierCatalogView.ts` and `GetTierCatalog.ts`. (delegated)
+- [x] 4.3 RED `tests/unit/server/routes/ranked-tiers-router.test.ts` via `rankedTiersRouter.handle(new Request(...))`: 200, seven tiers in order, `banListName` null and "TCG", no auth. (delegated)
+- [x] 4.4 GREEN `src/server/routes/ranked-tiers-router.ts` (prefix `/ranked-tiers`, tag `Leaderboard`, runtime `response: { 200: RankedTierCatalogSchema }`). (delegated)
+- [x] 4.5 Mount `.use(rankedTiersRouter)` in `src/server/server.ts`. (delegated)
+- [x] 4.6 PR4 gate: full gates plus the two curl checks. (inline)
 
 ### Follow-ups from the PR1 native review (advisory, non-blocking; land with work unit 2)
 
@@ -119,9 +119,9 @@ Focused command: `bun test tests/unit/modules/tiers/application/GetTierCatalog.t
 
 ### Follow-ups from the PR3 native review (advisory, non-blocking; land with work unit 4)
 
-- [ ] F6 `TierResolver.resolveMaster` has no upper bound on candidate batches: in a rank with many 20+-game players but fewer than five Platinum+ players it replays every candidate on each eligible request. Bound the scan (e.g. `MASTER_CANDIDATE_MAX_BATCHES = 3`, 150 candidates ordered by points) and return an empty Master set beyond it; RED test with 200 candidates and no Platinum player. (delegated)
-- [ ] F7 Candidate batches use LIMIT/OFFSET without a shared snapshot; a concurrent update can skip or repeat a user. Deduplicate candidate ids across batches by userId before replay and seating; RED test where batch 2 repeats a batch-1 id. (delegated)
-- [ ] F8 `findMasterCandidates`: add `NULLS LAST` to `win_rate DESC` (or assert the order in the repository test) so zero-game rows never sort ahead when `minGames` is 0. (delegated)
+- [x] F6 `TierResolver.resolveMaster` has no upper bound on candidate batches: in a rank with many 20+-game players but fewer than five Platinum+ players it replays every candidate on each eligible request. Bound the scan (e.g. `MASTER_CANDIDATE_MAX_BATCHES = 3`, 150 candidates ordered by points) and return an empty Master set beyond it; RED test with 200 candidates and no Platinum player. (delegated)
+- [x] F7 Candidate batches use LIMIT/OFFSET without a shared snapshot; a concurrent update can skip or repeat a user. Deduplicate candidate ids across batches by userId before replay and seating; RED test where batch 2 repeats a batch-1 id. (delegated)
+- [x] F8 `findMasterCandidates`: add `NULLS LAST` to `win_rate DESC` (or assert the order in the repository test) so zero-game rows never sort ahead when `minGames` is 0. (delegated)
 
 ### Final verification
 
@@ -164,6 +164,12 @@ Focused command: `bun test tests/unit/modules/tiers/application/GetTierCatalog.t
 | 3.9 leaderboard-router wiring + Swagger Master row | delegated | 598459b | tsc clean | |
 | 3.10 positional-binding + no-auth assertion | delegated | 65cd26a (+e67399b finder fake) | repository test 11 pass | sentinel injection values never appear in SQL; placeholders exactly $1..$n; no guard on either route |
 | 3.11 PR3 gate | inline | tree e67399b | module + stats tests 119 pass; `bun test` 410 pass / 0 fail / 70 files; lint clean (1 pre-existing info); tsc clean. Runtime harness vs read-only dev DB (PR3 :3103 vs main :3101), TCG season 7 pages 1-3: responses identical apart from `tier`, order unchanged, 248 rows; distribution Rookie 45% / Bronze 25% / Silver 14% / Gold 12% / Platinum 2% / Master 2% (5 Masters with rating and peak: 90, 69, 63, 37, 34 points), matching the accepted simulation. Latency from the workstation: page 1 main 0.23 s vs PR3 1.4-1.7 s (6 queries: base, ranks, page games, candidates, unseen-candidate games, ratings = 5 extra round trips), page 3 main 0.14 s vs PR3 0.58 s; server-side cost measured earlier (page-1 games 89 ms), expected +150-250 ms colocated | authored 929 lines (317 production, 612 tests), 229 over the 700 allowance |
+| F6 bounded Master scan | delegated | RED 39e7fd0, GREEN 8f0ab29 | resolver test 23 pass | `MASTER_CANDIDATE_MAX_BATCHES = 3`; 200 candidates without Platinum -> offsets [0, 50, 100], empty Master |
+| F7 candidate dedupe across batches | delegated | RED e5012c0, GREEN 07be164 | resolver test 24 pass | `considered` set before replay and seating |
+| F8 NULLS LAST | delegated | RED 9af95fc, GREEN 2624def | repository test 11 pass | `win_rate DESC NULLS LAST` |
+| 4.1-4.2 GetTierCatalog + TierCatalogView | delegated | RED 7e84039, GREEN 75f3df6 | use case test 4 pass | overrides applied server-side, never exposed; explicit field mapping |
+| 4.3-4.5 ranked-tiers-router + mount | delegated | RED 6179b29, GREEN b2f6fbf (+034bb0e test typing) | router test 3 pass | runtime `response: { 200: RankedTierCatalogSchema }`; Swagger example generated from the use case |
+| 4.6 PR4 gate | inline | tree 034bb0e | module + router tests 118 pass; `bun test` 420 pass / 0 fail / 72 files; lint clean (1 pre-existing info); tsc clean. Runtime against dev (:3104): `GET /api/v1/ranked-tiers` 200 in <1 ms, `?banListName=TCG` 200 echoing "TCG", bogus Authorization header still 200 (public), wrapper keys banListName/dailyOpponentCap(2)/dayBoundary(UTC)/tiers, seven tiers in ladder order with kinds placement/absolute/relative and thresholds null/null/3/10/25/40/null. Leaderboard page 1 with the bounded scan still seats the same 5 Masters (ratings 1212, 1226, 1128, 1142, 1199) | authored 349 lines (134 production, 215 tests), within budget |
 | 1.12 PR1 gate | inline | tree e8cca81 | `bun test tests/unit/modules/tiers/` 73 pass; `bun test` 368 pass / 0 fail / 68 files; `bun run lint` clean (1 pre-existing biome.json info); `bun run build` clean | authored 1387 lines (391 production, 996 tests); `size:exception` accepted by the user (#1215) |
 
 ## Delivery slices
@@ -174,7 +180,7 @@ Focused command: `bun test tests/unit/modules/tiers/application/GetTierCatalog.t
 | 1 | feat/ranked-tiers-01-domain | feat/ranked-tiers | ed93df9..9f93d2c (17 commits) | 1387 authored (391 prod) + odd doc | implemented; size:exception; native review approved and acknowledged; not pushed |
 | 2 | feat/ranked-tiers-02-profile | feat/ranked-tiers-01-domain | 8500b8d..74f6c7c (13 commits) | 716 authored (255 prod), 16 over the allowance accepted by the user | implemented; gate passed; native review approved and acknowledged; not pushed |
 | 3 | feat/ranked-tiers-03-leaderboard-master | feat/ranked-tiers-02-profile | 1a0c296..29c818a (12 commits) | 929 authored (317 prod); `size:exception` accepted by the user | implemented; gate passed; native review approved and acknowledged; not pushed |
-| 4 | feat/ranked-tiers-04-catalog | feat/ranked-tiers-03-leaderboard-master | | | pending |
+| 4 | feat/ranked-tiers-04-catalog | feat/ranked-tiers-03-leaderboard-master | 39e7fd0..034bb0e (11 commits) | 349 authored (134 prod) | implemented; gate passed; native review pending |
 
 ## Review (receipt-driven development)
 
@@ -186,4 +192,4 @@ Focused command: `bun test tests/unit/modules/tiers/application/GetTierCatalog.t
 
 ## Next step
 
-Work unit 4 (catalog endpoint) on `feat/ranked-tiers-04-catalog`, branched from the PR3 branch, including follow-ups F6-F8.
+Native review of the PR4 candidate, then final verification 5.1-5.5, then hand the four branches to the user for push and PR creation.
