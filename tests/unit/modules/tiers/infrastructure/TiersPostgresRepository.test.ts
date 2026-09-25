@@ -157,4 +157,50 @@ describe("TiersPostgresRepository", () => {
 			expect(querySpy).not.toHaveBeenCalled();
 		});
 	});
+
+	describe("parameter binding", () => {
+		const sentinels = {
+			rankName: "TCG' OR 1=1 --",
+			userId: "u-9c1f1c9e",
+			rankId: "rank-7e0b2d4a",
+			season: 7331,
+			minGames: 2027,
+			limit: 5039,
+			offset: 6067,
+		};
+
+		it("never interpolates a caller value into any query text: every value travels as a positional parameter", async () => {
+			await repository.findEligibleRanks([sentinels.rankName]);
+			await repository.findTierGames({
+				userIds: [sentinels.userId],
+				rankIds: [sentinels.rankId],
+				season: sentinels.season,
+			});
+			await repository.findMasterCandidates({
+				rankId: sentinels.rankId,
+				season: sentinels.season,
+				minGames: sentinels.minGames,
+				limit: sentinels.limit,
+				offset: sentinels.offset,
+			});
+			await repository.findMasterRatings({
+				rankId: sentinels.rankId,
+				season: sentinels.season,
+				userIds: [sentinels.userId],
+			});
+
+			expect(querySpy).toHaveBeenCalledTimes(4);
+			for (const [sql, params] of querySpy.mock.calls as [string, unknown[]][]) {
+				for (const value of Object.values(sentinels)) {
+					expect(sql).not.toContain(String(value));
+				}
+				const placeholders = [...new Set(sql.match(/\$\d+/g))].map((placeholder) =>
+					Number(placeholder.slice(1)),
+				);
+				expect([...placeholders].sort((a, b) => a - b)).toEqual(
+					params.map((_, index) => index + 1),
+				);
+			}
+		});
+	});
 });
