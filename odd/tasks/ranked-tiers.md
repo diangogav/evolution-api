@@ -117,6 +117,12 @@ Focused command: `bun test tests/unit/modules/tiers/application/GetTierCatalog.t
 - [x] F4 `UserStatsFinder.test.ts:106`: the `rejects` expectation is not awaited, so the "tier lookup not called on NotFound" assertion is vacuous; await the rejection before asserting. (delegated)
 - [x] F5 Recorded decision, no code change: `GET /users/:userId/stats` now fails when tier resolution fails (design failure policy: errors propagate, no silent `null`). Revisit only with production evidence. SQL semantics remain covered by the manual dev harness (repository convention: tests assert SQL text, no DB integration layer). (inline)
 
+### Follow-ups from the PR3 native review (advisory, non-blocking; land with work unit 4)
+
+- [ ] F6 `TierResolver.resolveMaster` has no upper bound on candidate batches: in a rank with many 20+-game players but fewer than five Platinum+ players it replays every candidate on each eligible request. Bound the scan (e.g. `MASTER_CANDIDATE_MAX_BATCHES = 3`, 150 candidates ordered by points) and return an empty Master set beyond it; RED test with 200 candidates and no Platinum player. (delegated)
+- [ ] F7 Candidate batches use LIMIT/OFFSET without a shared snapshot; a concurrent update can skip or repeat a user. Deduplicate candidate ids across batches by userId before replay and seating; RED test where batch 2 repeats a batch-1 id. (delegated)
+- [ ] F8 `findMasterCandidates`: add `NULLS LAST` to `win_rate DESC` (or assert the order in the repository test) so zero-game rows never sort ahead when `minGames` is 0. (delegated)
+
 ### Final verification
 
 - [ ] 5.1 Strict TDD evidence per PR: every GREEN commit preceded by its RED commit; list exceptions.
@@ -167,7 +173,7 @@ Focused command: `bun test tests/unit/modules/tiers/application/GetTierCatalog.t
 | tracker | feat/ranked-tiers | main (6f8f57d) | | | created, not pushed |
 | 1 | feat/ranked-tiers-01-domain | feat/ranked-tiers | ed93df9..9f93d2c (17 commits) | 1387 authored (391 prod) + odd doc | implemented; size:exception; native review approved and acknowledged; not pushed |
 | 2 | feat/ranked-tiers-02-profile | feat/ranked-tiers-01-domain | 8500b8d..74f6c7c (13 commits) | 716 authored (255 prod), 16 over the allowance accepted by the user | implemented; gate passed; native review approved and acknowledged; not pushed |
-| 3 | feat/ranked-tiers-03-leaderboard-master | feat/ranked-tiers-02-profile | 1a0c296..e67399b (11 commits) | 929 authored (317 prod) | implemented; gate passed; size decision and native review pending |
+| 3 | feat/ranked-tiers-03-leaderboard-master | feat/ranked-tiers-02-profile | 1a0c296..29c818a (12 commits) | 929 authored (317 prod); `size:exception` accepted by the user | implemented; gate passed; native review approved and acknowledged; not pushed |
 | 4 | feat/ranked-tiers-04-catalog | feat/ranked-tiers-03-leaderboard-master | | | pending |
 
 ## Review (receipt-driven development)
@@ -176,7 +182,8 @@ Focused command: `bun test tests/unit/modules/tiers/application/GetTierCatalog.t
 |--------|---------------|---------|
 | PR1 range ed93df9..9f93d2c (base feat/ranked-tiers 6f8f57d, candidate tree df04e438) | medium (`executable_change` MasterSelection.ts; `slice_budget_reached`) | consent granted by the user; lineage review-41b99773ceea9aa5, one lens (review-reliability), approved with 3 advisory findings, acknowledged (receipt consumed). Advisory findings became follow-ups F1-F3 below. |
 | PR2 range 8500b8d..74f6c7c (base feat/ranked-tiers-01-domain, candidate tree 21c791c7) | medium (`executable_change` TierLookup.ts; `slice_budget_reached`) | consent granted by the user; lineage review-43c1dec7b2867ca3, one lens (review-reliability), approved with 3 advisory findings, acknowledged (receipt consumed). Follow-ups F4-F5 below. |
+| PR3 range 1a0c296..29c818a (base feat/ranked-tiers-02-profile, candidate tree 98a827b3) | medium (`executable_change` TierLookup.ts; `slice_budget_reached`) | consent granted by the user; lineage review-609080ce051bb6e0, one lens (review-reliability), approved with 3 advisory findings, acknowledged (receipt consumed). Follow-ups F6-F8 below. |
 
 ## Next step
 
-PR3 size decision (929 lines, 229 over the allowance; natural split A = F4 + repository/resolver 711 lines, B = port/getter/router 218 lines), then the native review of the PR3 candidate, then work unit 4 (catalog endpoint).
+Work unit 4 (catalog endpoint) on `feat/ranked-tiers-04-catalog`, branched from the PR3 branch, including follow-ups F6-F8.
