@@ -144,8 +144,9 @@ export class TierResolver {
 	 * matter to this request. Candidates come from player_stats in the
 	 * leaderboard total order, one batch at a time, reusing every replay the
 	 * request already has, until enough eligible players are confirmed, the
-	 * candidates run out or the scan bound is reached. The Elo is read for the
-	 * seated players only.
+	 * candidates run out or the scan bound is reached. The batches share no
+	 * snapshot, so a player a concurrent update pushes across a batch boundary
+	 * is considered once. The Elo is read for the seated players only.
 	 */
 	private async masterSeats(
 		rank: TierRank,
@@ -160,16 +161,19 @@ export class TierResolver {
 
 		const size = master.size ?? 0;
 		const ordered: MasterCandidate[] = [];
+		const considered = new Set<string>();
 		let eligible = 0;
 
 		for (let batch = 0; eligible < size && batch < MASTER_CANDIDATE_MAX_BATCHES; batch++) {
-			const candidates = await this.repository.findMasterCandidates({
+			const page = await this.repository.findMasterCandidates({
 				rankId: rank.id,
 				season,
 				minGames: master.minGames ?? 0,
 				limit: MASTER_CANDIDATE_BATCH,
 				offset: batch * MASTER_CANDIDATE_BATCH,
 			});
+			const candidates = page.filter((userId) => !considered.has(userId));
+			for (const userId of candidates) considered.add(userId);
 			const unseen = candidates.filter((userId) => !replays.has(userId));
 			for (const [userId, standing] of await this.replay(unseen, rank, season, ladder)) {
 				replays.set(userId, standing);
@@ -179,7 +183,7 @@ export class TierResolver {
 				ordered.push({ userId, standing });
 				if (isMasterEligible(standing, ladder)) eligible++;
 			}
-			if (candidates.length < MASTER_CANDIDATE_BATCH) break;
+			if (page.length < MASTER_CANDIDATE_BATCH) break;
 		}
 
 		const seated = selectMaster(ordered, ladder);
