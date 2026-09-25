@@ -6,10 +6,19 @@ import {
 	DAILY_OPPONENT_CAP,
 	TIER_CATALOG,
 	type TierCatalog,
+	type TierId,
 } from "../../../../../src/modules/tiers/domain/TierCatalog";
 import { RankedTierCatalogSchema } from "../../../../../src/modules/tiers/infrastructure/TierSchemas";
 
-const LADDER_IDS = ["rookie", "bronze", "silver", "gold", "platinum", "diamond", "master"];
+const LADDER_IDS: TierId[] = [
+	"rookie",
+	"bronze",
+	"silver",
+	"gold",
+	"platinum",
+	"diamond",
+	"master",
+];
 
 /** The default ladder plus one themed rank, so overrides are observable without touching the shipped constant. */
 const themed: TierCatalog = {
