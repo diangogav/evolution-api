@@ -1,8 +1,11 @@
 // Evolution brand theme for the Scalar API reference, built on the CSS
 // variables of @scalar/themes. The plugin embeds this string inside a
 // single-quoted HTML attribute, so it must never contain single quotes.
+// Selectors are prefixed with body so they outrank the defaults Scalar
+// injects later for .dark-mode and .light-mode.
 export const EVOLUTION_SCALAR_CSS = `
-.dark-mode {
+body.dark-mode,
+body .dark-mode {
   --scalar-color-1: rgba(255, 255, 255, 0.92);
   --scalar-color-2: rgba(224, 204, 250, 0.72);
   --scalar-color-3: rgba(224, 204, 250, 0.46);
@@ -11,7 +14,13 @@ export const EVOLUTION_SCALAR_CSS = `
   --scalar-background-1: #13151a;
   --scalar-background-2: #1b1d25;
   --scalar-background-3: #262833;
-  --scalar-background-accent: rgba(136, 58, 234, 0.16);
+  --scalar-background-accent: rgba(136, 58, 234, 0.2);
+
+  --scalar-link-color: color-mix(in srgb, #883aea 65%, #ffffff);
+  --scalar-link-color-hover: rgb(224, 204, 250);
+
+  --scalar-sidebar-color-active: color-mix(in srgb, #883aea 65%, #ffffff);
+  --scalar-sidebar-item-active-background: rgba(136, 58, 234, 0.2);
 
   --scalar-border-color: rgba(224, 204, 250, 0.1);
 
@@ -30,7 +39,8 @@ export const EVOLUTION_SCALAR_CSS = `
   --scalar-scrollbar-color-active: rgba(224, 204, 250, 0.36);
 }
 
-.light-mode {
+body.light-mode,
+body .light-mode {
   --scalar-color-1: rgb(49, 10, 101);
   --scalar-color-2: rgba(49, 10, 101, 0.72);
   --scalar-color-3: rgba(49, 10, 101, 0.5);
@@ -41,6 +51,12 @@ export const EVOLUTION_SCALAR_CSS = `
   --scalar-background-3: rgb(224, 204, 250);
   --scalar-background-accent: rgba(136, 58, 234, 0.12);
 
+  --scalar-link-color: #883aea;
+  --scalar-link-color-hover: rgb(49, 10, 101);
+
+  --scalar-sidebar-color-active: #883aea;
+  --scalar-sidebar-item-active-background: rgba(136, 58, 234, 0.12);
+
   --scalar-border-color: rgba(49, 10, 101, 0.12);
 
   --scalar-button-1: #883aea;
@@ -48,8 +64,8 @@ export const EVOLUTION_SCALAR_CSS = `
   --scalar-button-1-hover: rgb(49, 10, 101);
 }
 
-.light-mode .t-doc__sidebar,
-.dark-mode .t-doc__sidebar {
+body.light-mode .t-doc__sidebar,
+body.dark-mode .t-doc__sidebar {
   --scalar-sidebar-background-1: var(--scalar-background-1);
   --scalar-sidebar-color-1: var(--scalar-color-1);
   --scalar-sidebar-color-2: var(--scalar-color-2);
@@ -59,14 +75,13 @@ export const EVOLUTION_SCALAR_CSS = `
   --scalar-sidebar-item-hover-color: currentColor;
 
   --scalar-sidebar-item-active-background: var(--scalar-background-accent);
-  --scalar-sidebar-color-active: var(--scalar-color-accent);
 
   --scalar-sidebar-search-background: var(--scalar-background-2);
   --scalar-sidebar-search-color: var(--scalar-color-3);
   --scalar-sidebar-search-border-color: var(--scalar-border-color);
 }
 
-.dark-mode .t-doc__sidebar {
+body.dark-mode .t-doc__sidebar {
   --scalar-sidebar-background-1: #111318;
 }
 

@@ -39,6 +39,16 @@ describe("Scalar API reference page", () => {
 		expect(html).toContain("--scalar-color-accent: #883aea");
 	});
 
+	it("outranks the Scalar defaults so links and the active sidebar item use the accent", () => {
+		const darkRule = configuration.customCss?.match(
+			/body\.dark-mode,\s*body \.dark-mode \{([^}]*)\}/,
+		)?.[1];
+		expect(darkRule).toContain("--scalar-color-accent: #883aea");
+		expect(darkRule).toMatch(/--scalar-link-color: [^;]*#883aea/);
+		expect(darkRule).toMatch(/--scalar-sidebar-color-active: [^;]*#883aea/);
+		expect(darkRule).toMatch(/--scalar-sidebar-item-active-background: rgba\(136, 58, 234/);
+	});
+
 	it("opens in dark mode with the modern layout and collapsed tags", () => {
 		expect(configuration.darkMode).toBe(true);
 		expect(configuration.layout).toBe("modern");
