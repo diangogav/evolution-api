@@ -112,6 +112,11 @@ Focused command: `bun test tests/unit/modules/tiers/application/GetTierCatalog.t
 - [x] F2 `replayTier` assumes at least one `absolute` tier in the ladder (`grantable[0]`); add a guard that throws a clear error (or narrow `TierOverrides` so `kind` cannot be overridden), with a RED test. (delegated)
 - [x] F3 Add a `MasterSelection` test where `grantedTierId` and `tierId` disagree with >= 20 games, proving eligibility uses the granted tier. (delegated)
 
+### Follow-ups from the PR2 native review (advisory, non-blocking; land with work unit 3)
+
+- [ ] F4 `UserStatsFinder.test.ts:106`: the `rejects` expectation is not awaited, so the "tier lookup not called on NotFound" assertion is vacuous; await the rejection before asserting. (delegated)
+- [x] F5 Recorded decision, no code change: `GET /users/:userId/stats` now fails when tier resolution fails (design failure policy: errors propagate, no silent `null`). Revisit only with production evidence. SQL semantics remain covered by the manual dev harness (repository convention: tests assert SQL text, no DB integration layer). (inline)
+
 ### Final verification
 
 - [ ] 5.1 Strict TDD evidence per PR: every GREEN commit preceded by its RED commit; list exceptions.
@@ -154,7 +159,7 @@ Focused command: `bun test tests/unit/modules/tiers/application/GetTierCatalog.t
 |----|--------|------|---------|----------------|--------|
 | tracker | feat/ranked-tiers | main (6f8f57d) | | | created, not pushed |
 | 1 | feat/ranked-tiers-01-domain | feat/ranked-tiers | ed93df9..9f93d2c (17 commits) | 1387 authored (391 prod) + odd doc | implemented; size:exception; native review approved and acknowledged; not pushed |
-| 2 | feat/ranked-tiers-02-profile | feat/ranked-tiers-01-domain | 8500b8d..742d1af (12 commits) | 716 authored (255 prod) | implemented; gate passed; size decision and native review pending |
+| 2 | feat/ranked-tiers-02-profile | feat/ranked-tiers-01-domain | 8500b8d..74f6c7c (13 commits) | 716 authored (255 prod), 16 over the allowance accepted by the user | implemented; gate passed; native review approved and acknowledged; not pushed |
 | 3 | feat/ranked-tiers-03-leaderboard-master | feat/ranked-tiers-02-profile | | | pending |
 | 4 | feat/ranked-tiers-04-catalog | feat/ranked-tiers-03-leaderboard-master | | | pending |
 
@@ -163,7 +168,8 @@ Focused command: `bun test tests/unit/modules/tiers/application/GetTierCatalog.t
 | Commit | Assessed tier | Outcome |
 |--------|---------------|---------|
 | PR1 range ed93df9..9f93d2c (base feat/ranked-tiers 6f8f57d, candidate tree df04e438) | medium (`executable_change` MasterSelection.ts; `slice_budget_reached`) | consent granted by the user; lineage review-41b99773ceea9aa5, one lens (review-reliability), approved with 3 advisory findings, acknowledged (receipt consumed). Advisory findings became follow-ups F1-F3 below. |
+| PR2 range 8500b8d..74f6c7c (base feat/ranked-tiers-01-domain, candidate tree 21c791c7) | medium (`executable_change` TierLookup.ts; `slice_budget_reached`) | consent granted by the user; lineage review-43c1dec7b2867ca3, one lens (review-reliability), approved with 3 advisory findings, acknowledged (receipt consumed). Follow-ups F4-F5 below. |
 
 ## Next step
 
-PR2 size decision (716 lines, 16 over the test-excess allowance), then the native review of the PR2 candidate, then work unit 3 on `feat/ranked-tiers-03-leaderboard-master`.
+Work unit 3 (leaderboard read path and Master) on `feat/ranked-tiers-03-leaderboard-master`, branched from the PR2 branch, including follow-up F4.
