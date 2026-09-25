@@ -12,6 +12,13 @@ export type LeaderboardPageQuery = { rankName: string; season: number; userIds: 
 /** Master candidates read from player_stats per round trip. */
 export const MASTER_CANDIDATE_BATCH = 50;
 
+/**
+ * Batches scanned before giving up on filling the Master seats. Past this
+ * point (150 candidates in leaderboard order) the seats stay empty, so a rank
+ * with many veterans and few Platinum players never replays all of them.
+ */
+export const MASTER_CANDIDATE_MAX_BATCHES = 3;
+
 /** The standings replayed so far in one request, per user, so a player is never replayed twice. */
 type Replays = Map<string, TierStanding>;
 
@@ -136,8 +143,9 @@ export class TierResolver {
 	 * is eligible: otherwise none of them can hold a seat and the seats do not
 	 * matter to this request. Candidates come from player_stats in the
 	 * leaderboard total order, one batch at a time, reusing every replay the
-	 * request already has, until enough eligible players are confirmed or the
-	 * candidates run out. The Elo is read for the seated players only.
+	 * request already has, until enough eligible players are confirmed, the
+	 * candidates run out or the scan bound is reached. The Elo is read for the
+	 * seated players only.
 	 */
 	private async masterSeats(
 		rank: TierRank,
@@ -154,24 +162,24 @@ export class TierResolver {
 		const ordered: MasterCandidate[] = [];
 		let eligible = 0;
 
-		for (let offset = 0; eligible < size; offset += MASTER_CANDIDATE_BATCH) {
-			const batch = await this.repository.findMasterCandidates({
+		for (let batch = 0; eligible < size && batch < MASTER_CANDIDATE_MAX_BATCHES; batch++) {
+			const candidates = await this.repository.findMasterCandidates({
 				rankId: rank.id,
 				season,
 				minGames: master.minGames ?? 0,
 				limit: MASTER_CANDIDATE_BATCH,
-				offset,
+				offset: batch * MASTER_CANDIDATE_BATCH,
 			});
-			const unseen = batch.filter((userId) => !replays.has(userId));
+			const unseen = candidates.filter((userId) => !replays.has(userId));
 			for (const [userId, standing] of await this.replay(unseen, rank, season, ladder)) {
 				replays.set(userId, standing);
 			}
-			for (const userId of batch) {
+			for (const userId of candidates) {
 				const standing = standingOf(replays, userId);
 				ordered.push({ userId, standing });
 				if (isMasterEligible(standing, ladder)) eligible++;
 			}
-			if (batch.length < MASTER_CANDIDATE_BATCH) break;
+			if (candidates.length < MASTER_CANDIDATE_BATCH) break;
 		}
 
 		const seated = selectMaster(ordered, ladder);
