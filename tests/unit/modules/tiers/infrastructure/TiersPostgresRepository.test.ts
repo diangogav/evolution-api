@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from "bun:test";
 
 import { dataSource } from "../../../../../src/evolution-types/src/data-source";
-import { BACKFILL_CUTOFF } from "../../../../../src/modules/tiers/domain/TierGame";
 import { TiersPostgresRepository } from "../../../../../src/modules/tiers/infrastructure/TiersPostgresRepository";
 import { tierGame } from "../fixtures/season7Slices";
 
@@ -46,7 +45,7 @@ describe("TiersPostgresRepository", () => {
 	describe("findTierGames", () => {
 		const query = { userIds: ["u1"], rankIds: ["rank-tcg", "rank-edison"], season: 7 };
 
-		it("passes user ids, rank ids, season and the backfill cutoff literal as the four positional parameters", async () => {
+		it("passes user ids, rank ids and season as the three positional parameters", async () => {
 			const rows = [tierGame({ gameId: "g1" }), tierGame({ gameId: "g2", won: false })];
 			querySpy.mockResolvedValueOnce(rows);
 
@@ -54,8 +53,7 @@ describe("TiersPostgresRepository", () => {
 
 			expect(querySpy).toHaveBeenCalledTimes(1);
 			const [, params] = querySpy.mock.calls[0] as [string, unknown[]];
-			expect(params).toEqual([["u1"], ["rank-tcg", "rank-edison"], 7, BACKFILL_CUTOFF]);
-			expect(typeof params[3]).toBe("string");
+			expect(params).toEqual([["u1"], ["rank-tcg", "rank-edison"], 7]);
 		});
 
 		it("nets every ledger kind per game and keeps a game only while its kind balance is positive", async () => {
@@ -72,7 +70,7 @@ describe("TiersPostgresRepository", () => {
 			);
 		});
 
-		it("projects the replay row: epoch-ms timestamps, a duel time only before the cutoff and the applied opponent of the same rank", async () => {
+		it("projects the replay row: epoch-ms timestamps, the duel time of every game and the applied opponent of the same rank", async () => {
 			await repository.findTierGames(query);
 
 			const [sql] = querySpy.mock.calls[0] as [string, unknown[]];
@@ -91,9 +89,11 @@ describe("TiersPostgresRepository", () => {
 			}
 			expect(sql).toContain('g.wins_delta > 0 AS "won"');
 			expect(sql).toContain('(EXTRACT(EPOCH FROM g.applied_at) * 1000)::float8 AS "appliedAt"');
-			expect(sql).toContain("CASE WHEN g.applied_at < $4 THEN");
-			expect(sql).toContain("FROM duels d WHERE d.game_id = g.game_id");
-			expect(sql).toContain("(EXTRACT(EPOCH FROM MIN(d.date)) * 1000)::float8");
+			expect(sql).toContain(
+				'(SELECT (EXTRACT(EPOCH FROM MIN(d.date)) * 1000)::float8 FROM duels d WHERE d.game_id = g.game_id) AS "duelAt"',
+			);
+			expect(sql).not.toContain("CASE WHEN");
+			expect(sql).not.toContain("$4");
 			expect(sql).toContain("SELECT MIN(o.user_id) FROM points_ledger o");
 			expect(sql).toContain("o.game_id = g.game_id AND o.rank_id = g.rank_id");
 			expect(sql).toContain("o.kind = 'applied' AND o.user_id <> g.user_id");
