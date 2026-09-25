@@ -10,7 +10,7 @@ Turn `/swagger` into an exact, well-organized and branded reference of every end
 
 - The document is titled "Evolution API - Tournaments" and describes only tournaments, although the API covers accounts, ranked play, cosmetics and moderation.
 - Four tags used by routes are not declared (`Cosmetics Admin`, `Match Moderation`, `Ranked`, `Lightning Tournaments`), so they render without description or order.
-- Eight routes have no `detail` (4 in `user-router`, 2 in `leaderboard-router`, 2 in `ban-list-router`).
+- One route had no `detail` (`GET /users/:userId/ban/active`); the earlier count of eight came from a line-based grep and was wrong.
 - Only one route declares its response schema; the rest rely on hand-written examples that drift silently.
 - Protected routes do not declare the `bearerAuth` scheme, so the UI does not show which calls need a token.
 - The UI uses Scalar's default look, unrelated to the Evolution brand.
@@ -37,11 +37,11 @@ Out: changing any route behavior, paths, payloads or auth; runtime response vali
 
 Focused command: `bun test tests/unit/server/swagger`. Runtime harness: start the API and load `/swagger` and `/swagger/json`. Rollback: revert the branch; routes are untouched.
 
-- [ ] 1.1 RED: test that builds the app's routers with the shared Swagger config, reads the generated OpenAPI JSON, and asserts: every operation has at least one tag and every tag is declared; every operation has a `summary`; every operation behind `bearer()` declares `security: [{ bearerAuth: [] }]`; `info.title` is not tournament-specific; tag groups cover every declared tag exactly once. (delegated)
-- [ ] 1.2 GREEN: extract the Swagger configuration to `src/server/swagger.ts`; declare every tag with a description; add tag groups (Account, Ranked, Tournaments, Cosmetics, Administration); set title, description, version, servers; add `security` to protected operations. (delegated)
-- [ ] 1.3 GREEN: add `detail` (tags, summary, description) to the 8 routes that lack it. (delegated)
-- [ ] 1.4 Scalar design: Evolution theme (custom CSS with the brand palette, dark by default), modern layout, logo and favicon, collapsed tags, persisted auth. Verified by loading `/swagger` locally. (delegated)
-- [ ] 1.5 Gate: `bun test`, `bun run lint`, `bun run build`; runtime check of `/swagger` and `/swagger/json`. (inline)
+- [x] 1.1 RED: test that builds the app's routers with the shared Swagger config, reads the generated OpenAPI JSON, and asserts: every operation has at least one tag and every tag is declared; every operation has a `summary`; every operation behind `bearer()` declares `security: [{ bearerAuth: [] }]`; `info.title` is not tournament-specific; tag groups cover every declared tag exactly once. (delegated)
+- [x] 1.2 GREEN: extract the Swagger configuration to `src/server/swagger.ts`; declare every tag with a description; add tag groups (Account, Ranked, Tournaments, Cosmetics, Administration); set title, description, version, servers; add `security` to protected operations. (delegated)
+- [x] 1.3 GREEN: add `detail` (tags, summary, description) to the 8 routes that lack it. (delegated)
+- [x] 1.4 Scalar design: Evolution theme (custom CSS with the brand palette, dark by default), modern layout, logo and favicon, collapsed tags, persisted auth. Verified by loading `/swagger` locally. (delegated)
+- [x] 1.5 Gate: `bun test`, `bun run lint`, `bun run build`; runtime check of `/swagger` and `/swagger/json`. (inline)
 
 ### Work unit 2 — Response schemas (later)
 
@@ -55,8 +55,12 @@ Focused command: `bun test tests/unit/server/swagger`. Runtime harness: start th
 
 | Task | Route | Commit | Focused check | Notes |
 |------|-------|--------|---------------|-------|
-| (none yet) | | | | |
+| 1.1 ratchet test | delegated | 1c5058b | 6 of 7 failed before GREEN | mounts the real routers; protected = handler reads bearer or Authorization |
+| 1.2 config, tags, groups, servers, security | delegated | de48b3d | | `src/server/swagger.ts`; 14 tags in 5 groups; "Players & Participants" dropped (unused); security also on tournament enroll/withdraw |
+| 1.3 missing detail | delegated | 25630fb | 7 pass | only `ban/active` lacked it |
+| 1.4 Scalar design | delegated | 42ad20c, 84b55b5, 40b321e | 14 pass | theme in `swagger-theme.ts`; Scalar pinned 1.72.1; developer tools, AI agent and MCP promos hidden by config; persistAuth on; accent via `--scalar-link-color` and sidebar active variables |
+| 1.5 gate | inline | tree 40b321e | `bun test` 434 pass / 0 fail; lint clean (1 pre-existing info); tsc clean. Runtime: API on the branch against dev, `/swagger/json` = Evolution API 1.0.50, 46 operations, 25 secured, 5 tag groups; `/swagger` screenshot verified (branding, groups, no promo UI, violet accent) | authored 540 lines in src/tests (455 + 85) |
 
 ## Next step
 
-Implement work unit 1 through one bounded writer under Strict TDD.
+Work unit 1 done: native review, then push and PR to main (user decision). Next: work unit 2 (response schemas per module).
