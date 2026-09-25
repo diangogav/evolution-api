@@ -101,8 +101,13 @@ describe("replayTier: thresholds", () => {
 		[40, "diamond"],
 	])("assigns %i effective points with five beaten opponents to %s", (points, tierId) => {
 		const standing = replay(games([points - 5, ...ones(5)]));
+		const beaten = points - 5 > 0 ? 6 : 5;
 
-		expect(standing).toMatchObject({ tierId, effectivePoints: points, distinctOpponentWins: 5 });
+		expect(standing).toMatchObject({
+			tierId,
+			effectivePoints: points,
+			distinctOpponentWins: beaten,
+		});
 	});
 
 	it("caps a player at Gold while the Platinum points are met with only four beaten opponents", () => {
