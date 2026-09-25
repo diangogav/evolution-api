@@ -378,3 +378,13 @@ describe("replayTier: progress", () => {
 		});
 	});
 });
+
+describe("replayTier: ladder validation", () => {
+	it("refuses a ladder with no absolute tier instead of failing deep inside the fold", () => {
+		const [rookie, , , , , , master] = TIER_CATALOG.defaults.tiers;
+		const noAbsoluteTier = { tiers: [rookie, master], dailyOpponentCap: 2 };
+
+		expect(() => replayTier([], noAbsoluteTier)).toThrow("ladder has no absolute tier");
+		expect(() => replayTier(games([2, 2]), noAbsoluteTier)).toThrow("ladder has no absolute tier");
+	});
+});
