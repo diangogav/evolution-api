@@ -219,6 +219,7 @@ export class TournamentController {
 							tags: ["Lightning Tournaments"],
 							summary: "Enroll in tournament",
 							description: "Enrolls a user in a lightning tournament",
+							security: [{ bearerAuth: [] }],
 							responses: {
 								200: {
 									description: "User enrolled successfully",
@@ -249,6 +250,7 @@ export class TournamentController {
 							tags: ["Lightning Tournaments"],
 							summary: "Withdraw from tournament",
 							description: "Withdraws a user from a lightning tournament",
+							security: [{ bearerAuth: [] }],
 							responses: {
 								200: {
 									description: "User withdrawn successfully",
