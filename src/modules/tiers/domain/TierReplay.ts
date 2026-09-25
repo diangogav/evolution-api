@@ -47,10 +47,12 @@ function qualifies(tier: TierDefinition, effectivePoints: number, beaten: number
  */
 export function replayTier(games: TierGame[], ladder: TierLadder): TierStanding {
 	const grantable = ladder.tiers.filter(isGrantable);
+	const lowest = grantable[0];
+	if (lowest === undefined) throw new Error("replayTier: the ladder has no absolute tier");
 	const rookie = ladder.tiers.find((tier) => tier.kind === "placement");
 	const beaten = new Set<string>();
 	const dailyGames = new Map<string, number>();
-	let granted = grantable[0];
+	let granted = lowest;
 	let lockedFloor: number | null = null;
 	let effectivePoints = 0;
 	let gamesPlayed = 0;
