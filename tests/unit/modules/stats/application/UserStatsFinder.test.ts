@@ -70,7 +70,10 @@ describe("UserStatsFinder", () => {
 			leaderboard: async () => [],
 			getBestPlayerOfLastCompletedWeek: async () => [],
 		};
-		tierLookup = { forPlayer: mock(async () => new Map<string, TierView>()) };
+		tierLookup = {
+			forPlayer: mock(async () => new Map<string, TierView>()),
+			forLeaderboardPage: mock(async () => new Map<string, TierView>()),
+		};
 		userStatsFinder = new UserStatsFinder(repository, tierLookup);
 		userStats = UserStatsMother.create();
 	});
@@ -100,7 +103,7 @@ describe("UserStatsFinder", () => {
 
 	it("Should throw NotFoundError when stats are not found for the given user", async () => {
 		spyOn(repository, "find").mockResolvedValue(null);
-		expect(
+		await expect(
 			userStatsFinder.find({ userId: userStats.userId, season: config.season }),
 		).rejects.toThrow(new NotFoundError(`Stats for user with id ${userStats.userId} not found.`));
 		expect(tierLookup.forPlayer).not.toHaveBeenCalled();

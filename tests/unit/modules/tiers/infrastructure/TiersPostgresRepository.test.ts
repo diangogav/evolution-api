@@ -107,4 +107,100 @@ describe("TiersPostgresRepository", () => {
 			expect(querySpy).not.toHaveBeenCalled();
 		});
 	});
+
+	describe("findMasterCandidates", () => {
+		const query = { rankId: "rank-tcg", season: 7, minGames: 20, limit: 50, offset: 100 };
+
+		it("returns the candidate user ids in the order the database gave them", async () => {
+			querySpy.mockResolvedValueOnce([{ userId: "u2" }, { userId: "u1" }, { userId: "u3" }]);
+
+			expect(await repository.findMasterCandidates(query)).toEqual(["u2", "u1", "u3"]);
+		});
+
+		it("pages player_stats rows with enough games in the leaderboard total order, binding rank, season, minimum, limit and offset positionally", async () => {
+			await repository.findMasterCandidates(query);
+
+			expect(querySpy).toHaveBeenCalledTimes(1);
+			const [sql, params] = querySpy.mock.calls[0] as [string, unknown[]];
+			expect(sql).toContain("FROM player_stats ps");
+			expect(sql).toContain("ps.rank_id = $1 AND ps.season = $2 AND ps.wins + ps.losses >= $3");
+			expect(sql).toContain("ps.wins::float / NULLIF(ps.wins + ps.losses, 0) AS win_rate");
+			expect(sql).toContain("ORDER BY ps.points DESC, win_rate DESC, ps.user_id ASC");
+			expect(sql).toContain("LIMIT $4 OFFSET $5");
+			expect(params).toEqual(["rank-tcg", 7, 20, 50, 100]);
+		});
+	});
+
+	describe("findMasterRatings", () => {
+		const query = { rankId: "rank-tcg", season: 7, userIds: ["u1", "u2"] };
+
+		it("reads rating and peak of the given users in the rank and season, binding the ids as one array parameter", async () => {
+			const rows = [
+				{ userId: "u1", rating: 1180, peak: 1210 },
+				{ userId: "u2", rating: 1150, peak: 1150 },
+			];
+			querySpy.mockResolvedValueOnce(rows);
+
+			expect(await repository.findMasterRatings(query)).toEqual(rows);
+
+			expect(querySpy).toHaveBeenCalledTimes(1);
+			const [sql, params] = querySpy.mock.calls[0] as [string, unknown[]];
+			expect(sql).toContain("FROM player_ratings pr");
+			expect(sql).toContain('pr.user_id AS "userId", pr.rating, pr.peak');
+			expect(sql).toContain("pr.rank_id = $1 AND pr.season = $2 AND pr.user_id = ANY($3)");
+			expect(params).toEqual(["rank-tcg", 7, ["u1", "u2"]]);
+		});
+
+		it("returns nothing for no users without touching the database", async () => {
+			expect(await repository.findMasterRatings({ ...query, userIds: [] })).toEqual([]);
+
+			expect(querySpy).not.toHaveBeenCalled();
+		});
+	});
+
+	describe("parameter binding", () => {
+		const sentinels = {
+			rankName: "TCG' OR 1=1 --",
+			userId: "u-9c1f1c9e",
+			rankId: "rank-7e0b2d4a",
+			season: 7331,
+			minGames: 2027,
+			limit: 5039,
+			offset: 6067,
+		};
+
+		it("never interpolates a caller value into any query text: every value travels as a positional parameter", async () => {
+			await repository.findEligibleRanks([sentinels.rankName]);
+			await repository.findTierGames({
+				userIds: [sentinels.userId],
+				rankIds: [sentinels.rankId],
+				season: sentinels.season,
+			});
+			await repository.findMasterCandidates({
+				rankId: sentinels.rankId,
+				season: sentinels.season,
+				minGames: sentinels.minGames,
+				limit: sentinels.limit,
+				offset: sentinels.offset,
+			});
+			await repository.findMasterRatings({
+				rankId: sentinels.rankId,
+				season: sentinels.season,
+				userIds: [sentinels.userId],
+			});
+
+			expect(querySpy).toHaveBeenCalledTimes(4);
+			for (const [sql, params] of querySpy.mock.calls as [string, unknown[]][]) {
+				for (const value of Object.values(sentinels)) {
+					expect(sql).not.toContain(String(value));
+				}
+				const placeholders = [...new Set(sql.match(/\$\d+/g))].map((placeholder) =>
+					Number(placeholder.slice(1)),
+				);
+				expect([...placeholders].sort((a, b) => a - b)).toEqual(
+					params.map((_, index) => index + 1),
+				);
+			}
+		});
+	});
 });

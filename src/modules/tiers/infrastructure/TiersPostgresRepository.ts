@@ -1,6 +1,13 @@
 import { dataSource } from "../../../evolution-types/src/data-source";
 import { TierGame } from "../domain/TierGame";
-import { TierGamesQuery, TierRank, TiersRepository } from "../domain/TiersRepository";
+import {
+	MasterCandidatesQuery,
+	MasterRating,
+	MasterRatingsQuery,
+	TierGamesQuery,
+	TierRank,
+	TiersRepository,
+} from "../domain/TiersRepository";
 
 const FIND_ELIGIBLE_RANKS_QUERY = `SELECT id, name FROM ranks
 	WHERE name = ANY($1) AND type IN ('banlist', 'group')`;
@@ -33,6 +40,21 @@ SELECT g.user_id AS "userId", g.rank_id AS "rankId", g.game_id AS "gameId",
            AND o.kind = 'applied' AND o.user_id <> g.user_id) AS "opponentId"
 FROM games g`;
 
+// The same total order the leaderboard uses (player_stats.points includes
+// achievement points, exactly like the leaderboard), with user_id as the
+// deterministic last key. The game minimum is a prefilter: eligibility is
+// re-checked on the replay.
+const FIND_MASTER_CANDIDATES_QUERY = `SELECT ps.user_id AS "userId",
+       ps.wins::float / NULLIF(ps.wins + ps.losses, 0) AS win_rate
+	FROM player_stats ps
+	WHERE ps.rank_id = $1 AND ps.season = $2 AND ps.wins + ps.losses >= $3
+	ORDER BY ps.points DESC, win_rate DESC, ps.user_id ASC
+	LIMIT $4 OFFSET $5`;
+
+const FIND_MASTER_RATINGS_QUERY = `SELECT pr.user_id AS "userId", pr.rating, pr.peak
+	FROM player_ratings pr
+	WHERE pr.rank_id = $1 AND pr.season = $2 AND pr.user_id = ANY($3)`;
+
 export class TiersPostgresRepository implements TiersRepository {
 	async findEligibleRanks(rankNames: string[]): Promise<TierRank[]> {
 		if (rankNames.length === 0) return [];
@@ -44,5 +66,33 @@ export class TiersPostgresRepository implements TiersRepository {
 		if (userIds.length === 0 || rankIds.length === 0) return [];
 
 		return dataSource.query(FIND_TIER_GAMES_QUERY, [userIds, rankIds, season]);
+	}
+
+	async findMasterCandidates({
+		rankId,
+		season,
+		minGames,
+		limit,
+		offset,
+	}: MasterCandidatesQuery): Promise<string[]> {
+		const rows: { userId: string }[] = await dataSource.query(FIND_MASTER_CANDIDATES_QUERY, [
+			rankId,
+			season,
+			minGames,
+			limit,
+			offset,
+		]);
+
+		return rows.map((row) => row.userId);
+	}
+
+	async findMasterRatings({
+		rankId,
+		season,
+		userIds,
+	}: MasterRatingsQuery): Promise<MasterRating[]> {
+		if (userIds.length === 0) return [];
+
+		return dataSource.query(FIND_MASTER_RATINGS_QUERY, [rankId, season, userIds]);
 	}
 }

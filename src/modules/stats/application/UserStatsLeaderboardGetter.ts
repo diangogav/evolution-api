@@ -1,9 +1,13 @@
 import { config } from "src/config";
 
 import { LeaderboardSortBy, UserStatsRepository } from "../domain/UserStatsRepository";
+import { TierLookup } from "./TierLookup";
 
 export class UserStatsLeaderboardGetter {
-	constructor(private readonly repository: UserStatsRepository) {}
+	constructor(
+		private readonly repository: UserStatsRepository,
+		private readonly tierLookup: TierLookup,
+	) {}
 
 	async get({
 		page = 1,
@@ -26,6 +30,13 @@ export class UserStatsLeaderboardGetter {
 			sortBy,
 		});
 
-		return leaderboard.map((item) => item.toJson());
+		const rows = leaderboard.map((item) => item.toJson());
+		const tiers = await this.tierLookup.forLeaderboardPage({
+			rankName: banListName,
+			season,
+			userIds: rows.map((row) => row.userId),
+		});
+
+		return rows.map((row) => ({ ...row, tier: tiers.get(row.userId) ?? null }));
 	}
 }
