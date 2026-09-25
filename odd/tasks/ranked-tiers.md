@@ -38,7 +38,7 @@ Out: migrations, indexes, game-server changes, matchmaking, cache, icon assets, 
 
 - Rookie: fewer than 5 non-annulled games. Bronze < 3, Silver >= 3, Gold >= 10, Platinum >= 25, Diamond >= 40 effective points; Platinum and Diamond also require wins over >= 5 distinct opponents (all non-annulled games).
 - Effective points: daily-capped sum (first 2 games per UTC day per opponent) that never drops below the highest granted tier threshold (`max(lockedFloor, effective + delta)`); floors lock only at grant.
-- Active game: `applied - reversal + reinstatement > 0` per game_id; one net row per game at its original game time; replay order (game time, applied created_at, applied id); game time = min(duels.date) only for rows created before 2026-09-10, else applied created_at.
+- Active game: `applied - reversal + reinstatement > 0` per game_id; one net row per game at its original game time; replay order (game time, applied created_at, applied id); game time = min(duels.date) for every game, falling back to the applied created_at only when no duel row exists (the 2026-09-10 backfill cutoff was removed on 2026-09-25, decision #1227: it encoded the dev backfill date and would misorder production history).
 - Master: strict top 5 eligible (>= 20 games AND Platinum reached) ordered by `player_stats.points` desc, win rate desc, user_id asc; empty when fewer than 5; only Master exposes rating and peak. Candidates come from player_stats in batches of 50; leaderboard replays only the page's users; no cache.
 - Tiers only for ranks of type banlist and group. progress is `{ nextTierId, unit, current, target, distinctOpponentWins }` or null (Diamond, Master).
 
@@ -177,10 +177,10 @@ Focused command: `bun test tests/unit/modules/tiers/application/GetTierCatalog.t
 | PR | Branch | Base | Commits | Authored lines | Status |
 |----|--------|------|---------|----------------|--------|
 | tracker | feat/ranked-tiers | main (6f8f57d) | | | created, not pushed |
-| 1 | feat/ranked-tiers-01-domain | feat/ranked-tiers | ed93df9..9f93d2c (17 commits) | 1387 authored (391 prod) + odd doc | implemented; size:exception; native review approved and acknowledged; not pushed |
-| 2 | feat/ranked-tiers-02-profile | feat/ranked-tiers-01-domain | 8500b8d..74f6c7c (13 commits) | 716 authored (255 prod), 16 over the allowance accepted by the user | implemented; gate passed; native review approved and acknowledged; not pushed |
-| 3 | feat/ranked-tiers-03-leaderboard-master | feat/ranked-tiers-02-profile | 1a0c296..29c818a (12 commits) | 929 authored (317 prod); `size:exception` accepted by the user | implemented; gate passed; native review approved and acknowledged; not pushed |
-| 4 | feat/ranked-tiers-04-catalog | feat/ranked-tiers-03-leaderboard-master | 39e7fd0..447425c (12 commits) | 349 authored (134 prod) | implemented; gate passed; assessed under budget (no review due); not pushed |
+| 1 | feat/ranked-tiers-01-domain | feat/ranked-tiers | ed93df9..d13831c (18 commits) | 1387 authored (391 prod) + odd doc | PR #85; size:exception; native review approved and acknowledged |
+| 2 | feat/ranked-tiers-02-profile | feat/ranked-tiers-01-domain | 8500b8d..7c5d199 (17 commits) | 711 authored (255 prod) after the cutoff removal (f0e1143 test, 5221c51 refactor, net -5) | PR #86; earlier receipt superseded by the new candidate; native review pending again |
+| 3 | feat/ranked-tiers-03-leaderboard-master | feat/ranked-tiers-02-profile | 13 commits rebased onto the new PR2 tip (38caea1) | 929 authored (317 prod); `size:exception` accepted by the user | PR #87; receipt superseded by the rebase; native review pending again |
+| 4 | feat/ranked-tiers-04-catalog | feat/ranked-tiers-03-leaderboard-master | 13 commits rebased onto the new PR3 tip | 349 authored (134 prod) | PR #88; under budget |
 
 ## Review (receipt-driven development)
 
