@@ -613,6 +613,35 @@ export const userRouter = new Elysia({ prefix: "/users" })
 			return { activeBan: ban };
 		},
 		{
+			detail: {
+				tags: ["User Bans"],
+				summary: "Get active ban",
+				description:
+					"Retrieves the ban currently in force for a user, or null when the user is not banned. Requires admin privileges.",
+				security: [{ bearerAuth: [] }],
+				responses: {
+					200: {
+						description: "Active ban retrieved successfully",
+						content: {
+							"application/json": {
+								example: {
+									activeBan: {
+										id: "ban-123",
+										userId: "user-123",
+										reason: "Inappropriate behavior",
+										bannedAt: "2025-11-24T10:00:00Z",
+										expiresAt: "2025-12-24T10:00:00Z",
+										bannedBy: "admin-1",
+										createdAt: "2025-11-24T10:00:00Z",
+										updatedAt: "2025-11-24T10:00:00Z",
+									},
+								},
+							},
+						},
+					},
+					401: { description: "Unauthorized - Admin role required" },
+				},
+			},
 			params: t.Object({ userId: t.String() }),
 		},
 	)
