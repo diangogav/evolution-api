@@ -125,11 +125,11 @@ Focused command: `bun test tests/unit/modules/tiers/application/GetTierCatalog.t
 
 ### Final verification
 
-- [ ] 5.1 Strict TDD evidence per PR: every GREEN commit preceded by its RED commit; list exceptions.
-- [ ] 5.2 Threat-matrix N/A re-confirmation: parameterized SQL only, no auth added to public routes.
-- [ ] 5.3 Manual dev SQL semantics check (read-only): conditional duels lookup and kind-balance agreement with `projectRating` on a known annulled and reinstated game.
-- [ ] 5.4 Map spec success criteria to covering tests; open follow-ups for gaps.
-- [ ] 5.5 Scope and budget containment per PR (`git diff --stat` against the merge base; no `src/migrations/`, `src/evolution-types/` or game-server files touched).
+- [x] 5.1 Strict TDD evidence per PR: every GREEN commit preceded by its RED commit; list exceptions.
+- [x] 5.2 Threat-matrix N/A re-confirmation: parameterized SQL only, no auth added to public routes.
+- [x] 5.3 Manual dev SQL semantics check (read-only): conditional duels lookup and kind-balance agreement with `projectRating` on a known annulled and reinstated game.
+- [x] 5.4 Map spec success criteria to covering tests; open follow-ups for gaps.
+- [x] 5.5 Scope and budget containment per PR (`git diff --stat` against the merge base; no `src/migrations/`, `src/evolution-types/` or game-server files touched).
 
 ## Acceptance criteria
 
@@ -180,7 +180,7 @@ Focused command: `bun test tests/unit/modules/tiers/application/GetTierCatalog.t
 | 1 | feat/ranked-tiers-01-domain | feat/ranked-tiers | ed93df9..9f93d2c (17 commits) | 1387 authored (391 prod) + odd doc | implemented; size:exception; native review approved and acknowledged; not pushed |
 | 2 | feat/ranked-tiers-02-profile | feat/ranked-tiers-01-domain | 8500b8d..74f6c7c (13 commits) | 716 authored (255 prod), 16 over the allowance accepted by the user | implemented; gate passed; native review approved and acknowledged; not pushed |
 | 3 | feat/ranked-tiers-03-leaderboard-master | feat/ranked-tiers-02-profile | 1a0c296..29c818a (12 commits) | 929 authored (317 prod); `size:exception` accepted by the user | implemented; gate passed; native review approved and acknowledged; not pushed |
-| 4 | feat/ranked-tiers-04-catalog | feat/ranked-tiers-03-leaderboard-master | 39e7fd0..034bb0e (11 commits) | 349 authored (134 prod) | implemented; gate passed; native review pending |
+| 4 | feat/ranked-tiers-04-catalog | feat/ranked-tiers-03-leaderboard-master | 39e7fd0..447425c (12 commits) | 349 authored (134 prod) | implemented; gate passed; assessed under budget (no review due); not pushed |
 
 ## Review (receipt-driven development)
 
@@ -189,7 +189,16 @@ Focused command: `bun test tests/unit/modules/tiers/application/GetTierCatalog.t
 | PR1 range ed93df9..9f93d2c (base feat/ranked-tiers 6f8f57d, candidate tree df04e438) | medium (`executable_change` MasterSelection.ts; `slice_budget_reached`) | consent granted by the user; lineage review-41b99773ceea9aa5, one lens (review-reliability), approved with 3 advisory findings, acknowledged (receipt consumed). Advisory findings became follow-ups F1-F3 below. |
 | PR2 range 8500b8d..74f6c7c (base feat/ranked-tiers-01-domain, candidate tree 21c791c7) | medium (`executable_change` TierLookup.ts; `slice_budget_reached`) | consent granted by the user; lineage review-43c1dec7b2867ca3, one lens (review-reliability), approved with 3 advisory findings, acknowledged (receipt consumed). Follow-ups F4-F5 below. |
 | PR3 range 1a0c296..29c818a (base feat/ranked-tiers-02-profile, candidate tree 98a827b3) | medium (`executable_change` TierLookup.ts; `slice_budget_reached`) | consent granted by the user; lineage review-609080ce051bb6e0, one lens (review-reliability), approved with 3 advisory findings, acknowledged (receipt consumed). Follow-ups F6-F8 below. |
+| PR4 range 39e7fd0..447425c (base feat/ranked-tiers-03-leaderboard-master) | medium (`executable_change` GetTierCatalog.ts) | `review_due: false`, reason `under_budget` (377 changed lines): stays pending in the slice per ODD; no review started, no receipt. Ordinary repository policy applies at delivery. |
+
+## Final verification evidence
+
+- 5.1 Strict TDD: every `feat`/`fix` commit in the chain is preceded by its `test` commit (see `git log --reverse feat/ranked-tiers..feat/ranked-tiers-04-catalog`). Exceptions, all documented: wiring commits 742d1af and 598459b (composition roots, covered by tsc and the full suite), characterization tests 8500b8d, 57ba72e, 65cd26a and 1a0c296 (pin existing behavior; no RED constructible without a regression), test-only typing fixes fe25e53, b30f5d0, e67399b, 034bb0e.
+- 5.2 Threat matrix N/A re-confirmed: the repository test drives sentinel injection values through all queries and asserts placeholders `$1..$n` only; `leaderboard-router.ts` and `ranked-tiers-router.ts` declare no guard; `/:userId/stats` is registered before `bearer()` and `guard(banGuard)` in `user-router.ts`.
+- 5.3 Manual dev SQL semantics (read-only): season 7 has 156 games with two reversals and one reinstatement (annulled, reinstated, annulled again) and the kind-balance rule classifies them as annulled (balance 0); ledger game counts agree with `rating_history`'s applied-minus-reversal-plus-reinstatement arithmetic on 796 of 800 (user, rank) keys; the 4 disagreements are 2 players x 2 ranks with exactly one ledger game that never received a rating row (rating eligibility, pre-existing data difference, not a tier defect: tiers count ledger games by spec). Conditional duels lookup confirmed in the query text and by the season-7 profile latency measurements.
+- 5.4 Spec success criteria to tests: profile `tier` -> UserStatsFinder.test.ts + harness 2.11; leaderboard `tier` and ordering -> UserStatsLeaderboardGetter.test.ts + harness 3.11; catalog -> TierCatalog.test.ts, GetTierCatalog.test.ts, ranked-tiers-router.test.ts + harness 4.6; ladder rules -> TierReplay.test.ts, TierGame.test.ts; Master -> MasterSelection.test.ts, TierResolver.test.ts; annulment visible on next read -> no cache exists, harness 3.11/5.3; no migrations or game-server changes -> 5.5. No gap found.
+- 5.5 Scope and budget: every PR diff stays inside `src/modules/tiers/**`, the three stats application files, the three routers, `server.ts`, tests and the feature document; nothing under `src/migrations/` or `src/evolution-types/`. Authored lines: PR1 1387 (size:exception), PR2 716 (accepted), PR3 929 (size:exception), PR4 349. Final tree: `bun test` 420 pass / 0 fail / 72 files, `bun run lint` clean (1 pre-existing info), `bun run build` clean.
 
 ## Next step
 
-Native review of the PR4 candidate, then final verification 5.1-5.5, then hand the four branches to the user for push and PR creation.
+Implementation complete on four local branches (nothing pushed). Hand-off to the user: push the tracker `feat/ranked-tiers` and the four child branches, open the draft tracker PR to `main` and the four chained PRs (PR1 -> tracker, PR2 -> PR1, PR3 -> PR2, PR4 -> PR3) with Chain Context sections and the recorded size exceptions; the `chained-pr` and `branch-pr` skills apply. Follow-ups outside this feature: icon assets in evolution-assets, `merge-duplicate-ranks.sql` ledger fix (Engram #1203), optional `(rank_id, season)` index and cache only with production evidence.
