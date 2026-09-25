@@ -70,7 +70,10 @@ describe("UserStatsFinder", () => {
 			leaderboard: async () => [],
 			getBestPlayerOfLastCompletedWeek: async () => [],
 		};
-		tierLookup = { forPlayer: mock(async () => new Map<string, TierView>()) };
+		tierLookup = {
+			forPlayer: mock(async () => new Map<string, TierView>()),
+			forLeaderboardPage: mock(async () => new Map<string, TierView>()),
+		};
 		userStatsFinder = new UserStatsFinder(repository, tierLookup);
 		userStats = UserStatsMother.create();
 	});
