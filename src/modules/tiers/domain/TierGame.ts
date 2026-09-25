@@ -16,6 +16,11 @@ export type TierGame = {
 	opponentId: string | null;
 	pointsDelta: number;
 	won: boolean;
+	/**
+	 * The applied row's points_ledger.id, a canonical lowercase uuid. Postgres
+	 * orders uuids by their bytes, which for that text form is plain lexical
+	 * order, so string comparison here matches ORDER BY id in SQL.
+	 */
 	appliedId: string;
 	/** Epoch ms of the applied row. */
 	appliedAt: number;
