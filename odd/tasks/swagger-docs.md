@@ -43,6 +43,13 @@ Focused command: `bun test tests/unit/server/swagger`. Runtime harness: start th
 - [x] 1.4 Scalar design: Evolution theme (custom CSS with the brand palette, dark by default), modern layout, logo and favicon, collapsed tags, persisted auth. Verified by loading `/swagger` locally. (delegated)
 - [x] 1.5 Gate: `bun test`, `bun run lint`, `bun run build`; runtime check of `/swagger` and `/swagger/json`. (inline)
 
+### Native review of work unit 1
+
+Lineage review-802a77a5d2e5c5b2 (medium, `executable_change` TournamentController.ts; consent granted by the user; one reliability lens): approved and acknowledged with two advisories, carried as follow-ups:
+
+- [ ] F1 The protected-route detection in `openapi-document.test.ts` reads the handler source with a regex; a handler that delegates token reading to a controller or helper would slip through (it already missed tournament enroll/withdraw until they were fixed by hand). Replace it with an explicit, reviewed list of protected operations or a marker set by the auth wiring, so a new protected route without `security` fails the test. (delegated, with work unit 2)
+- [ ] F2 Assert `info.version` is non-empty and the `servers` list matches production and local in the OpenAPI test. (delegated, with work unit 2)
+
 ### Work unit 2 — Response schemas (later)
 
 - [ ] 2.x Per module: TypeBox schemas in `detail.responses`, validated against the current responses in tests; extend the ratchet test to require them.
@@ -63,4 +70,4 @@ Focused command: `bun test tests/unit/server/swagger`. Runtime harness: start th
 
 ## Next step
 
-Work unit 1 done: native review, then push and PR to main (user decision). Next: work unit 2 (response schemas per module).
+Work unit 1 done and reviewed (receipt consumed); push and PR to main are the user's decision. Next: work unit 2 (response schemas per module).
