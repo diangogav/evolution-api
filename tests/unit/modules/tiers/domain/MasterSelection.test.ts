@@ -58,6 +58,22 @@ describe("isMasterEligible", () => {
 		expect(isMasterEligible(standing({ tierId: "rookie", gamesPlayed: 4 }), ladder)).toBe(false);
 	});
 
+	it("judges the granted tier when it disagrees with the displayed one at twenty games", () => {
+		const displayedBelowGrant = standing({
+			tierId: "gold",
+			grantedTierId: "platinum",
+			gamesPlayed: 20,
+		});
+		const displayedAboveGrant = standing({
+			tierId: "platinum",
+			grantedTierId: "gold",
+			gamesPlayed: 20,
+		});
+
+		expect(isMasterEligible(displayedBelowGrant, ladder)).toBe(true);
+		expect(isMasterEligible(displayedAboveGrant, ladder)).toBe(false);
+	});
+
 	it("reads the game minimum from the ladder", () => {
 		const stricter = ladderFor("Strict", {
 			defaults: TIER_CATALOG.defaults,
