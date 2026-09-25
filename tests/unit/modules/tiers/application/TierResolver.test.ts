@@ -530,6 +530,84 @@ describe("TierResolver.forLeaderboardPage", () => {
 			progress: null,
 		});
 	});
+
+	it("stops scanning after three full batches and leaves every seat empty when those 150 candidates hold fewer than five eligible players", async () => {
+		const candidates = Array.from({ length: 200 }, (_, index) => `c${index + 1}`);
+		candidates[0] = "u1";
+		const repository = fakeRepository(
+			[...diamondVeteran("u1"), ...candidates.slice(1).flatMap(goldVeteran)],
+			candidates,
+			[elo("u1")],
+		);
+
+		const tiers = await new TierResolver(repository).forLeaderboardPage({
+			...page,
+			userIds: ["u1"],
+		});
+
+		const batches = (repository.findMasterCandidates as ReturnType<typeof mock>).mock.calls;
+		expect(batches).toEqual([
+			[firstBatch],
+			[{ ...firstBatch, offset: MASTER_CANDIDATE_BATCH }],
+			[{ ...firstBatch, offset: 2 * MASTER_CANDIDATE_BATCH }],
+		]);
+		expect(repository.findTierGames).toHaveBeenCalledTimes(4);
+		expect(tiers.get("u1")).toMatchObject({ id: "diamond", gamesPlayed: 20 });
+		expect(tiers.get("u1")).not.toHaveProperty("rating");
+		expect(repository.findMasterRatings).not.toHaveBeenCalled();
+	});
+
+	it("still fills the seats when the fifth eligible player sits in the third batch", async () => {
+		const candidates = Array.from({ length: 150 }, (_, index) => `c${index + 1}`);
+		candidates[0] = "u1";
+		const seated = ["u1", "c2", "c3", "c4", "c150"];
+		const repository = fakeRepository(
+			seated.flatMap(diamondVeteran),
+			candidates,
+			seated.map((id) => elo(id)),
+		);
+
+		const tiers = await new TierResolver(repository).forLeaderboardPage({
+			...page,
+			userIds: ["u1"],
+		});
+
+		expect(repository.findMasterCandidates).toHaveBeenCalledTimes(3);
+		expect(repository.findMasterRatings).toHaveBeenCalledWith({
+			rankId: TCG.id,
+			season: 7,
+			userIds: seated,
+		});
+		expect(tiers.get("u1")).toEqual(masterView(40, elo("u1")));
+	});
+
+	it("replays and seats a candidate the batches repeat only once, so the seats still reach the fifth eligible player", async () => {
+		const golds = (from: number, count: number): string[] =>
+			Array.from({ length: count }, (_, index) => `g${from + index}`);
+		const seated = ["c1", "d2", "d3", "d4", "d5"];
+		const candidates = ["c1", ...golds(1, 49), "c1", "d2", "d3", "d4", "d5", ...golds(50, 45)];
+		const repository = fakeRepository(
+			[...seated.flatMap(diamondVeteran), ...golds(1, 94).flatMap(goldVeteran)],
+			candidates,
+			seated.map((id) => elo(id)),
+		);
+
+		const tiers = await new TierResolver(repository).forLeaderboardPage({
+			...page,
+			userIds: ["d5"],
+		});
+
+		const replayed = (
+			(repository.findTierGames as ReturnType<typeof mock>).mock.calls as [TierGamesQuery][]
+		).flatMap(([query]) => query.userIds);
+		expect(replayed.filter((userId) => userId === "c1")).toHaveLength(1);
+		expect(repository.findMasterRatings).toHaveBeenCalledWith({
+			rankId: TCG.id,
+			season: 7,
+			userIds: seated,
+		});
+		expect(tiers.get("d5")).toEqual(masterView(40, elo("d5")));
+	});
 });
 
 describe("toTierView", () => {

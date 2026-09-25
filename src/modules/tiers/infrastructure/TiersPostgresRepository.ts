@@ -42,13 +42,14 @@ FROM games g`;
 
 // The same total order the leaderboard uses (player_stats.points includes
 // achievement points, exactly like the leaderboard), with user_id as the
-// deterministic last key. The game minimum is a prefilter: eligibility is
-// re-checked on the replay.
+// deterministic last key. A row without games has a null win rate, which
+// DESC would otherwise sort first, so it goes last. The game minimum is a
+// prefilter: eligibility is re-checked on the replay.
 const FIND_MASTER_CANDIDATES_QUERY = `SELECT ps.user_id AS "userId",
        ps.wins::float / NULLIF(ps.wins + ps.losses, 0) AS win_rate
 	FROM player_stats ps
 	WHERE ps.rank_id = $1 AND ps.season = $2 AND ps.wins + ps.losses >= $3
-	ORDER BY ps.points DESC, win_rate DESC, ps.user_id ASC
+	ORDER BY ps.points DESC, win_rate DESC NULLS LAST, ps.user_id ASC
 	LIMIT $4 OFFSET $5`;
 
 const FIND_MASTER_RATINGS_QUERY = `SELECT pr.user_id AS "userId", pr.rating, pr.peak

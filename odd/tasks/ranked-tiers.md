@@ -38,7 +38,7 @@ Out: migrations, indexes, game-server changes, matchmaking, cache, icon assets, 
 
 - Rookie: fewer than 5 non-annulled games. Bronze < 3, Silver >= 3, Gold >= 10, Platinum >= 25, Diamond >= 40 effective points; Platinum and Diamond also require wins over >= 5 distinct opponents (all non-annulled games).
 - Effective points: daily-capped sum (first 2 games per UTC day per opponent) that never drops below the highest granted tier threshold (`max(lockedFloor, effective + delta)`); floors lock only at grant.
-- Active game: `applied - reversal + reinstatement > 0` per game_id; one net row per game at its original game time; replay order (game time, applied created_at, applied id); game time = min(duels.date) only for rows created before 2026-09-10, else applied created_at.
+- Active game: `applied - reversal + reinstatement > 0` per game_id; one net row per game at its original game time; replay order (game time, applied created_at, applied id); game time = min(duels.date) for every game, falling back to the applied created_at only when no duel row exists (the 2026-09-10 backfill cutoff was removed on 2026-09-25, decision #1227: it encoded the dev backfill date and would misorder production history).
 - Master: strict top 5 eligible (>= 20 games AND Platinum reached) ordered by `player_stats.points` desc, win rate desc, user_id asc; empty when fewer than 5; only Master exposes rating and peak. Candidates come from player_stats in batches of 50; leaderboard replays only the page's users; no cache.
 - Tiers only for ranks of type banlist and group. progress is `{ nextTierId, unit, current, target, distinctOpponentWins }` or null (Diamond, Master).
 
@@ -68,7 +68,7 @@ Focused command: `bun test tests/unit/modules/tiers/domain/ tests/unit/modules/t
 Focused command: `bun test tests/unit/modules/tiers/infrastructure/TiersPostgresRepository.test.ts tests/unit/modules/tiers/application/TierResolver.test.ts tests/unit/modules/stats/application/UserStatsFinder.test.ts`. Runtime harness: `GET /api/v1/users/:userId/stats` against the read-only dev DB. Rollback: revert repository, resolver, `TierView`, `TierLookup`, `UserStatsFinder`, `user-router.ts` wiring.
 
 - [x] 2.1 Port `src/modules/tiers/domain/TiersRepository.ts`: `findEligibleRanks`, `findTierGames`. (delegated)
-- [x] 2.2 RED `TiersPostgresRepository.test.ts` with `spyOn(dataSource, "query")`: ranks query (`name = ANY($1) AND type IN ('banlist','group')`), games CTE with kind-balance `HAVING`, conditional `CASE WHEN g.applied_at < $4` duels lookup, params `[userIds, rankIds, season, BACKFILL_CUTOFF]`, empty-input short circuit. (delegated)
+- [x] 2.2 RED `TiersPostgresRepository.test.ts` with `spyOn(dataSource, "query")`: ranks query (`name = ANY($1) AND type IN ('banlist','group')`), games CTE with kind-balance `HAVING`, unconditional `min(duels.date)` subquery for the game time (the conditional `CASE WHEN` and the fourth `BACKFILL_CUTOFF` parameter were removed on 2026-09-25, decision #1227), params `[userIds, rankIds, season]`, empty-input short circuit. (delegated)
 - [x] 2.3 GREEN `src/modules/tiers/infrastructure/TiersPostgresRepository.ts`. (delegated)
 - [x] 2.4 DTO `src/modules/tiers/application/dtos/TierView.ts` matching `TierViewSchema`. (delegated)
 - [x] 2.5 RED `TierResolver.test.ts` (fake repository): unknown/global rank absent; no rows means Rookie with 0 games; standing maps via `toTierView`; no Master yet. (delegated)
@@ -99,12 +99,12 @@ Focused command: `bun test tests/unit/modules/tiers/infrastructure/TiersPostgres
 
 Focused command: `bun test tests/unit/modules/tiers/application/GetTierCatalog.test.ts tests/unit/server/routes/ranked-tiers-router.test.ts`. Runtime harness: `curl /api/v1/ranked-tiers` and `?banListName=TCG`. Rollback: delete router, use case, DTO; remove the `.use(rankedTiersRouter)` line.
 
-- [ ] 4.1 RED `GetTierCatalog.test.ts`: wrapper `{ banListName, dailyOpponentCap, dayBoundary: "UTC", tiers }`, `banListName` echo, override reflection. (delegated)
-- [ ] 4.2 GREEN `dtos/TierCatalogView.ts` and `GetTierCatalog.ts`. (delegated)
-- [ ] 4.3 RED `tests/unit/server/routes/ranked-tiers-router.test.ts` via `rankedTiersRouter.handle(new Request(...))`: 200, seven tiers in order, `banListName` null and "TCG", no auth. (delegated)
-- [ ] 4.4 GREEN `src/server/routes/ranked-tiers-router.ts` (prefix `/ranked-tiers`, tag `Leaderboard`, runtime `response: { 200: RankedTierCatalogSchema }`). (delegated)
-- [ ] 4.5 Mount `.use(rankedTiersRouter)` in `src/server/server.ts`. (delegated)
-- [ ] 4.6 PR4 gate: full gates plus the two curl checks. (inline)
+- [x] 4.1 RED `GetTierCatalog.test.ts`: wrapper `{ banListName, dailyOpponentCap, dayBoundary: "UTC", tiers }`, `banListName` echo, override reflection. (delegated)
+- [x] 4.2 GREEN `dtos/TierCatalogView.ts` and `GetTierCatalog.ts`. (delegated)
+- [x] 4.3 RED `tests/unit/server/routes/ranked-tiers-router.test.ts` via `rankedTiersRouter.handle(new Request(...))`: 200, seven tiers in order, `banListName` null and "TCG", no auth. (delegated)
+- [x] 4.4 GREEN `src/server/routes/ranked-tiers-router.ts` (prefix `/ranked-tiers`, tag `Leaderboard`, runtime `response: { 200: RankedTierCatalogSchema }`). (delegated)
+- [x] 4.5 Mount `.use(rankedTiersRouter)` in `src/server/server.ts`. (delegated)
+- [x] 4.6 PR4 gate: full gates plus the two curl checks. (inline)
 
 ### Follow-ups from the PR1 native review (advisory, non-blocking; land with work unit 2)
 
@@ -119,17 +119,17 @@ Focused command: `bun test tests/unit/modules/tiers/application/GetTierCatalog.t
 
 ### Follow-ups from the PR3 native review (advisory, non-blocking; land with work unit 4)
 
-- [ ] F6 `TierResolver.resolveMaster` has no upper bound on candidate batches: in a rank with many 20+-game players but fewer than five Platinum+ players it replays every candidate on each eligible request. Bound the scan (e.g. `MASTER_CANDIDATE_MAX_BATCHES = 3`, 150 candidates ordered by points) and return an empty Master set beyond it; RED test with 200 candidates and no Platinum player. (delegated)
-- [ ] F7 Candidate batches use LIMIT/OFFSET without a shared snapshot; a concurrent update can skip or repeat a user. Deduplicate candidate ids across batches by userId before replay and seating; RED test where batch 2 repeats a batch-1 id. (delegated)
-- [ ] F8 `findMasterCandidates`: add `NULLS LAST` to `win_rate DESC` (or assert the order in the repository test) so zero-game rows never sort ahead when `minGames` is 0. (delegated)
+- [x] F6 `TierResolver.resolveMaster` has no upper bound on candidate batches: in a rank with many 20+-game players but fewer than five Platinum+ players it replays every candidate on each eligible request. Bound the scan (e.g. `MASTER_CANDIDATE_MAX_BATCHES = 3`, 150 candidates ordered by points) and return an empty Master set beyond it; RED test with 200 candidates and no Platinum player. (delegated)
+- [x] F7 Candidate batches use LIMIT/OFFSET without a shared snapshot; a concurrent update can skip or repeat a user. Deduplicate candidate ids across batches by userId before replay and seating; RED test where batch 2 repeats a batch-1 id. (delegated)
+- [x] F8 `findMasterCandidates`: add `NULLS LAST` to `win_rate DESC` (or assert the order in the repository test) so zero-game rows never sort ahead when `minGames` is 0. (delegated)
 
 ### Final verification
 
-- [ ] 5.1 Strict TDD evidence per PR: every GREEN commit preceded by its RED commit; list exceptions.
-- [ ] 5.2 Threat-matrix N/A re-confirmation: parameterized SQL only, no auth added to public routes.
-- [ ] 5.3 Manual dev SQL semantics check (read-only): conditional duels lookup and kind-balance agreement with `projectRating` on a known annulled and reinstated game.
-- [ ] 5.4 Map spec success criteria to covering tests; open follow-ups for gaps.
-- [ ] 5.5 Scope and budget containment per PR (`git diff --stat` against the merge base; no `src/migrations/`, `src/evolution-types/` or game-server files touched).
+- [x] 5.1 Strict TDD evidence per PR: every GREEN commit preceded by its RED commit; list exceptions.
+- [x] 5.2 Threat-matrix N/A re-confirmation: parameterized SQL only, no auth added to public routes.
+- [x] 5.3 Manual dev SQL semantics check (read-only): conditional duels lookup and kind-balance agreement with `projectRating` on a known annulled and reinstated game.
+- [x] 5.4 Map spec success criteria to covering tests; open follow-ups for gaps.
+- [x] 5.5 Scope and budget containment per PR (`git diff --stat` against the merge base; no `src/migrations/`, `src/evolution-types/` or game-server files touched).
 
 ## Acceptance criteria
 
@@ -152,7 +152,7 @@ Focused command: `bun test tests/unit/modules/tiers/application/GetTierCatalog.t
 | F1 uuid tie-break doc + test | delegated | 8500b8d (characterization test), fbb91b3 (doc) | `TierGame.test.ts` 10 pass | no behavior change; points_ledger.id is uuid so lexical order = Postgres order |
 | F2 ladder guard | delegated | RED ad8af21, GREEN 9083b7f | `TierReplay.test.ts` 36 pass | clear Error when a ladder has no absolute tier |
 | F3 Master granted-vs-current | delegated | 57ba72e (characterization test) | `MasterSelection.test.ts` 11 pass | |
-| 2.1-2.3 TiersRepository port + Postgres repo | delegated | RED 1cd5c44, GREEN 5806b16 | repository test 6 pass | design SQL verbatim; params `[userIds, rankIds, season, BACKFILL_CUTOFF]` |
+| 2.1-2.3 TiersRepository port + Postgres repo | delegated | RED 1cd5c44, GREEN 5806b16; cutoff removed in f0e1143 (test) and 5221c51 (refactor) | repository test 6 pass | params `[userIds, rankIds, season]`; game time always from `duels` |
 | 2.4-2.6 TierView + TierResolver.forPlayer | delegated | RED 8c00ae7, GREEN 82addc2 | resolver test 7 pass | no Master yet |
 | 2.7-2.9 TierLookup + UserStatsFinder | delegated | RED 657cd1c, GREEN fb6c713 | finder test 6 pass | tier attached after toJson(); errors propagate |
 | 2.10 user-router wiring + Swagger | delegated | 742d1af | tsc + full suite | no runtime response schema |
@@ -164,6 +164,12 @@ Focused command: `bun test tests/unit/modules/tiers/application/GetTierCatalog.t
 | 3.9 leaderboard-router wiring + Swagger Master row | delegated | 598459b | tsc clean | |
 | 3.10 positional-binding + no-auth assertion | delegated | 65cd26a (+e67399b finder fake) | repository test 11 pass | sentinel injection values never appear in SQL; placeholders exactly $1..$n; no guard on either route |
 | 3.11 PR3 gate | inline | tree e67399b | module + stats tests 119 pass; `bun test` 410 pass / 0 fail / 70 files; lint clean (1 pre-existing info); tsc clean. Runtime harness vs read-only dev DB (PR3 :3103 vs main :3101), TCG season 7 pages 1-3: responses identical apart from `tier`, order unchanged, 248 rows; distribution Rookie 45% / Bronze 25% / Silver 14% / Gold 12% / Platinum 2% / Master 2% (5 Masters with rating and peak: 90, 69, 63, 37, 34 points), matching the accepted simulation. Latency from the workstation: page 1 main 0.23 s vs PR3 1.4-1.7 s (6 queries: base, ranks, page games, candidates, unseen-candidate games, ratings = 5 extra round trips), page 3 main 0.14 s vs PR3 0.58 s; server-side cost measured earlier (page-1 games 89 ms), expected +150-250 ms colocated | authored 929 lines (317 production, 612 tests), 229 over the 700 allowance |
+| F6 bounded Master scan | delegated | RED 39e7fd0, GREEN 8f0ab29 | resolver test 23 pass | `MASTER_CANDIDATE_MAX_BATCHES = 3`; 200 candidates without Platinum -> offsets [0, 50, 100], empty Master |
+| F7 candidate dedupe across batches | delegated | RED e5012c0, GREEN 07be164 | resolver test 24 pass | `considered` set before replay and seating |
+| F8 NULLS LAST | delegated | RED 9af95fc, GREEN 2624def | repository test 11 pass | `win_rate DESC NULLS LAST` |
+| 4.1-4.2 GetTierCatalog + TierCatalogView | delegated | RED 7e84039, GREEN 75f3df6 | use case test 4 pass | overrides applied server-side, never exposed; explicit field mapping |
+| 4.3-4.5 ranked-tiers-router + mount | delegated | RED 6179b29, GREEN b2f6fbf (+034bb0e test typing) | router test 3 pass | runtime `response: { 200: RankedTierCatalogSchema }`; Swagger example generated from the use case |
+| 4.6 PR4 gate | inline | tree 034bb0e | module + router tests 118 pass; `bun test` 420 pass / 0 fail / 72 files; lint clean (1 pre-existing info); tsc clean. Runtime against dev (:3104): `GET /api/v1/ranked-tiers` 200 in <1 ms, `?banListName=TCG` 200 echoing "TCG", bogus Authorization header still 200 (public), wrapper keys banListName/dailyOpponentCap(2)/dayBoundary(UTC)/tiers, seven tiers in ladder order with kinds placement/absolute/relative and thresholds null/null/3/10/25/40/null. Leaderboard page 1 with the bounded scan still seats the same 5 Masters (ratings 1212, 1226, 1128, 1142, 1199) | authored 349 lines (134 production, 215 tests), within budget |
 | 1.12 PR1 gate | inline | tree e8cca81 | `bun test tests/unit/modules/tiers/` 73 pass; `bun test` 368 pass / 0 fail / 68 files; `bun run lint` clean (1 pre-existing biome.json info); `bun run build` clean | authored 1387 lines (391 production, 996 tests); `size:exception` accepted by the user (#1215) |
 
 ## Delivery slices
@@ -171,10 +177,10 @@ Focused command: `bun test tests/unit/modules/tiers/application/GetTierCatalog.t
 | PR | Branch | Base | Commits | Authored lines | Status |
 |----|--------|------|---------|----------------|--------|
 | tracker | feat/ranked-tiers | main (6f8f57d) | | | created, not pushed |
-| 1 | feat/ranked-tiers-01-domain | feat/ranked-tiers | ed93df9..9f93d2c (17 commits) | 1387 authored (391 prod) + odd doc | implemented; size:exception; native review approved and acknowledged; not pushed |
-| 2 | feat/ranked-tiers-02-profile | feat/ranked-tiers-01-domain | 8500b8d..74f6c7c (13 commits) | 716 authored (255 prod), 16 over the allowance accepted by the user | implemented; gate passed; native review approved and acknowledged; not pushed |
-| 3 | feat/ranked-tiers-03-leaderboard-master | feat/ranked-tiers-02-profile | 1a0c296..29c818a (12 commits) | 929 authored (317 prod); `size:exception` accepted by the user | implemented; gate passed; native review approved and acknowledged; not pushed |
-| 4 | feat/ranked-tiers-04-catalog | feat/ranked-tiers-03-leaderboard-master | | | pending |
+| 1 | feat/ranked-tiers-01-domain | feat/ranked-tiers | ed93df9..d13831c (18 commits) | 1387 authored (391 prod) + odd doc | PR #85; size:exception; native review approved and acknowledged |
+| 2 | feat/ranked-tiers-02-profile | feat/ranked-tiers-01-domain | 8500b8d..7c5d199 (17 commits) | 711 authored (255 prod) after the cutoff removal (f0e1143 test, 5221c51 refactor, net -5) | PR #86; second native review approved and acknowledged (review-a13c0f3f85edd8d3) |
+| 3 | feat/ranked-tiers-03-leaderboard-master | feat/ranked-tiers-02-profile | 13 commits rebased onto the new PR2 tip (38caea1) | 929 authored (317 prod); `size:exception` accepted by the user | PR #87; second native review approved and acknowledged (review-087ccc5bdd71787a) |
+| 4 | feat/ranked-tiers-04-catalog | feat/ranked-tiers-03-leaderboard-master | 15 commits rebased onto the new PR3 tip | 349 authored (134 prod) plus docs | PR #88; native review approved and acknowledged (review-97f32aebfb938bba) |
 
 ## Review (receipt-driven development)
 
@@ -182,8 +188,20 @@ Focused command: `bun test tests/unit/modules/tiers/application/GetTierCatalog.t
 |--------|---------------|---------|
 | PR1 range ed93df9..9f93d2c (base feat/ranked-tiers 6f8f57d, candidate tree df04e438) | medium (`executable_change` MasterSelection.ts; `slice_budget_reached`) | consent granted by the user; lineage review-41b99773ceea9aa5, one lens (review-reliability), approved with 3 advisory findings, acknowledged (receipt consumed). Advisory findings became follow-ups F1-F3 below. |
 | PR2 range 8500b8d..74f6c7c (base feat/ranked-tiers-01-domain, candidate tree 21c791c7) | medium (`executable_change` TierLookup.ts; `slice_budget_reached`) | consent granted by the user; lineage review-43c1dec7b2867ca3, one lens (review-reliability), approved with 3 advisory findings, acknowledged (receipt consumed). Follow-ups F4-F5 below. |
+| PR2 second candidate (after the cutoff removal; range 8500b8d..7c5d199, candidate tree 007ebddd) | medium (`executable_change` TierLookup.ts; `slice_budget_reached`) | consent granted; lineage review-a13c0f3f85edd8d3, one lens, approved with 3 advisories (vacuous NotFound assertion already fixed in PR3; `applied_id`/`applied_at` could come from different rows only if a game had two applied rows for one user and rank, impossible under the unique index; task 2.2 wording fixed above), acknowledged. |
+| PR3 second candidate (rebased on the new PR2 tip; tip 38caea1, candidate tree 0ea5cfb6) | medium (`executable_change` TierLookup.ts; `slice_budget_reached`) | consent granted; lineage review-087ccc5bdd71787a, one lens, approved with 4 advisories: the three already fixed in PR4 (bounded scan, batch dedupe, `NULLS LAST`) and one documentation note: the feature document at the PR3 tip still carries the pre-removal ordering wording because the rebase replayed PR3's docs commits; this chain tip (PR4) holds the corrected text. Acknowledged. |
+| PR4 candidate (range 39e7fd0..a8cd84c after the rebase and the docs commits, candidate tree 8f66eda2) | medium (`executable_change` GetTierCatalog.ts; `slice_budget_reached` at 410 lines) | consent granted; lineage review-97f32aebfb938bba, one lens, approved with 3 advisories (stale 5.3 wording about a conditional lookup, corrected above; dedupe test proves the seating through the ratings call, kept; `?banListName=` empty string echoes "" with the default ladder, recorded as an open contract nuance), acknowledged. Reviewed boundary: a8cd84c. |
 | PR3 range 1a0c296..29c818a (base feat/ranked-tiers-02-profile, candidate tree 98a827b3) | medium (`executable_change` TierLookup.ts; `slice_budget_reached`) | consent granted by the user; lineage review-609080ce051bb6e0, one lens (review-reliability), approved with 3 advisory findings, acknowledged (receipt consumed). Follow-ups F6-F8 below. |
+| PR4 range 39e7fd0..447425c (base feat/ranked-tiers-03-leaderboard-master) | medium (`executable_change` GetTierCatalog.ts) | `review_due: false`, reason `under_budget` (377 changed lines): stays pending in the slice per ODD; no review started, no receipt. Ordinary repository policy applies at delivery. |
+
+## Final verification evidence
+
+- 5.1 Strict TDD: every `feat`/`fix` commit in the chain is preceded by its `test` commit (see `git log --reverse feat/ranked-tiers..feat/ranked-tiers-04-catalog`). Exceptions, all documented: wiring commits 742d1af and 598459b (composition roots, covered by tsc and the full suite), characterization tests 8500b8d, 57ba72e, 65cd26a and 1a0c296 (pin existing behavior; no RED constructible without a regression), test-only typing fixes fe25e53, b30f5d0, e67399b, 034bb0e.
+- 5.2 Threat matrix N/A re-confirmed: the repository test drives sentinel injection values through all queries and asserts placeholders `$1..$n` only; `leaderboard-router.ts` and `ranked-tiers-router.ts` declare no guard; `/:userId/stats` is registered before `bearer()` and `guard(banGuard)` in `user-router.ts`.
+- 5.3 Manual dev SQL semantics (read-only): season 7 has 156 games with two reversals and one reinstatement (annulled, reinstated, annulled again) and the kind-balance rule classifies them as annulled (balance 0); ledger game counts agree with `rating_history`'s applied-minus-reversal-plus-reinstatement arithmetic on 796 of 800 (user, rank) keys; the 4 disagreements are 2 players x 2 ranks with exactly one ledger game that never received a rating row (rating eligibility, pre-existing data difference, not a tier defect: tiers count ledger games by spec). The game-time lookup is unconditional since the cutoff removal (decision #1227): every game takes `min(duels.date)`; the always-on join was measured at 317 ms server-side for leaderboard page 1 of a ten-month season (179 ms without it), within the 350 ms soft target.
+- 5.4 Spec success criteria to tests: profile `tier` -> UserStatsFinder.test.ts + harness 2.11; leaderboard `tier` and ordering -> UserStatsLeaderboardGetter.test.ts + harness 3.11; catalog -> TierCatalog.test.ts, GetTierCatalog.test.ts, ranked-tiers-router.test.ts + harness 4.6; ladder rules -> TierReplay.test.ts, TierGame.test.ts; Master -> MasterSelection.test.ts, TierResolver.test.ts; annulment visible on next read -> no cache exists, harness 3.11/5.3; no migrations or game-server changes -> 5.5. No gap found.
+- 5.5 Scope and budget: every PR diff stays inside `src/modules/tiers/**`, the three stats application files, the three routers, `server.ts`, tests and the feature document; nothing under `src/migrations/` or `src/evolution-types/`. Authored lines: PR1 1387 (size:exception), PR2 716 (accepted), PR3 929 (size:exception), PR4 349. Final tree: `bun test` 420 pass / 0 fail / 72 files, `bun run lint` clean (1 pre-existing info), `bun run build` clean.
 
 ## Next step
 
-Work unit 4 (catalog endpoint) on `feat/ranked-tiers-04-catalog`, branched from the PR3 branch, including follow-ups F6-F8.
+Implementation complete on four local branches (nothing pushed). Hand-off to the user: push the tracker `feat/ranked-tiers` and the four child branches, open the draft tracker PR to `main` and the four chained PRs (PR1 -> tracker, PR2 -> PR1, PR3 -> PR2, PR4 -> PR3) with Chain Context sections and the recorded size exceptions; the `chained-pr` and `branch-pr` skills apply. Follow-ups outside this feature: icon assets in evolution-assets, `merge-duplicate-ranks.sql` ledger fix (Engram #1203), optional `(rank_id, season)` index and cache only with production evidence.

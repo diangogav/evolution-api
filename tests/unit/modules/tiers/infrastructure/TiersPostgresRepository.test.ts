@@ -117,7 +117,7 @@ describe("TiersPostgresRepository", () => {
 			expect(await repository.findMasterCandidates(query)).toEqual(["u2", "u1", "u3"]);
 		});
 
-		it("pages player_stats rows with enough games in the leaderboard total order, binding rank, season, minimum, limit and offset positionally", async () => {
+		it("pages player_stats rows with enough games in the leaderboard total order, null win rates last, binding rank, season, minimum, limit and offset positionally", async () => {
 			await repository.findMasterCandidates(query);
 
 			expect(querySpy).toHaveBeenCalledTimes(1);
@@ -125,7 +125,7 @@ describe("TiersPostgresRepository", () => {
 			expect(sql).toContain("FROM player_stats ps");
 			expect(sql).toContain("ps.rank_id = $1 AND ps.season = $2 AND ps.wins + ps.losses >= $3");
 			expect(sql).toContain("ps.wins::float / NULLIF(ps.wins + ps.losses, 0) AS win_rate");
-			expect(sql).toContain("ORDER BY ps.points DESC, win_rate DESC, ps.user_id ASC");
+			expect(sql).toContain("ORDER BY ps.points DESC, win_rate DESC NULLS LAST, ps.user_id ASC");
 			expect(sql).toContain("LIMIT $4 OFFSET $5");
 			expect(params).toEqual(["rank-tcg", 7, 20, 50, 100]);
 		});
