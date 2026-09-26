@@ -9,7 +9,9 @@ import { EntitlementsGatekeeper } from "../../modules/entitlements/application/E
 import { EntitlementPostgresRepository } from "../../modules/entitlements/infrastructure/EntitlementPostgresRepository";
 import { EquipCosmetic } from "../../modules/loadout/application/EquipCosmetic";
 import { GetMyLoadout } from "../../modules/loadout/application/GetMyLoadout";
+import { LoadoutSchema } from "../../modules/loadout/infrastructure/LoadoutSchemas";
 import { LoadoutPostgresRepository } from "../../modules/loadout/infrastructure/LoadoutPostgresRepository";
+import { errorResponses, jsonOk } from "../openapi/responses";
 import { JWT } from "../../shared/JWT";
 import { preventSignedAssetResponseCaching } from "./signed-asset-response";
 
@@ -36,6 +38,20 @@ export const loadoutRouter = new Elysia({ prefix: "/me/loadout" })
 				summary: "Get my loadout",
 				description: "Returns the authenticated user's equipped cosmetics with signed asset URLs.",
 				security: [{ bearerAuth: [] }],
+				responses: {
+					200: jsonOk(LoadoutSchema, "Loadout retrieved successfully", [
+						{
+							cosmeticType: "SLEEVE",
+							cosmeticId: "cosmetic-1",
+							assets: {
+								"render.jpg":
+									"https://assets.evolutionygo.com/sleeves/baby-frog/render.jpg?sig=...",
+							},
+							assetsExpiresAt: "2026-09-25T18:30:00.000Z",
+						},
+					]),
+					...errorResponses(401),
+				},
 			},
 		},
 	)
@@ -61,6 +77,20 @@ export const loadoutRouter = new Elysia({ prefix: "/me/loadout" })
 				summary: "Equip a cosmetic",
 				description: "Equips a cosmetic in its slot after validating the user is entitled to it.",
 				security: [{ bearerAuth: [] }],
+				responses: {
+					200: jsonOk(LoadoutSchema, "Loadout retrieved successfully after equipping", [
+						{
+							cosmeticType: "SLEEVE",
+							cosmeticId: "cosmetic-1",
+							assets: {
+								"render.jpg":
+									"https://assets.evolutionygo.com/sleeves/baby-frog/render.jpg?sig=...",
+							},
+							assetsExpiresAt: "2026-09-25T18:30:00.000Z",
+						},
+					]),
+					...errorResponses(400, 401, 403, 404, 422),
+				},
 			},
 		},
 	);
