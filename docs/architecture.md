@@ -179,4 +179,4 @@ An error the use case does not throw as one of the five shared classes (a plain 
 ## Next steps
 
 - Ranked tiers, points, ratings, annulment, bans, cosmetics and tournaments as domain concepts: [`docs/domain/`](domain/README.md).
-- Environment variables, running locally, migrations, seeds, deployment: `docs/operations.md` (planned).
+- Environment variables, running locally, migrations, seeds, deployment: [`docs/operations.md`](operations.md).

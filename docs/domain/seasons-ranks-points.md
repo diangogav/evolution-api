@@ -12,7 +12,8 @@ config.season })` in `src/server/routes/user-router.ts:320` and
 `src/server/routes/leaderboard-router.ts:64`).
 
 Rolling to a new season is an operational action (bump `SEASON` and restart),
-not an API call — see `docs/operations.md` (planned) for how deploys apply it.
+not an API call — see [`docs/operations.md`](../operations.md#deployment) for
+how deploys apply it.
 Every ladder starts empty for a new season number because points, ratings and
 tiers are all keyed by `(user, rank, season)`.
 
