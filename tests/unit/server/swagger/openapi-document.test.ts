@@ -54,22 +54,14 @@ const PROTECTED_OPERATIONS = [
 ];
 
 // Operations whose success has no body; they declare it with `emptyOk`.
-const EMPTY_BODY_OPERATIONS: string[] = [];
+const EMPTY_BODY_OPERATIONS = [
+	"POST /api/v1/users/change-username",
+	"POST /api/v1/users/change-account-password",
+];
 
 // Operations that still lack a 2xx application/json schema. This list only
 // shrinks: documenting an operation's response requires removing it here.
 const PENDING_RESPONSE_SCHEMAS = [
-	"POST /api/v1/users/register",
-	"POST /api/v1/users/login",
-	"POST /api/v1/users/forgot-password",
-	"GET /api/v1/users/validate-token",
-	"GET /api/v1/users/username-availability",
-	"POST /api/v1/users/reset-account-password",
-	"GET /api/v1/users/{userId}/matches",
-	"POST /api/v1/users/change-username",
-	"POST /api/v1/users/game-password",
-	"POST /api/v1/users/upgrade-password",
-	"POST /api/v1/users/change-account-password",
 	"POST /api/v1/users/{userId}/ban",
 	"POST /api/v1/users/{userId}/unban",
 	"GET /api/v1/users/{userId}/ban/active",
