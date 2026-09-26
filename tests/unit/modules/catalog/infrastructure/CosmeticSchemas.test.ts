@@ -58,6 +58,7 @@ describe("CosmeticCatalogSchema", () => {
 			.run({}, null)
 			.then(wire);
 
+		expect(catalog).toHaveLength(1);
 		expect(Value.Check(CosmeticCatalogSchema, catalog)).toBe(true);
 	});
 
