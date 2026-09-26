@@ -3,7 +3,8 @@ import { AnnulledMatchRatingCompensator } from "../modules/rating/application/An
 import { RatingCompensationPostgresRepository } from "../modules/rating/infrastructure/RatingCompensationPostgresRepository";
 
 // Reverses rating for every annulled match. Idempotent — safe to run on every deploy;
-// matches already compensated are skipped via the rating_history UNIQUE(match_id, user_id, kind) guard.
+// matches already compensated are skipped via the rating_history unique index
+// (match_id, user_id, rank_id, kind, cycle).
 async function main(): Promise<void> {
 	await dataSource.initialize();
 
