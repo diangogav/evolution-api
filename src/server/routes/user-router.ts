@@ -513,7 +513,7 @@ export const userRouter = new Elysia({ prefix: "/users" })
 				security: [{ bearerAuth: [] }],
 				responses: {
 					200: jsonOk(BanActionSchema, "User banned successfully", { success: true }),
-					...errorResponses(401, 403),
+					...errorResponses(401, 403, 404),
 				},
 			},
 			params: t.Object({ userId: t.String() }),

@@ -10,10 +10,14 @@ their account, without deleting it. Bans are managed entirely under
 ban row, it closes it and opens a new one.
 
 - **Ban** (`UserBanUser.execute`, `src/modules/user/application/UserBanUser.ts`):
-  first closes any currently-active ban for the user by setting its
-  `expiresAt` to now (`finishActiveBan`), then inserts a new
-  `UserBanEntity` row with `reason`, `bannedBy` (the admin's id) and an
-  optional `expiresAt`. `UserBanPostgresRepository.banUser` additionally sets
+  first checks that the target user exists — including soft-deleted, i.e.
+  already-banned, users (`UserBanRepository.userExists`) — and throws
+  `NotFoundError` without writing anything if it does not. Otherwise it closes
+  any currently-active ban for the user by setting its `expiresAt` to now
+  (`finishActiveBan`), then inserts a new `UserBanEntity` row with `reason`,
+  `bannedBy` (the admin's id) and an optional `expiresAt`. Re-banning an
+  already banned user therefore closes the previous ban and creates a new one,
+  rather than failing. `UserBanPostgresRepository.banUser` additionally sets
   the user's own `deletedAt` (soft delete) as part of banning
   (`src/modules/user/infrastructure/UserBanPostgresRepository.ts:8-27`) — this
   is why queries that must exclude banned/removed accounts filter on
@@ -49,12 +53,10 @@ decodes the bearer token itself and throws `ForbiddenError` when
 three routes) — see `docs/architecture.md`'s Auth section for why this differs
 from `admin-cosmetics-router.ts`/`admin-moderation-router.ts`.
 
-**Known gap:** `POST /:userId/ban` looks the target user up with
-`findOneOrFail` (`UserBanPostgresRepository.banUser`,
-`src/modules/user/infrastructure/UserBanPostgresRepository.ts:8-12`). An
-unknown `userId` makes TypeORM throw an `EntityNotFoundError`, which is not
-one of the five mapped error classes in `src/server/server.ts` — the request
-answers an unmapped `500` instead of a `404`.
+`POST /:userId/ban` answers `404` for an unknown `userId`: `UserBanUser`
+checks existence up front (`UserBanRepository.userExists`, looked up with
+`withDeleted: true`) and throws `NotFoundError`, which `src/server/server.ts`
+maps to `404`, before any ban write happens.
 
 ## `banGuard`
 

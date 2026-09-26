@@ -1,6 +1,7 @@
 import { UserBan } from "./UserBan";
 
 export interface UserBanRepository {
+	userExists(userId: string): Promise<boolean>;
 	banUser(ban: UserBan): Promise<void>;
 	findActiveBanByUserId(userId: string): Promise<UserBan | null>;
 	unbanUser(userId: string): Promise<void>;

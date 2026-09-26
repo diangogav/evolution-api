@@ -1,5 +1,6 @@
 import { UserBanRepository } from "../domain/UserBanRepository";
 import { UserBan } from "../domain/UserBan";
+import { NotFoundError } from "../../../shared/errors/NotFoundError";
 import { v4 as uuidv4 } from "uuid";
 
 export class UserBanUser {
@@ -11,6 +12,11 @@ export class UserBanUser {
 		bannedBy: string;
 		expiresAt?: Date;
 	}): Promise<void> {
+		const exists = await this.userBanRepository.userExists(params.userId);
+		if (!exists) {
+			throw new NotFoundError("User not found");
+		}
+
 		const now = new Date();
 		await this.userBanRepository.finishActiveBan(params.userId, now);
 		const ban = UserBan.create({

@@ -94,7 +94,7 @@ Shared error classes live in `src/shared/errors/`. `mapDomainErrorStatus` in `sr
 | `InvalidArgumentError` | 400 |
 | `ForbiddenError` | 403 |
 
-Throw one of these from a use case or controller instead of setting `set.status` by hand. Response bodies for mapped errors are `text/plain` (the error's message) — `onError` only sets the status code, it does not shape a body. Elysia's own request validation fails independently of `onError` and answers `422` with a JSON body; production only sends `type`, `on` and `found` (`src/server/openapi/responses.ts`, `ValidationErrorSchema`). Anything that is not one of the five classes above — a plain `Error`, or a TypeORM `EntityNotFoundError` (for example `findOneOrFail` in `UserBanPostgresRepository`) — falls through unmapped and answers `500`.
+Throw one of these from a use case or controller instead of setting `set.status` by hand. Response bodies for mapped errors are `text/plain` (the error's message) — `onError` only sets the status code, it does not shape a body. Elysia's own request validation fails independently of `onError` and answers `422` with a JSON body; production only sends `type`, `on` and `found` (`src/server/openapi/responses.ts`, `ValidationErrorSchema`). Anything that is not one of the five classes above — a plain `Error`, or an unmapped TypeORM `EntityNotFoundError` from a raw `findOneOrFail` — falls through unmapped and answers `500`. A use case should check existence itself and throw `NotFoundError` before reaching for `findOneOrFail`, the way `UserBanUser` does via `UserBanRepository.userExists`, so an unknown id answers a mapped `404` instead.
 
 ## Auth
 
@@ -170,6 +170,12 @@ Domain error?  ──yes──▶ mapDomainErrorStatus (server.ts) ──▶ map
 ```
 
 An error the use case does not throw as one of the five shared classes (a plain `Error`, an unwrapped `EntityNotFoundError`, an upstream fetch failure) skips the mapping step and reaches the client as an unmapped `500`.
+
+`UserBanUser` avoids this for `POST /:userId/ban` by checking
+`UserBanRepository.userExists` up front (including soft-deleted, i.e.
+already-banned, users) and throwing `NotFoundError` for an unknown user id, so
+the route answers a mapped `404` instead of an unwrapped
+`EntityNotFoundError`'s `500`.
 
 ## Next steps
 

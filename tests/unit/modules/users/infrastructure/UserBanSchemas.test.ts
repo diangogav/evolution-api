@@ -22,6 +22,7 @@ const persistedBan = (overrides: Partial<UserBan> = {}): UserBan =>
 	({ ...UserBanMother.create(), expiresAt: null, ...overrides }) as unknown as UserBan;
 
 const repositoryWith = (overrides: Partial<UserBanRepository> = {}): UserBanRepository => ({
+	userExists: async () => true,
 	banUser: async () => undefined,
 	findActiveBanByUserId: async () => null,
 	unbanUser: async () => undefined,

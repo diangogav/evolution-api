@@ -5,10 +5,19 @@ import { UserBanRepository } from "../domain/UserBanRepository";
 import { UserProfileEntity } from "../../../evolution-types/src/entities/UserProfileEntity";
 
 export class UserBanPostgresRepository implements UserBanRepository {
+	async userExists(userId: string): Promise<boolean> {
+		const userRepository = dataSource.getRepository(UserProfileEntity);
+		const user = await userRepository.findOne({ where: { id: userId }, withDeleted: true });
+		return user !== null;
+	}
+
 	async banUser(ban: UserBan): Promise<void> {
 		const repository = dataSource.getRepository(UserBanEntity);
 		const userRepository = dataSource.getRepository(UserProfileEntity);
-		const user = await userRepository.findOneOrFail({ where: { id: ban.userId } });
+		const user = await userRepository.findOneOrFail({
+			where: { id: ban.userId },
+			withDeleted: true,
+		});
 		const bannedBy = await userRepository.findOneOrFail({ where: { id: ban.bannedBy } });
 		const entity = repository.create({
 			id: ban.id,
