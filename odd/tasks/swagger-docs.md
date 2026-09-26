@@ -47,8 +47,8 @@ Focused command: `bun test tests/unit/server/swagger`. Runtime harness: start th
 
 Lineage review-802a77a5d2e5c5b2 (medium, `executable_change` TournamentController.ts; consent granted by the user; one reliability lens): approved and acknowledged with two advisories, carried as follow-ups:
 
-- [ ] F1 (lands in S0) The protected-route detection in `openapi-document.test.ts` reads the handler source with a regex; a handler that delegates token reading to a controller or helper would slip through (it already missed tournament enroll/withdraw until they were fixed by hand). Replace it with an explicit, reviewed list of protected operations or a marker set by the auth wiring, so a new protected route without `security` fails the test. (delegated, with work unit 2)
-- [ ] F2 (lands in S0) Assert `info.version` is non-empty and the `servers` list matches production and local in the OpenAPI test. (delegated, with work unit 2)
+- [x] F1 (landed in S0; residual risk: a new protected route that forgets both the list and `security` passes, so reviewers must check the list) The protected-route detection in `openapi-document.test.ts` reads the handler source with a regex; a handler that delegates token reading to a controller or helper would slip through (it already missed tournament enroll/withdraw until they were fixed by hand). Replace it with an explicit, reviewed list of protected operations or a marker set by the auth wiring, so a new protected route without `security` fails the test. (delegated, with work unit 2)
+- [x] F2 (landed in S0) Assert `info.version` is non-empty and the `servers` list matches production and local in the OpenAPI test. (delegated, with work unit 2)
 
 ### Work unit 2 — Response schemas
 
@@ -61,7 +61,7 @@ Findings that are behavior, not documentation:
 
 Slices (each at most about 400 production lines; S1 and S2 both touch `user-router.ts`, merge in order):
 
-- [ ] S0 foundation: `src/server/openapi/` helpers (`jsonOk`, `ErrorSchema` for text/plain errors, `ValidationErrorSchema` for 422, an `errors(...)` builder); ratchet test with an explicit `PROTECTED_OPERATIONS` list replacing the regex (F1), version and servers assertions (F2), and "every operation declares a 2xx schema" with a shrinking `PENDING_RESPONSE_SCHEMAS` allowlist; empty-body routes exempted explicitly. ~60 prod + 90 test.
+- [x] S0 foundation (RED 19e477c, GREEN ca72932; tests 446 pass; 76 prod + 216 test lines; PROTECTED_OPERATIONS 25, PENDING 45, EMPTY_BODY 0; 422 body in production is `{type, on, found}`): `src/server/openapi/` helpers (`jsonOk`, `ErrorSchema` for text/plain errors, `ValidationErrorSchema` for 422, an `errors(...)` builder); ratchet test with an explicit `PROTECTED_OPERATIONS` list replacing the regex (F1), version and servers assertions (F2), and "every operation declares a 2xx schema" with a shrinking `PENDING_RESPONSE_SCHEMAS` allowlist; empty-body routes exempted explicitly. ~60 prod + 90 test.
 - [ ] S1 ranked and stats (8 ops): `UserStatsSchema` reusing `TierViewSchema` for `/users/:id/stats` and `/stats`, player of the week, ban lists, global stats, game ticket, ranked-tiers catalog in `detail`. ~220 prod + 120 test.
 - [ ] S2 account and auth (12 ops of `user-router` outside bans). ~260 prod + 120 test.
 - [ ] S3 cosmetics (10 ops, 6 DTO schemas). ~250 prod + 120 test.
