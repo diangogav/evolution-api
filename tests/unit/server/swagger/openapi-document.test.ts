@@ -8,32 +8,122 @@ type Operation = {
 	tags?: string[];
 	summary?: string;
 	security?: Record<string, string[]>[];
+	responses?: Record<string, { content?: Record<string, { schema?: unknown }> }>;
 };
 
 type OpenApiDocument = {
-	info: { title: string; description?: string };
+	info: { title: string; version: string; description?: string };
+	servers?: { url: string }[];
 	tags?: { name: string; description?: string }[];
 	"x-tagGroups"?: { name: string; tags: string[] }[];
 	paths: Record<string, Record<string, Operation>>;
 };
 
-type RegisteredRoute = { method: string; path: string; handler: unknown };
+// Operations that require `Authorization: Bearer <token>`: their handler (or a
+// guard in front of it) reads the caller's token. Adding a protected route
+// requires adding it here, and the document must mark exactly these with
+// bearerAuth. `reset-account-password` reads the reset-link token from the same
+// header, so it is listed too.
+const PROTECTED_OPERATIONS = [
+	"POST /api/v1/users/reset-account-password",
+	"POST /api/v1/users/change-username",
+	"POST /api/v1/users/game-password",
+	"POST /api/v1/users/upgrade-password",
+	"POST /api/v1/users/change-account-password",
+	"POST /api/v1/users/{userId}/ban",
+	"POST /api/v1/users/{userId}/unban",
+	"GET /api/v1/users/{userId}/ban/active",
+	"GET /api/v1/users/{userId}/ban/history",
+	"POST /api/v1/tournaments/",
+	"POST /api/v1/tournaments/{tournamentId}/enroll",
+	"POST /api/v1/tournaments/{tournamentId}/withdraw",
+	"POST /api/v1/tournaments/{tournamentId}/bracket",
+	"POST /api/v1/tournaments/{tournamentId}/matches/{matchId}/result",
+	"DELETE /api/v1/tournaments/{tournamentId}/matches/{matchId}/result",
+	"POST /api/v1/game-tickets/",
+	"GET /api/v1/me/cosmetics/",
+	"GET /api/v1/me/cosmetics/{id}/assets",
+	"GET /api/v1/me/loadout/",
+	"PUT /api/v1/me/loadout/",
+	"GET /api/v1/admin/cosmetics/",
+	"POST /api/v1/admin/cosmetics/",
+	"POST /api/v1/admin/cosmetics/{id}/grants",
+	"POST /api/v1/admin/matches/annulments",
+	"POST /api/v1/admin/matches/annulments/reversals",
+];
 
-// Convention: a route is protected when its handler reads the caller's token,
-// either through the `bearer` context value derived by @elysiajs/bearer or
-// through the raw Authorization header. Every such route must advertise the
-// bearerAuth security scheme so the reference shows which calls need a token.
-const READS_TOKEN = /\bbearer\b|authorization/i;
+// Operations whose success has no body; they declare it with `emptyOk`.
+const EMPTY_BODY_OPERATIONS: string[] = [];
 
-const toOpenApiPath = (path: string) => path.replace(/:(\w+)/g, "{$1}");
+// Operations that still lack a 2xx application/json schema. This list only
+// shrinks: documenting an operation's response requires removing it here.
+const PENDING_RESPONSE_SCHEMAS = [
+	"POST /api/v1/users/register",
+	"POST /api/v1/users/login",
+	"POST /api/v1/users/forgot-password",
+	"GET /api/v1/users/validate-token",
+	"GET /api/v1/users/username-availability",
+	"POST /api/v1/users/reset-account-password",
+	"GET /api/v1/users/{userId}/stats",
+	"GET /api/v1/users/{userId}/matches",
+	"POST /api/v1/users/change-username",
+	"POST /api/v1/users/game-password",
+	"POST /api/v1/users/upgrade-password",
+	"POST /api/v1/users/change-account-password",
+	"POST /api/v1/users/{userId}/ban",
+	"POST /api/v1/users/{userId}/unban",
+	"GET /api/v1/users/{userId}/ban/active",
+	"GET /api/v1/users/{userId}/ban/history",
+	"GET /api/v1/stats/",
+	"GET /api/v1/stats/player-of-the-week",
+	"GET /api/v1/ban-lists/",
+	"GET /api/v1/ban-lists/grouped",
+	"GET /api/v1/tournaments/",
+	"POST /api/v1/tournaments/",
+	"POST /api/v1/tournaments/webhook",
+	"GET /api/v1/tournaments/ranking",
+	"POST /api/v1/tournaments/{tournamentId}/enroll",
+	"POST /api/v1/tournaments/{tournamentId}/withdraw",
+	"GET /api/v1/tournaments/{tournamentId}/bracket",
+	"POST /api/v1/tournaments/{tournamentId}/bracket",
+	"POST /api/v1/tournaments/{tournamentId}/matches/{matchId}/result",
+	"DELETE /api/v1/tournaments/{tournamentId}/matches/{matchId}/result",
+	"GET /api/v1/tournaments/{tournamentId}/entries",
+	"GET /api/v1/historical-stats/",
+	"POST /api/v1/game-tickets/",
+	"GET /api/v1/cosmetics/",
+	"GET /api/v1/cosmetics/{id}/assets",
+	"GET /api/v1/me/cosmetics/",
+	"GET /api/v1/me/cosmetics/{id}/assets",
+	"GET /api/v1/me/loadout/",
+	"PUT /api/v1/me/loadout/",
+	"GET /api/v1/users/by-username/{username}/loadout",
+	"GET /api/v1/admin/cosmetics/",
+	"POST /api/v1/admin/cosmetics/",
+	"POST /api/v1/admin/cosmetics/{id}/grants",
+	"POST /api/v1/admin/matches/annulments",
+	"POST /api/v1/admin/matches/annulments/reversals",
+];
+
+const successResponses = (operation: Operation) =>
+	Object.entries(operation.responses ?? {})
+		.filter(([status]) => status.startsWith("2"))
+		.map(([, response]) => response);
+
+const hasJsonSuccessSchema = (operation: Operation) =>
+	successResponses(operation).some(
+		(response) => response.content?.["application/json"]?.schema !== undefined,
+	);
+
+const hasEmptySuccess = (operation: Operation) =>
+	successResponses(operation).some((response) => response.content === undefined);
 
 describe("OpenAPI document", () => {
-	let app: Elysia;
 	let document: OpenApiDocument;
 	let operations: { key: string; operation: Operation }[];
 
 	beforeAll(async () => {
-		app = mountApiV1Routes(new Elysia().use(createSwagger())) as unknown as Elysia;
+		const app = mountApiV1Routes(new Elysia().use(createSwagger())) as unknown as Elysia;
 		const response = await app.handle(new Request("http://localhost/swagger/json"));
 		document = (await response.json()) as OpenApiDocument;
 		operations = Object.entries(document.paths).flatMap(([path, methods]) =>
@@ -75,19 +165,50 @@ describe("OpenAPI document", () => {
 		expect(withoutSummary).toEqual([]);
 	});
 
-	it("declares bearerAuth on every operation whose handler reads the token", () => {
-		const routes = (app as unknown as { routes: RegisteredRoute[] }).routes;
-		const protectedKeys = routes
-			.filter((route) => READS_TOKEN.test(String(route.handler)))
-			.map((route) => `${route.method} ${toOpenApiPath(route.path)}`);
+	it("declares bearerAuth on exactly the protected operations", () => {
+		const secured = operations
+			.filter(({ operation }) =>
+				operation.security?.some((requirement) => "bearerAuth" in requirement),
+			)
+			.map(({ key }) => key);
+		expect([...secured].sort()).toEqual([...PROTECTED_OPERATIONS].sort());
+	});
 
-		expect(protectedKeys.length).toBeGreaterThan(10);
+	it("publishes the package version and the production and local servers", () => {
+		expect(document.info.version).toMatch(/^\d+\.\d+\.\d+(?:[-+][\w.-]+)?$/);
+		expect((document.servers ?? []).map((server) => server.url)).toEqual([
+			"https://api.evolutionygo.com",
+			"http://localhost:3000",
+		]);
+	});
 
+	it("declares a success response schema on every operation not pending one", () => {
+		const exempt = new Set([...EMPTY_BODY_OPERATIONS, ...PENDING_RESPONSE_SCHEMAS]);
+		const undocumented = operations
+			.filter(({ key, operation }) => !exempt.has(key) && !hasJsonSuccessSchema(operation))
+			.map(({ key }) => key);
+		expect(undocumented).toEqual([]);
+	});
+
+	it("declares empty-body successes without content", () => {
 		const byKey = new Map(operations.map(({ key, operation }) => [key, operation]));
-		const missingSecurity = protectedKeys.filter(
-			(key) => !byKey.get(key)?.security?.some((requirement) => "bearerAuth" in requirement),
+		const invalid = EMPTY_BODY_OPERATIONS.filter((key) => {
+			const operation = byKey.get(key);
+			return operation === undefined || !hasEmptySuccess(operation);
+		});
+		expect(invalid).toEqual([]);
+	});
+
+	it("keeps the pending allowlist limited to existing operations still without a schema", () => {
+		const byKey = new Map(operations.map(({ key, operation }) => [key, operation]));
+		const stale = PENDING_RESPONSE_SCHEMAS.filter((key) => {
+			const operation = byKey.get(key);
+			return operation === undefined || hasJsonSuccessSchema(operation);
+		});
+		expect(stale).toEqual([]);
+		expect(PENDING_RESPONSE_SCHEMAS.filter((key) => EMPTY_BODY_OPERATIONS.includes(key))).toEqual(
+			[],
 		);
-		expect(missingSecurity).toEqual([]);
 	});
 
 	it("groups every declared tag exactly once", () => {
