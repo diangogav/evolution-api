@@ -91,10 +91,9 @@ replaces whatever was equipped there.
 - `PUT /me/loadout` → `EquipCosmetic.run` (`src/modules/loadout/application/EquipCosmetic.ts`):
   loads the cosmetic, checks its `type` matches the requested slot, checks
   `gatekeeper.canUse` (`ForbiddenError` if not entitled, `NotFoundError` if
-  the cosmetic id doesn't exist), then saves the updated loadout.
-  **`EquipCosmetic` does not check `cosmetic.active`** — only the catalog
-  listing filters inactive cosmetics out, so a client that already knows an
-  inactive cosmetic's id can still equip it if the entitlement check passes.
+  the cosmetic id doesn't exist or the cosmetic is inactive), then saves the
+  updated loadout. An inactive cosmetic that was equipped before it was
+  deactivated stays equipped and keeps rendering; it just cannot be equipped again.
 - `GET /me/loadout` → `GetMyLoadout.run` (`src/modules/loadout/application/GetMyLoadout.ts`):
   for each equipped slot, looks the cosmetic up and signs its asset manifest.
 - `GET /users/by-username/:username/loadout` → `GetPublicLoadout.run`
