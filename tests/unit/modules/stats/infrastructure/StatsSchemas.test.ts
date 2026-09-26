@@ -21,6 +21,9 @@ import { TierView } from "../../../../../src/modules/tiers/application/dtos/Tier
 
 const wire = (value: unknown): unknown => JSON.parse(JSON.stringify(value));
 
+// pg returns bigint window and aggregate columns as strings, whatever the domain types say.
+const pgBigint = (value: number): number => String(value) as unknown as number;
+
 const masterTier: TierView = {
 	id: "master",
 	name: "Master",
@@ -53,7 +56,7 @@ const profile = UserStats.from({
 	wins: 34,
 	losses: 21,
 	winRate: "61.82",
-	position: 12,
+	position: pgBigint(12),
 	achievements: [achievement],
 	ratings: RatingMembers.attach(
 		[
@@ -92,7 +95,7 @@ const leaderboardRow = (userId: string, rating: number | null) =>
 		wins: 20,
 		losses: 14,
 		winRate: "58.82",
-		position: 1,
+		position: pgBigint(1),
 		rating,
 		peak: rating,
 		provisional: rating === null ? null : false,
@@ -105,9 +108,9 @@ const statsRepository: UserStatsRepository = {
 		PeriodUserStats.from({
 			userId: "user-1",
 			username: "player1",
-			points: 30,
-			wins: 6,
-			losses: 1,
+			points: pgBigint(30),
+			wins: pgBigint(6),
+			losses: pgBigint(1),
 			from: "2026-09-14T00:00:00.000Z",
 			to: "2026-09-20T00:00:00.000Z",
 		}),
@@ -150,6 +153,15 @@ describe("PlayerOfTheWeekSchema", () => {
 
 		expect(Value.Check(PlayerOfTheWeekSchema, players)).toBe(true);
 		expect(Value.Check(PlayerOfTheWeekSchema, [])).toBe(true);
+	});
+
+	it("rejects points that are not a decimal string", async () => {
+		const [player] = (await new GetBestPlayerOfLastCompletedWeek(statsRepository).get()).map(wire);
+
+		expect(Value.Check(PlayerOfTheWeekSchema, [{ ...(player as object), points: 30 }])).toBe(false);
+		expect(Value.Check(PlayerOfTheWeekSchema, [{ ...(player as object), points: "3.5" }])).toBe(
+			false,
+		);
 	});
 });
 
