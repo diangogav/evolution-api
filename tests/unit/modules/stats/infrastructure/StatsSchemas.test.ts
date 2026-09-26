@@ -24,6 +24,9 @@ const wire = (value: unknown): unknown => JSON.parse(JSON.stringify(value));
 // pg returns bigint window and aggregate columns as strings, whatever the domain types say.
 const pgBigint = (value: number): number => String(value) as unknown as number;
 
+// pg returns float8 as a number, and the win rate is null when no game was decided.
+const pgFloat = (value: number | null): string => value as unknown as string;
+
 const masterTier: TierView = {
 	id: "master",
 	name: "Master",
@@ -55,7 +58,7 @@ const profile = UserStats.from({
 	points: 62,
 	wins: 34,
 	losses: 21,
-	winRate: "61.82",
+	winRate: pgFloat(61.82),
 	position: pgBigint(12),
 	achievements: [achievement],
 	ratings: RatingMembers.attach(
@@ -94,7 +97,7 @@ const leaderboardRow = (userId: string, rating: number | null) =>
 		points: 40,
 		wins: 20,
 		losses: 14,
-		winRate: "58.82",
+		winRate: pgFloat(rating === null ? null : 58.82),
 		position: pgBigint(1),
 		rating,
 		peak: rating,
