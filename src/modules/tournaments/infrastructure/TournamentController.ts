@@ -10,7 +10,7 @@ import { TournamentEnrollmentUseCase } from "../application/TournamentEnrollment
 import { TournamentWithdrawalUseCase } from "../application/TournamentWithdrawalUseCase";
 import { JWT } from "src/shared/JWT";
 import { UserProfileRole } from "src/evolution-types/src/types/UserProfileRole";
-import { UnauthorizedError } from "src/shared/errors/UnauthorizedError";
+import { ForbiddenError } from "src/shared/errors/ForbiddenError";
 import { config } from "src/config";
 import { MatchResultRequestSchema } from "./swagger-schemas";
 
@@ -151,7 +151,7 @@ export class TournamentController {
 					async ({ body, bearer }) => {
 						const { role } = this.jwt.decode(bearer as string) as { role: string };
 						if (role !== UserProfileRole.ADMIN) {
-							throw new UnauthorizedError("You do not have permission to create tournaments");
+							throw new ForbiddenError("You do not have permission to create tournaments");
 						}
 						const tournament = await this.createTournament.execute(body as CreateTournamentInput);
 						return tournament;
@@ -185,7 +185,8 @@ export class TournamentController {
 										},
 									},
 								},
-								401: { description: "Unauthorized - Admin role required" },
+								401: { description: "Unauthorized - Missing or invalid token" },
+								403: { description: "Forbidden - Admin role required" },
 							},
 						},
 						body: t.Object({
@@ -333,7 +334,7 @@ export class TournamentController {
 					async ({ params, bearer }) => {
 						const { role } = this.jwt.decode(bearer as string) as { role: string };
 						if (role !== UserProfileRole.ADMIN) {
-							throw new UnauthorizedError("You do not have permission to generate brackets");
+							throw new ForbiddenError("You do not have permission to generate brackets");
 						}
 
 						const response = await fetch(
@@ -396,7 +397,8 @@ export class TournamentController {
 										},
 									},
 								},
-								401: { description: "Unauthorized - Admin role required" },
+								401: { description: "Unauthorized - Missing or invalid token" },
+								403: { description: "Forbidden - Admin role required" },
 								404: { description: "Tournament not found" },
 							},
 						},
@@ -407,7 +409,7 @@ export class TournamentController {
 					async ({ params, body, bearer }) => {
 						const { role } = this.jwt.decode(bearer as string) as { role: string };
 						if (role !== UserProfileRole.ADMIN) {
-							throw new UnauthorizedError("You do not have permission to record match results");
+							throw new ForbiddenError("You do not have permission to record match results");
 						}
 
 						const response = await fetch(
@@ -451,7 +453,8 @@ export class TournamentController {
 										},
 									},
 								},
-								401: { description: "Unauthorized - Admin role required" },
+								401: { description: "Unauthorized - Missing or invalid token" },
+								403: { description: "Forbidden - Admin role required" },
 								404: { description: "Tournament or match not found" },
 							},
 						},
@@ -463,7 +466,7 @@ export class TournamentController {
 					async ({ params, bearer }) => {
 						const { role } = this.jwt.decode(bearer as string) as { role: string };
 						if (role !== UserProfileRole.ADMIN) {
-							throw new UnauthorizedError("You do not have permission to annul match results");
+							throw new ForbiddenError("You do not have permission to annul match results");
 						}
 
 						const response = await fetch(
@@ -495,7 +498,8 @@ export class TournamentController {
 										},
 									},
 								},
-								401: { description: "Unauthorized - Admin role required" },
+								401: { description: "Unauthorized - Missing or invalid token" },
+								403: { description: "Forbidden - Admin role required" },
 								404: { description: "Tournament or match not found" },
 							},
 						},

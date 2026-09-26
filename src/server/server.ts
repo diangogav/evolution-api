@@ -23,35 +23,36 @@ import { tournamentRouter } from "./routes/tournament-router";
 import { userRouter } from "./routes/user-router";
 import { createSwagger } from "./swagger";
 
+type ErrorHookContext = { error: unknown; set: { status?: number | string } };
+
+export function mapDomainErrorStatus({ error, set }: ErrorHookContext): void {
+	if (error instanceof ConflictError) {
+		set.status = 409;
+	}
+
+	if (error instanceof AuthenticationError) {
+		set.status = 401;
+	}
+
+	if (error instanceof NotFoundError) {
+		set.status = 404;
+	}
+
+	if (error instanceof InvalidArgumentError) {
+		set.status = 400;
+	}
+
+	if (error instanceof ForbiddenError) {
+		set.status = 403;
+	}
+}
+
 export class Server {
 	private readonly app: Elysia;
 	private readonly logger: Logger;
 
 	constructor(logger: Logger) {
-		this.app = new Elysia()
-			.use(cors())
-			.use(createSwagger())
-			.onError(({ error, set }) => {
-				if (error instanceof ConflictError) {
-					set.status = 409;
-				}
-
-				if (error instanceof AuthenticationError) {
-					set.status = 401;
-				}
-
-				if (error instanceof NotFoundError) {
-					set.status = 404;
-				}
-
-				if (error instanceof InvalidArgumentError) {
-					set.status = 400;
-				}
-
-				if (error instanceof ForbiddenError) {
-					set.status = 403;
-				}
-			});
+		this.app = new Elysia().use(cors()).use(createSwagger()).onError(mapDomainErrorStatus);
 
 		mountApiV1Routes(this.app);
 		this.logger = logger;

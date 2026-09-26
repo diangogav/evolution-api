@@ -31,7 +31,7 @@ import { UserBanUser } from "../../modules/user/application/UserBanUser";
 import { UserUnbanUser } from "../../modules/user/application/UserUnbanUser";
 import { UserGetActiveBan } from "../../modules/user/application/UserGetActiveBan";
 import { UserGetBanHistory } from "../../modules/user/application/UserGetBanHistory";
-import { UnauthorizedError } from "../../shared/errors/UnauthorizedError";
+import { ForbiddenError } from "../../shared/errors/ForbiddenError";
 import { UserProfileRole } from "src/evolution-types/src/types/UserProfileRole";
 import { banGuard } from "../guards/bandGuard";
 
@@ -531,7 +531,7 @@ export const userRouter = new Elysia({ prefix: "/users" })
 		async ({ params, body, bearer }) => {
 			const { id: adminId, role } = jwt.decode(bearer as string) as { id: string; role: string };
 			if (role !== UserProfileRole.ADMIN) {
-				throw new UnauthorizedError("You do not have permission to ban users");
+				throw new ForbiddenError("You do not have permission to ban users");
 			}
 			await new UserBanUser(userBanRepository).execute({
 				userId: params.userId,
@@ -557,7 +557,8 @@ export const userRouter = new Elysia({ prefix: "/users" })
 							},
 						},
 					},
-					401: { description: "Unauthorized - Admin role required" },
+					401: { description: "Unauthorized - Missing or invalid token" },
+					403: { description: "Forbidden - Admin role required" },
 					404: { description: "User not found" },
 				},
 			},
@@ -573,7 +574,7 @@ export const userRouter = new Elysia({ prefix: "/users" })
 		async ({ params, bearer }) => {
 			const { role } = jwt.decode(bearer as string) as { id: string; role: string };
 			if (role !== UserProfileRole.ADMIN) {
-				throw new UnauthorizedError("You do not have permissions to unban users");
+				throw new ForbiddenError("You do not have permissions to unban users");
 			}
 			await new UserUnbanUser(userBanRepository).execute(params.userId);
 			return { success: true };
@@ -593,7 +594,8 @@ export const userRouter = new Elysia({ prefix: "/users" })
 							},
 						},
 					},
-					401: { description: "Unauthorized - Admin role required" },
+					401: { description: "Unauthorized - Missing or invalid token" },
+					403: { description: "Forbidden - Admin role required" },
 					404: { description: "User or ban not found" },
 				},
 			},
@@ -607,7 +609,7 @@ export const userRouter = new Elysia({ prefix: "/users" })
 		async ({ params, bearer }) => {
 			const { role } = jwt.decode(bearer as string) as { id: string; role: string };
 			if (role !== UserProfileRole.ADMIN) {
-				throw new UnauthorizedError("You do not have permission to view bans");
+				throw new ForbiddenError("You do not have permission to view bans");
 			}
 			const ban = await new UserGetActiveBan(userBanRepository).execute(params.userId);
 			return { activeBan: ban };
@@ -639,7 +641,8 @@ export const userRouter = new Elysia({ prefix: "/users" })
 							},
 						},
 					},
-					401: { description: "Unauthorized - Admin role required" },
+					401: { description: "Unauthorized - Missing or invalid token" },
+					403: { description: "Forbidden - Admin role required" },
 				},
 			},
 			params: t.Object({ userId: t.String() }),
@@ -650,7 +653,7 @@ export const userRouter = new Elysia({ prefix: "/users" })
 		async ({ params, bearer }) => {
 			const { role } = jwt.decode(bearer as string) as { id: string; role: string };
 			if (role !== UserProfileRole.ADMIN) {
-				throw new UnauthorizedError("You do not have permission to view ban history");
+				throw new ForbiddenError("You do not have permission to view ban history");
 			}
 			const bans = await new UserGetBanHistory(userBanRepository).execute(params.userId);
 			return { history: bans };
@@ -680,7 +683,8 @@ export const userRouter = new Elysia({ prefix: "/users" })
 							},
 						},
 					},
-					401: { description: "Unauthorized - Admin role required" },
+					401: { description: "Unauthorized - Missing or invalid token" },
+					403: { description: "Forbidden - Admin role required" },
 					404: { description: "User not found" },
 				},
 			},
