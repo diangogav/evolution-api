@@ -64,13 +64,15 @@ active ban it throws `ForbiddenError` (403). It runs before the route handler
 on every router that opts in via `.guard(banGuard, ...)`.
 
 Per `docs/architecture.md`'s Auth section, **`banGuard` is applied to
-`user-router.ts`'s authenticated non-admin endpoints and `ticket-router.ts`**,
-but **not** to `cosmetics-router.ts`, `me-cosmetics-router.ts`,
-`loadout-router.ts`, `public-loadout-router.ts`,
-`admin-cosmetics-router.ts` or `admin-moderation-router.ts`. Practical
-consequence: **a banned user can still browse the cosmetics catalog and
-change their loadout** — only `bearer()` decodes their token there, nothing
-checks the ban.
+`user-router.ts`'s authenticated non-admin endpoints, `ticket-router.ts`,
+`me-cosmetics-router.ts` and `loadout-router.ts`**, but **not** to
+`cosmetics-router.ts` or `public-loadout-router.ts` (both serve public,
+unauthenticated reads with nothing to ban-check) or to
+`admin-cosmetics-router.ts` / `admin-moderation-router.ts` (authorized
+through `JwtAdminAuthorizer` instead). Practical consequence: **a banned
+user cannot browse their personalized cosmetics catalog, refresh a
+cosmetic's asset manifest, or read/change their loadout** — each of those
+four routes answers 403 before the handler runs.
 
 ## Relation to annulment
 
