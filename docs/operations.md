@@ -160,32 +160,16 @@ None of these six write to the shared schema except `rating-compensate.ts`,
 and only to rating history and ratings — never to `matches` or the points
 ledger directly.
 
-### `database-scripts/` — manual, destructive SQL
+### Rebuilding `player_stats`
 
-The four files under `database-scripts/` are raw SQL, meant to be run by hand
-against Postgres (for example with `psql`). They are **not** wired to any
-`package.json` script or CLI argument parsing, and none of them has a
-dry-run mode.
+`player_stats` is a projection of the points ledger, keyed by `(user_id, rank_id, season)`
+(`src/evolution-types/src/entities/PlayerStatsEntity.ts`). The game server updates it as games finish, and this
+API reprojects one key at a time when it annuls or reinstates a match (`reprojectPlayerStats`,
+`src/modules/points-ledger/infrastructure/PointsLedgerPostgresRepository.ts`).
 
-**These scripts are out of date.** All four read and write `player_stats.ban_list_name`, but
-`player_stats` is now keyed by `rank_id` (`src/evolution-types/src/entities/PlayerStatsEntity.ts`), so they
-no longer match the schema and must not be run as they are. `player_stats` is maintained as a projection
-of the points ledger (see [points ledger and ratings](domain/points-ledger-and-ratings.md)). The table below
-describes what each script was written to do.
-
-| File | Scope | Destructive? |
-| --- | --- | --- |
-| `caculate_stats_by_ban_list_name.sql` | All seasons, every ban list except `Global` | Upsert only (`INSERT ... ON CONFLICT DO UPDATE`); no delete. |
-| `calculate_global_stats.sql` | All seasons, `Global` only | Upsert only; no delete. |
-| `calculate_stats_by_ban_list_name_for_a_season.sql` | One season, every ban list except `Global` | **Yes** — `DELETE FROM player_stats WHERE season = season_number AND ban_list_name != 'Global'` runs before the rebuild. |
-| `calculate_global_stats for_a_season.sql` | One season, `Global` only | **Yes** — `DELETE FROM player_stats WHERE season = season_number AND ban_list_name = 'Global'` runs before the rebuild. |
-
-The two season-scoped files hardcode the target season as `season_number INT
-:= 5` inside a `DO $$ ... $$` block — running one requires hand-editing that
-constant first. There is no confirmation prompt, dry-run flag, or explicit
-transaction/rollback wrapper beyond the implicit statement-level atomicity of
-the `DO` block. Treat the two season-scoped scripts as one-shot,
-hand-reviewed operations against production data, not routine tooling.
+There is no script today that rebuilds every row on the rank-keyed schema. The shared package ships
+`src/evolution-types/scripts/rebuild-player-stats.sql`, but its header states it must run before the rank
+migrations, on the old `ban_list_name` schema, so it does not apply to the current database.
 
 ## Deployment
 
