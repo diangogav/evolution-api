@@ -68,7 +68,9 @@ Slices (each at most about 400 production lines; S1 and S2 both touch `user-rout
   - [ ] S2-F2 (SUGGESTION) `LoginSchema` duplicates the session-token shape of `PasswordUpgradeSchema`; objects are open (no `additionalProperties: false`).
   - [ ] S2-F3 (SUGGESTION) `AuthSchemas.test.ts`: duplicated repository stub and one misleading test name.
   - Email-send failures (forgot-password, reset and change account password) answer 500 and stay undocumented.
-- [ ] S3 cosmetics (10 ops, 6 DTO schemas). ~250 prod + 120 test.
+- [x] S3 cosmetics (10 ops served by `catalog`, `loadout` and `entitlements`, schemas colocated per module; delegated; RED 64a539d, GREEN 376c133; bun test 489 pass; lint and tsc clean; PENDING 27 -> 17, EMPTY_BODY 2; +241 src, +298/-10 tests; no prior examples existed, all derived from use-case output; no wire discrepancies (no bigint/numeric columns; `text[]` null normalized to `[]`); asset routes return JSON with signed R2 URLs, not binaries; a stale loadout reference yields empty `assets` and no `assetsExpiresAt`; live check against https://api.evolutionygo.com: catalog (18), 3 asset manifests and 2 public loadouts pass, unknown user 404; native review review-fcf0d9132c9a1072 (medium, one reliability lens, consent granted) approved and acknowledged with 2 suggestions; the catalog test now asserts a non-empty result).
+  - [ ] S3-F1 (behavior, needs the user's decision) the cosmetics, loadout and admin-cosmetics routers do not use `banGuard`, so a banned user can still read and change cosmetics and loadout; only 401 is documented there.
+  - [ ] S3-F2 (SUGGESTION) schema tests rely on open objects; same convention as S2-F2.
 - [ ] S4 moderation (2 annulment ops + 4 user-ban ops). ~170 prod + 80 test.
 - [ ] S5 tournaments (5 local shapes + upstream-owned proxies). ~200 prod + 80 test.
 
@@ -88,4 +90,4 @@ Slices (each at most about 400 production lines; S1 and S2 both touch `user-rout
 
 ## Next step
 
-Work unit 1 merged (#91). Work unit 2: S0 (#93) and S1 (#94) merged; S2 account and auth done on `docs/swagger-response-schemas-02-account`, PR pending; next S3 cosmetics.
+Work unit 1 merged (#91). Work unit 2: S0 (#93) and S1 (#94) merged; S2 merged (#95); S3 cosmetics done on `docs/swagger-response-schemas-03-cosmetics`, PR pending; next S4 moderation.
