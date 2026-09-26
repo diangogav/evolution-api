@@ -71,7 +71,10 @@ Slices (each at most about 400 production lines; S1 and S2 both touch `user-rout
 - [x] S3 cosmetics (10 ops served by `catalog`, `loadout` and `entitlements`, schemas colocated per module; delegated; RED 64a539d, GREEN 376c133; bun test 489 pass; lint and tsc clean; PENDING 27 -> 17, EMPTY_BODY 2; +241 src, +298/-10 tests; no prior examples existed, all derived from use-case output; no wire discrepancies (no bigint/numeric columns; `text[]` null normalized to `[]`); asset routes return JSON with signed R2 URLs, not binaries; a stale loadout reference yields empty `assets` and no `assetsExpiresAt`; live check against https://api.evolutionygo.com: catalog (18), 3 asset manifests and 2 public loadouts pass, unknown user 404; native review review-fcf0d9132c9a1072 (medium, one reliability lens, consent granted) approved and acknowledged with 2 suggestions; the catalog test now asserts a non-empty result).
   - [ ] S3-F1 (behavior, needs the user's decision) the cosmetics, loadout and admin-cosmetics routers do not use `banGuard`, so a banned user can still read and change cosmetics and loadout; only 401 is documented there.
   - [ ] S3-F2 (SUGGESTION) schema tests rely on open objects; same convention as S2-F2.
-- [ ] S4 moderation (2 annulment ops + 4 user-ban ops). ~170 prod + 80 test.
+- [x] S4 moderation (4 user-ban ops + 2 annulment ops; delegated; RED 12c75b7, GREEN d326b67; bun test 500 pass; lint and tsc clean; PENDING 17 -> 11 (only tournaments left), EMPTY_BODY 2; +162/-62 src, +225/-6 tests; ban history example replaced (real entry `{id, userId, reason, bannedAt, expiresAt, bannedBy, createdAt, updatedAt}`), ban and unban get `{success: true}`, active ban is nullable; annulment and reversal return per-game outcomes (`not-found`, `conflict`, `partial` are 200 values) with in-memory counters; wire fact: `expiresAt` is typed optional but travels as `null` for permanent bans; the documented 404s were removed because they cannot happen; no live check (all 6 need an admin token and would mutate data); native review review-18e98b86ff7107cb (medium, one reliability lens, consent granted) approved and acknowledged with 1 warning and 1 suggestion).
+  - [ ] S4-F1 (behavior, needs the user's decision) banning an unknown user id answers 500: `UserBanPostgresRepository` uses `findOneOrFail` and `mapDomainErrorStatus` does not map TypeORM's `EntityNotFoundError`. Unbanning a user with no active ban answers 200. The review warning about the dropped 404 is answered by this trace.
+  - [ ] S4-F2 (SUGGESTION) the `BanActionSchema` test builds `{success: true}` itself instead of reading the router response.
+  - Ban routes sit outside `banGuard` by design (admin endpoints); annulment routes use `JwtAdminAuthorizer`.
 - [ ] S5 tournaments (5 local shapes + upstream-owned proxies). ~200 prod + 80 test.
 
 ### Work unit 3 — `docs/` knowledge base (later)
@@ -90,4 +93,4 @@ Slices (each at most about 400 production lines; S1 and S2 both touch `user-rout
 
 ## Next step
 
-Work unit 1 merged (#91). Work unit 2: S0 (#93) and S1 (#94) merged; S2 merged (#95); S3 cosmetics done on `docs/swagger-response-schemas-03-cosmetics`, PR pending; next S4 moderation.
+Work unit 1 merged (#91). Work unit 2: S0 (#93) and S1 (#94) merged; S2 merged (#95); S3 merged (#96); S4 moderation done on `docs/swagger-response-schemas-04-moderation`, PR pending; next S5 tournaments.
