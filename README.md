@@ -81,7 +81,7 @@ bun start
 
 ## API Documentation
 
-The API documentation is automatically generated using Swagger. Feature guides live under `docs/`: [Ranked tiers: client integration guide](docs/ranked-tiers.md).
+The API documentation is automatically generated using Swagger. The knowledge base under `docs/` covers what Swagger cannot express: see [docs/README.md](docs/README.md).
 
 1.  Start the server (`bun run dev`).
 2.  Navigate to `http://localhost:3000/swagger` in your browser.
