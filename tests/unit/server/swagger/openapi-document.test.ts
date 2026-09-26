@@ -61,19 +61,7 @@ const EMPTY_BODY_OPERATIONS = [
 
 // Operations that still lack a 2xx application/json schema. This list only
 // shrinks: documenting an operation's response requires removing it here.
-const PENDING_RESPONSE_SCHEMAS = [
-	"GET /api/v1/tournaments/",
-	"POST /api/v1/tournaments/",
-	"POST /api/v1/tournaments/webhook",
-	"GET /api/v1/tournaments/ranking",
-	"POST /api/v1/tournaments/{tournamentId}/enroll",
-	"POST /api/v1/tournaments/{tournamentId}/withdraw",
-	"GET /api/v1/tournaments/{tournamentId}/bracket",
-	"POST /api/v1/tournaments/{tournamentId}/bracket",
-	"POST /api/v1/tournaments/{tournamentId}/matches/{matchId}/result",
-	"DELETE /api/v1/tournaments/{tournamentId}/matches/{matchId}/result",
-	"GET /api/v1/tournaments/{tournamentId}/entries",
-];
+const PENDING_RESPONSE_SCHEMAS: string[] = [];
 
 const successResponses = (operation: Operation) =>
 	Object.entries(operation.responses ?? {})
