@@ -2,6 +2,10 @@ import { t } from "elysia";
 
 import { TierViewSchema } from "../../tiers/infrastructure/TierSchemas";
 
+/** A bigint column produced by a SQL window or aggregate function. */
+const decimalString = (description: string) =>
+	t.String({ pattern: "^[0-9]+$", description: `${description}, as a decimal string` });
+
 const RankTypeSchema = t.Union([t.Literal("banlist"), t.Literal("group"), t.Literal("global")]);
 
 export const UserAchievementSchema = t.Object({
@@ -34,7 +38,8 @@ const userStatsFields = {
 	wins: t.Number(),
 	losses: t.Number(),
 	winRate: t.String(),
-	position: t.Number(),
+	// Mirrors the pg wire format: bigint columns arrive as strings.
+	position: decimalString("Rank from a SQL window function"),
 	achievements: t.Array(UserAchievementSchema),
 	rating: t.Optional(t.Nullable(t.Number())),
 	peak: t.Optional(t.Nullable(t.Number())),
@@ -61,9 +66,12 @@ export const LeaderboardSchema = t.Array(LeaderboardRowSchema);
 export const PeriodUserStatsSchema = t.Object({
 	userId: t.String(),
 	username: t.String(),
-	points: t.Number(),
-	wins: t.Number(),
-	losses: t.Number(),
+	// Mirrors the pg wire format: bigint columns arrive as strings.
+	points: decimalString("Points summed over the week"),
+	// Mirrors the pg wire format: bigint columns arrive as strings.
+	wins: decimalString("Wins counted over the week"),
+	// Mirrors the pg wire format: bigint columns arrive as strings.
+	losses: decimalString("Losses counted over the week"),
 	from: t.String({ description: "Start of the week" }),
 	to: t.String({ description: "End of the week" }),
 });
