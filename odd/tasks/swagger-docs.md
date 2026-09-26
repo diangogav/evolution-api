@@ -56,7 +56,7 @@ Mapping (2026-09-26): 46 operations; only `GET /ranked-tiers` has a schema (runt
 
 Findings that are behavior, not documentation:
 - `server.ts` `onError` returns no body, so mapped errors reach clients as `text/plain` with the error message; validation errors are Elysia JSON (422). Documented as-is with a shared `ErrorSchema`; changing it is a contract change outside this work unit.
-- `UnauthorizedError` is not mapped in `onError`, so admin checks in `user-router` and `TournamentController` answer 500 while the docs say 401. Candidate fix pending the user's decision.
+- (Resolved in #92) `UnauthorizedError` was not mapped in `onError`, so admin checks answered 500; it was replaced by `ForbiddenError` (403).
 - Seven tournament routes depend on the upstream tournaments service (5 passthroughs, 1 typed cast, 1 ignoring the upstream body); they get permissive schemas marked as upstream-owned. `tournaments/infrastructure/swagger-schemas.ts` holds 8 unused schemas to check against the upstream before reuse.
 
 Slices (each at most about 400 production lines; S1 and S2 both touch `user-router.ts`, merge in order):
@@ -83,7 +83,11 @@ Slices (each at most about 400 production lines; S1 and S2 both touch `user-rout
 
 ### Work unit 3 — `docs/` knowledge base (later)
 
-- [ ] 3.x Index, architecture, domain concepts (ranks, seasons, ledger, Elo, annulment, tiers), operations (env vars, migrations, scripts).
+Pages are written for a developer joining the project, from the code (never from memory or old docs), in English, following the `cognitive-doc-design` skill; each claim points to the file that proves it. No secrets or credential values. Passive documentation: structural readback, no native review unless assessment says otherwise. One PR per slice.
+
+- [x] 3.1 Index and architecture (`docs/README.md`, `docs/architecture.md`; branch `docs/knowledge-base-01-architecture`, delegated): hexagonal module layout and dependency rule, routers as composition root, the two DataSources and the shared `src/evolution-types` package, error mapping and bodies, auth (`bearer`, `banGuard`, `JwtAdminAuthorizer`), Swagger and the OpenAPI ratchet, testing conventions; README link. Done: b51ccab (index and architecture), d24c1c2 (README link), b25fea9 (internal task references removed); 199 lines; every cited path, env var name and version checked against the code; assessment passive, no review due. Page facts worth knowing: the SendGrid sender exists but only Resend is wired; `tournament-router.ts` delegates to `TournamentController`, which reads the token itself.
+- [ ] 3.2 Domain concepts (`docs/domain/`): seasons and ranks, points ledger, Elo ratings, match annulment and reversal, ranked tiers (link the existing guide), bans, cosmetics and entitlements, tournaments and the upstream service.
+- [ ] 3.3 Operations (`docs/operations.md`): environment variables (names and purpose only), running locally, migrations per DataSource, seeds and scripts, deployment notes.
 
 ## Progress and evidence
 
@@ -97,4 +101,4 @@ Slices (each at most about 400 production lines; S1 and S2 both touch `user-rout
 
 ## Next step
 
-Work unit 1 merged (#91). Work unit 2: S0 (#93) and S1 (#94) merged; S2 merged (#95); S3 merged (#96); S4 merged (#97); S5 tournaments done on `docs/swagger-response-schemas-05-tournaments`, PR pending. After it merges, work unit 2 is complete except its follow-ups; next is work unit 3 (`docs/` pages).
+Work unit 1 merged (#91). Work unit 2: S0 (#93) and S1 (#94) merged; S2 merged (#95); S3 merged (#96); S4 merged (#97); S5 merged (#98); work unit 2 complete except its follow-ups. Work unit 3: 3.1 done on `docs/knowledge-base-01-architecture`, PR pending; next 3.2 domain concepts. After it merges, work unit 2 is complete except its follow-ups; next is work unit 3 (`docs/` pages).
