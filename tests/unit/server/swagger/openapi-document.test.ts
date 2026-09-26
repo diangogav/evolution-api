@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, it } from "bun:test";
-import { Elysia } from "elysia";
+import { Value } from "@sinclair/typebox/value";
+import { Elysia, type TSchema } from "elysia";
 
 import { mountApiV1Routes } from "../../../../src/server/server";
 import { createSwagger } from "../../../../src/server/swagger";
@@ -64,7 +65,6 @@ const PENDING_RESPONSE_SCHEMAS = [
 	"GET /api/v1/users/validate-token",
 	"GET /api/v1/users/username-availability",
 	"POST /api/v1/users/reset-account-password",
-	"GET /api/v1/users/{userId}/stats",
 	"GET /api/v1/users/{userId}/matches",
 	"POST /api/v1/users/change-username",
 	"POST /api/v1/users/game-password",
@@ -74,10 +74,6 @@ const PENDING_RESPONSE_SCHEMAS = [
 	"POST /api/v1/users/{userId}/unban",
 	"GET /api/v1/users/{userId}/ban/active",
 	"GET /api/v1/users/{userId}/ban/history",
-	"GET /api/v1/stats/",
-	"GET /api/v1/stats/player-of-the-week",
-	"GET /api/v1/ban-lists/",
-	"GET /api/v1/ban-lists/grouped",
 	"GET /api/v1/tournaments/",
 	"POST /api/v1/tournaments/",
 	"POST /api/v1/tournaments/webhook",
@@ -89,8 +85,6 @@ const PENDING_RESPONSE_SCHEMAS = [
 	"POST /api/v1/tournaments/{tournamentId}/matches/{matchId}/result",
 	"DELETE /api/v1/tournaments/{tournamentId}/matches/{matchId}/result",
 	"GET /api/v1/tournaments/{tournamentId}/entries",
-	"GET /api/v1/historical-stats/",
-	"POST /api/v1/game-tickets/",
 	"GET /api/v1/cosmetics/",
 	"GET /api/v1/cosmetics/{id}/assets",
 	"GET /api/v1/me/cosmetics/",
@@ -118,12 +112,27 @@ const hasJsonSuccessSchema = (operation: Operation) =>
 const hasEmptySuccess = (operation: Operation) =>
 	successResponses(operation).some((response) => response.content === undefined);
 
+type DocumentedRoute = {
+	method: string;
+	path: string;
+	hooks: {
+		detail?: {
+			responses?: Record<
+				string,
+				{ content?: Record<string, { schema?: TSchema; example?: unknown }> }
+			>;
+		};
+	};
+};
+
 describe("OpenAPI document", () => {
 	let document: OpenApiDocument;
 	let operations: { key: string; operation: Operation }[];
+	let routes: DocumentedRoute[];
 
 	beforeAll(async () => {
 		const app = mountApiV1Routes(new Elysia().use(createSwagger())) as unknown as Elysia;
+		routes = app.routes as unknown as DocumentedRoute[];
 		const response = await app.handle(new Request("http://localhost/swagger/json"));
 		document = (await response.json()) as OpenApiDocument;
 		operations = Object.entries(document.paths).flatMap(([path, methods]) =>
@@ -209,6 +218,26 @@ describe("OpenAPI document", () => {
 		expect(PENDING_RESPONSE_SCHEMAS.filter((key) => EMPTY_BODY_OPERATIONS.includes(key))).toEqual(
 			[],
 		);
+	});
+
+	// The published document loses TypeBox's Kind symbols, so the check runs on the
+	// schema objects the routes declare, which the document is generated from.
+	it("gives every documented success example a shape its schema accepts", () => {
+		const examples = routes.flatMap(({ method, path, hooks }) =>
+			Object.entries(hooks.detail?.responses ?? {})
+				.filter(([status]) => status.startsWith("2"))
+				.map(([status, response]) => ({
+					key: `${method} ${path} ${status}`,
+					media: response.content?.["application/json"],
+				}))
+				.filter(({ media }) => media?.schema !== undefined && media.example !== undefined),
+		);
+		const invalid = examples
+			.filter(({ media }) => !Value.Check(media?.schema as TSchema, media?.example))
+			.map(({ key }) => key);
+
+		expect(examples.length).toBeGreaterThan(0);
+		expect(invalid).toEqual([]);
 	});
 
 	it("groups every declared tag exactly once", () => {
