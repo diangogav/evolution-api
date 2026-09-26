@@ -12,7 +12,19 @@ import { JWT } from "src/shared/JWT";
 import { UserProfileRole } from "src/evolution-types/src/types/UserProfileRole";
 import { ForbiddenError } from "src/shared/errors/ForbiddenError";
 import { config } from "src/config";
-import { MatchResultRequestSchema } from "./swagger-schemas";
+import { errorResponse, errorResponses, jsonOk } from "src/server/openapi/responses";
+import { MatchResultRequestSchema, MessageResponseSchema } from "./swagger-schemas";
+import {
+	CreatedTournamentSchema,
+	MatchResultAnnulledSchema,
+	TournamentActionSchema,
+	TournamentBracketSchema,
+	TournamentEntryListSchema,
+	TournamentRankingListSchema,
+	UpstreamTournamentListSchema,
+} from "./TournamentSchemas";
+
+const UPSTREAM_UNAVAILABLE = errorResponse("Upstream tournaments service unavailable");
 
 export class TournamentController {
 	private readonly tournamentsApiUrl: string;
@@ -50,25 +62,26 @@ export class TournamentController {
 							summary: "Get all tournaments",
 							description: "Retrieves a list of all tournaments from the tournaments service",
 							responses: {
-								200: {
-									description: "Tournaments retrieved successfully",
-									content: {
-										"application/json": {
-											example: [
-												{
-													id: "tournament-001",
-													name: "Tournament 1",
-													status: "open",
-												},
-												{
-													id: "tournament-002",
-													name: "Tournament 2",
-													status: "closed",
-												},
-											],
-										},
+								200: jsonOk(UpstreamTournamentListSchema, "Tournaments retrieved successfully", [
+									{
+										id: "tournament-001",
+										name: "Weekly Lightning",
+										description: null,
+										discipline: "Yu-Gi-Oh!",
+										format: "SINGLE_ELIMINATION",
+										status: "PUBLISHED",
+										allowMixedParticipants: false,
+										participantType: "PLAYER",
+										maxParticipants: 8,
+										startAt: "2025-11-24T11:33:08-04:00",
+										endAt: null,
+										location: "Online",
+										metadata: { banlist: "TCG" },
+										createdAt: "2025-11-20T10:00:00.000Z",
+										updatedAt: "2025-11-20T10:00:00.000Z",
 									},
-								},
+								]),
+								500: UPSTREAM_UNAVAILABLE,
 							},
 						},
 					},
@@ -90,16 +103,12 @@ export class TournamentController {
 							tags: ["Tournaments"],
 							summary: "Tournament completion webhook",
 							description:
-								"Webhook endpoint called when a tournament is completed to update rankings",
+								"Webhook endpoint called when a tournament is completed to update rankings. Not authenticated: it accepts no shared secret or signature, so anything reaching this URL can trigger a ranking update.",
 							responses: {
-								200: {
-									description: "Rankings updated successfully",
-									content: {
-										"application/json": {
-											example: { success: true },
-										},
-									},
-								},
+								200: jsonOk(TournamentActionSchema, "Rankings updated successfully", {
+									success: true,
+								}),
+								500: UPSTREAM_UNAVAILABLE,
 							},
 						},
 						body: t.Object({
@@ -122,23 +131,15 @@ export class TournamentController {
 							summary: "Get lightning tournament ranking",
 							description: "Retrieves the top players ranking for lightning tournaments",
 							responses: {
-								200: {
-									description: "Ranking retrieved successfully",
-									content: {
-										"application/json": {
-											example: [
-												{
-													userId: "user-1",
-													username: "Player1",
-													email: "player1@example.com",
-													points: 150,
-													tournamentsWon: 5,
-													tournamentsPlayed: 20,
-												},
-											],
-										},
+								200: jsonOk(TournamentRankingListSchema, "Ranking retrieved successfully", [
+									{
+										userId: "user-1",
+										points: 15,
+										tournamentsWon: 2,
+										tournamentsPlayed: 4,
+										user: { username: "Player1", email: "player1@example.com" },
 									},
-								},
+								]),
 							},
 						},
 						query: t.Object({
@@ -163,30 +164,26 @@ export class TournamentController {
 							description: "Creates a new lightning tournament. Requires admin privileges.",
 							security: [{ bearerAuth: [] }],
 							responses: {
-								200: {
-									description: "Tournament created successfully",
-									content: {
-										"application/json": {
-											example: {
-												id: "tournament-123",
-												name: "Weekly Lightning",
-												discipline: "Yu-Gi-Oh!",
-												format: "Single Elimination",
-												status: "PUBLISHED",
-												participantType: "SINGLE",
-												allowMixedParticipants: false,
-												maxParticipants: 8,
-												description: "Weekly Lightning Tournament",
-												startAt: "2025-11-24T11:33:08-04:00",
-												endAt: "2025-11-24T11:33:08-04:00",
-												location: "Online",
-												banlist: "TCG",
-											},
-										},
-									},
-								},
-								401: { description: "Unauthorized - Missing or invalid token" },
-								403: { description: "Forbidden - Admin role required" },
+								200: jsonOk(CreatedTournamentSchema, "Tournament created successfully", {
+									id: "tournament-123",
+									name: "Weekly Lightning",
+									discipline: "Yu-Gi-Oh!",
+									format: "SINGLE_ELIMINATION",
+									status: "PUBLISHED",
+									participantType: "PLAYER",
+									allowMixedParticipants: false,
+									maxParticipants: 8,
+									description: "Weekly Lightning Tournament",
+									startAt: "2025-11-24T11:33:08-04:00",
+									endAt: "2025-11-24T11:33:08-04:00",
+									location: "Online",
+									webhookUrl: "https://api.evolutionygo.com/api/v1/tournaments/webhook",
+									metadata: { banlist: "TCG" },
+									createdAt: "2025-11-20T10:00:00.000Z",
+									updatedAt: "2025-11-20T10:00:00.000Z",
+								}),
+								...errorResponses(401, 403),
+								500: UPSTREAM_UNAVAILABLE,
 							},
 						},
 						body: t.Object({
@@ -222,16 +219,11 @@ export class TournamentController {
 							description: "Enrolls a user in a lightning tournament",
 							security: [{ bearerAuth: [] }],
 							responses: {
-								200: {
-									description: "User enrolled successfully",
-									content: {
-										"application/json": {
-											example: { success: true },
-										},
-									},
-								},
-								404: { description: "User or tournament not found" },
-								409: { description: "User already enrolled or tournament full" },
+								200: jsonOk(TournamentActionSchema, "User enrolled successfully", {
+									success: true,
+								}),
+								...errorResponses(401, 404),
+								500: UPSTREAM_UNAVAILABLE,
 							},
 						},
 					},
@@ -253,15 +245,11 @@ export class TournamentController {
 							description: "Withdraws a user from a lightning tournament",
 							security: [{ bearerAuth: [] }],
 							responses: {
-								200: {
-									description: "User withdrawn successfully",
-									content: {
-										"application/json": {
-											example: { success: true },
-										},
-									},
-								},
-								404: { description: "User, tournament, or enrollment not found" },
+								200: jsonOk(TournamentActionSchema, "User withdrawn successfully", {
+									success: true,
+								}),
+								...errorResponses(401, 404),
+								500: UPSTREAM_UNAVAILABLE,
 							},
 						},
 					},
@@ -287,44 +275,37 @@ export class TournamentController {
 							description:
 								"Retrieves the complete bracket structure including participant display names",
 							responses: {
-								200: {
-									description: "Bracket retrieved successfully",
-									content: {
-										"application/json": {
-											example: {
-												tournamentId: "tournament-001",
-												rounds: [
-													{
-														roundNumber: 1,
-														matches: [
-															{
-																id: "match-1",
-																tournamentId: "tournament-001",
-																roundNumber: 1,
-																participants: [
-																	{
-																		participantId: "p1",
-																		displayName: "Player1",
-																		score: 2,
-																		result: "win",
-																	},
-																	{
-																		participantId: "p2",
-																		displayName: "Player2",
-																		score: 1,
-																		result: "loss",
-																	},
-																],
-																completedAt: "2025-11-24T10:00:00Z",
-															},
-														],
+								200: jsonOk(TournamentBracketSchema, "Bracket retrieved successfully", {
+									tournamentId: "tournament-001",
+									rounds: [
+										{
+											roundNumber: 1,
+											matches: [
+												{
+													id: "match-1",
+													roundNumber: 1,
+													position: 1,
+													slotId: "R1-P1",
+													nextMatchId: null,
+													next: null,
+													from: [],
+													participant1: {
+														id: "participant-1",
+														displayName: "Player1",
+														score: 2,
 													},
-												],
-											},
+													participant2: {
+														id: "participant-2",
+														displayName: "Player2",
+														score: 1,
+													},
+													winnerId: "participant-1",
+												},
+											],
 										},
-									},
-								},
-								404: { description: "Tournament or bracket not found" },
+									],
+								}),
+								500: UPSTREAM_UNAVAILABLE,
 							},
 						},
 					},
@@ -359,47 +340,11 @@ export class TournamentController {
 								"Generates the complete bracket structure for a tournament. Requires admin privileges.",
 							security: [{ bearerAuth: [] }],
 							responses: {
-								200: {
-									description: "Bracket generated successfully",
-									content: {
-										"application/json": {
-											example: {
-												tournamentId: "tournament-001",
-												rounds: [
-													{
-														roundNumber: 1,
-														matches: [
-															{
-																id: "match-1",
-																tournamentId: "tournament-001",
-																roundNumber: 1,
-																matchNumber: 1,
-																participants: [
-																	{
-																		participantId: "p1",
-																		displayName: "Player1",
-																		score: null,
-																		result: null,
-																	},
-																	{
-																		participantId: "p2",
-																		displayName: "Player2",
-																		score: null,
-																		result: null,
-																	},
-																],
-																completedAt: null,
-															},
-														],
-													},
-												],
-											},
-										},
-									},
-								},
-								401: { description: "Unauthorized - Missing or invalid token" },
-								403: { description: "Forbidden - Admin role required" },
-								404: { description: "Tournament not found" },
+								200: jsonOk(MessageResponseSchema, "Bracket generated successfully", {
+									message: "Full bracket generated",
+								}),
+								...errorResponses(401, 403),
+								500: UPSTREAM_UNAVAILABLE,
 							},
 						},
 					},
@@ -436,26 +381,11 @@ export class TournamentController {
 								"Records the result of a match with participant scores. Requires admin privileges.",
 							security: [{ bearerAuth: [] }],
 							responses: {
-								200: {
-									description: "Match result recorded successfully",
-									content: {
-										"application/json": {
-											example: {
-												id: "match-1",
-												tournamentId: "tournament-001",
-												roundNumber: 1,
-												participants: [
-													{ participantId: "p1", displayName: "Player1", score: 2, result: "win" },
-													{ participantId: "p2", displayName: "Player2", score: 1, result: "loss" },
-												],
-												completedAt: "2025-11-24T10:00:00Z",
-											},
-										},
-									},
-								},
-								401: { description: "Unauthorized - Missing or invalid token" },
-								403: { description: "Forbidden - Admin role required" },
-								404: { description: "Tournament or match not found" },
+								200: jsonOk(MessageResponseSchema, "Match result recorded successfully", {
+									message: "Result saved",
+								}),
+								...errorResponses(401, 403),
+								500: UPSTREAM_UNAVAILABLE,
 							},
 						},
 						body: MatchResultRequestSchema,
@@ -490,17 +420,11 @@ export class TournamentController {
 							description: "Deletes/annuls a match result. Requires admin privileges.",
 							security: [{ bearerAuth: [] }],
 							responses: {
-								200: {
-									description: "Match result annulled successfully",
-									content: {
-										"application/json": {
-											example: { message: "Match result annulled" },
-										},
-									},
-								},
-								401: { description: "Unauthorized - Missing or invalid token" },
-								403: { description: "Forbidden - Admin role required" },
-								404: { description: "Tournament or match not found" },
+								200: jsonOk(MatchResultAnnulledSchema, "Match result annulled successfully", {
+									message: "Match result annulled",
+								}),
+								...errorResponses(401, 403),
+								500: UPSTREAM_UNAVAILABLE,
 							},
 						},
 					},
@@ -525,25 +449,21 @@ export class TournamentController {
 							summary: "Get tournament entries",
 							description: "Retrieves all entries for a specific tournament.",
 							responses: {
-								200: {
-									description: "Entries retrieved successfully",
-									content: {
-										"application/json": {
-											example: {
-												entries: [
-													{
-														id: "123",
-														userId: "456",
-														tournamentId: "789",
-														createdAt: "2023-01-01T00:00:00.000Z",
-														updatedAt: "2023-01-01T00:00:00.000Z",
-													},
-												],
-											},
-										},
+								200: jsonOk(TournamentEntryListSchema, "Entries retrieved successfully", [
+									{
+										id: "entry-123",
+										tournamentId: "tournament-001",
+										participantId: "participant-1",
+										status: "CONFIRMED",
+										groupId: null,
+										seed: 1,
+										metadata: {},
+										createdAt: "2025-11-20T10:00:00.000Z",
+										updatedAt: "2025-11-20T10:00:00.000Z",
+										participantName: "Player1",
 									},
-								},
-								404: { description: "Tournament not found" },
+								]),
+								500: UPSTREAM_UNAVAILABLE,
 							},
 						},
 					},
