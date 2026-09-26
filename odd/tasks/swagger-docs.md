@@ -91,7 +91,7 @@ Pages are written for a developer joining the project, from the code (never from
   - [x] 3.3-F1 (ops) the four `database-scripts/*.sql` targeted `player_stats.ban_list_name` after the rank cutover; removed in e98f535. `src/evolution-types/scripts/rebuild-player-stats.sql` is also pre-cutover, so no full rebuild exists for the rank-keyed schema.
   - [ ] 3.3-F2 (ops) `SENDGRID_*` are required at startup although only Resend is wired; `POSTGRES_*` are not validated; startup logs DataSource and Redis failures and still serves.
   - [ ] 3.3-F3 (ops) the Dockerfile clones `evolution-types` from its default branch instead of the pinned submodule commit; the repo has CI (lint, test, build) but no CD.
-  - `rating-compensate.ts` header comment names an outdated unique constraint.
+  - [x] 3.3-F4 (cleanup, branch `chore/cleanup-sendgrid-idea`) removed the unwired `SengridEmailSender`, its required `SENDGRID_*` config and the `@sendgrid/mail` dependency; stopped tracking `.idea/`; fixed the `rating-compensate.ts` header comment. All six `src/scripts` stay in use. `.env.example` and `.env.test` still list the `SENDGRID_*` names: the permission policy blocks editing env files from the agent.
 
 ## Progress and evidence
 
@@ -105,4 +105,4 @@ Pages are written for a developer joining the project, from the code (never from
 
 ## Next step
 
-Work unit 1 merged (#91). Work unit 2: S0 (#93) and S1 (#94) merged; S2 merged (#95); S3 merged (#96); S4 merged (#97); S5 merged (#98); work unit 2 complete except its follow-ups. Work unit 3: 3.1 merged (#99); 3.2 merged (#100); 3.3 done on `docs/knowledge-base-03-operations`, PR pending. With it, work units 1-3 are complete; what remains are the recorded follow-ups, several of them behavior decisions for the user.
+Work unit 1 merged (#91). Work unit 2: S0 (#93) and S1 (#94) merged; S2 merged (#95); S3 merged (#96); S4 merged (#97); S5 merged (#98); work unit 2 complete except its follow-ups. Work unit 3: 3.1 merged (#99); 3.2 merged (#100); 3.3 merged (#101). Work units 1-3 are complete. With it, work units 1-3 are complete; what remains are the recorded follow-ups, several of them behavior decisions for the user.
