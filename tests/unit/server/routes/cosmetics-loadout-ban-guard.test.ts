@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it, spyOn } from "bun:test";
+import { afterAll, describe, expect, it, spyOn } from "bun:test";
 import { Elysia } from "elysia";
 
 import { config } from "../../../../src/config";
@@ -41,6 +41,7 @@ const testCosmetic = Cosmetic.from({
 });
 
 const jwt = new JWT(config.jwt);
+const wrongSecretJwt = new JWT({ ...config.jwt, secret: "wrong-secret" });
 const app = new Elysia()
 	.onError(({ error, set }) => {
 		if (error instanceof AuthenticationError) set.status = 401;
@@ -49,6 +50,10 @@ const app = new Elysia()
 	})
 	.use(meCosmeticsRouter)
 	.use(loadoutRouter);
+
+const loadoutSaveSpy = spyOn(LoadoutPostgresRepository.prototype, "save").mockImplementation(
+	async () => undefined,
+);
 
 const spies = [
 	spyOn(UserBanPostgresRepository.prototype, "findActiveBanByUserId").mockImplementation(
@@ -64,28 +69,59 @@ const spies = [
 	spyOn(LoadoutPostgresRepository.prototype, "findByUserId").mockImplementation(async (userId) =>
 		Loadout.from(userId, [{ cosmeticType: CosmeticType.SLEEVE, cosmeticId: testCosmetic.id }]),
 	),
-	spyOn(LoadoutPostgresRepository.prototype, "save").mockImplementation(async () => undefined),
+	loadoutSaveSpy,
 ];
 
 afterAll(() => {
 	for (const spy of spies) spy.mockRestore();
 });
 
-type RouteCase = { name: string; method: string; path: string; body?: unknown };
+type RouteCase = {
+	name: string;
+	method: string;
+	path: string;
+	body?: unknown;
+	// Proves the real handler ran for this user, not just that it wasn't blocked.
+	assertBody: (json: unknown) => void;
+};
 
 const cases: RouteCase[] = [
-	{ name: "list my cosmetics catalog", method: "GET", path: "/me/cosmetics/" },
+	{
+		name: "list my cosmetics catalog",
+		method: "GET",
+		path: "/me/cosmetics/",
+		assertBody: (json) => {
+			const catalog = json as { id: string }[];
+			expect(catalog[0]?.id).toBe(testCosmetic.id);
+		},
+	},
 	{
 		name: "refresh a cosmetic asset manifest",
 		method: "GET",
 		path: `/me/cosmetics/${testCosmetic.id}/assets`,
+		assertBody: (json) => {
+			const manifest = json as { assets: Record<string, string> };
+			expect(manifest.assets["render.jpg"]).toContain("render.jpg");
+		},
 	},
-	{ name: "get my loadout", method: "GET", path: "/me/loadout/" },
+	{
+		name: "get my loadout",
+		method: "GET",
+		path: "/me/loadout/",
+		assertBody: (json) => {
+			const loadout = json as { cosmeticId: string }[];
+			expect(loadout[0]?.cosmeticId).toBe(testCosmetic.id);
+		},
+	},
 	{
 		name: "equip a cosmetic",
 		method: "PUT",
 		path: "/me/loadout/",
 		body: { cosmeticType: CosmeticType.SLEEVE, cosmeticId: testCosmetic.id },
+		assertBody: (json) => {
+			const loadout = json as { cosmeticId: string }[];
+			expect(loadout[0]?.cosmeticId).toBe(testCosmetic.id);
+		},
 	},
 ];
 
@@ -102,6 +138,11 @@ function request(routeCase: RouteCase, token?: string) {
 	);
 }
 
+const invalidTokens: { name: string; token: string }[] = [
+	{ name: "malformed", token: "not-a-valid-jwt" },
+	{ name: "badly signed", token: wrongSecretJwt.generate({ id: okUserId }) },
+];
+
 describe("banGuard on the cosmetics and loadout routes", () => {
 	for (const routeCase of cases) {
 		it(`answers 401 for ${routeCase.name} without a token`, async () => {
@@ -109,12 +150,24 @@ describe("banGuard on the cosmetics and loadout routes", () => {
 			expect(response.status).toBe(401);
 		});
 
+		for (const invalidToken of invalidTokens) {
+			it(`answers 401 for ${routeCase.name} with a ${invalidToken.name} token`, async () => {
+				const response = await request(routeCase, invalidToken.token);
+				expect(response.status).toBe(401);
+			});
+		}
+
 		it(`answers 403 for ${routeCase.name} when the user is banned`, async () => {
+			loadoutSaveSpy.mockClear();
 			const token = jwt.generate({ id: bannedUserId });
 
 			const response = await request(routeCase, token);
 
 			expect(response.status).toBe(403);
+			if (routeCase.method === "PUT") {
+				// The guard must stop the write itself, not merely the status code.
+				expect(loadoutSaveSpy).toHaveBeenCalledTimes(0);
+			}
 		});
 
 		it(`still answers normally for ${routeCase.name} when the user is not banned`, async () => {
@@ -123,6 +176,7 @@ describe("banGuard on the cosmetics and loadout routes", () => {
 			const response = await request(routeCase, token);
 
 			expect(response.status).toBe(200);
+			routeCase.assertBody(await response.json());
 		});
 	}
 });
