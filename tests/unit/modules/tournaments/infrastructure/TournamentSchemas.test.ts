@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { Value } from "@sinclair/typebox/value";
+import { Elysia } from "elysia";
 
 import { CreateTournamentProxyUseCase } from "../../../../../src/modules/tournaments/application/CreateTournamentProxyUseCase";
 import { GetRankingUseCase } from "../../../../../src/modules/tournaments/application/GetRankingUseCase";
@@ -10,15 +11,21 @@ import type { RankingWithUser } from "../../../../../src/modules/tournaments/dom
 import type { TournamentRankingRepository } from "../../../../../src/modules/tournaments/domain/TournamentRankingRepository";
 import { TournamentRanking } from "../../../../../src/modules/tournaments/domain/TournamentRanking";
 import type { TournamentRepository } from "../../../../../src/modules/tournaments/domain/TournamentRepository";
+import { TournamentController } from "../../../../../src/modules/tournaments/infrastructure/TournamentController";
+import { MessageResponseSchema } from "../../../../../src/modules/tournaments/infrastructure/swagger-schemas";
 import {
 	CreatedTournamentSchema,
 	MatchResultAnnulledSchema,
 	TournamentActionSchema,
+	TournamentBracketSchema,
+	TournamentEntryListSchema,
 	TournamentRankingListSchema,
+	UpstreamTournamentListSchema,
 } from "../../../../../src/modules/tournaments/infrastructure/TournamentSchemas";
 import { User } from "../../../../../src/modules/user/domain/User";
 import type { UserRepository } from "../../../../../src/modules/user/domain/UserRepository";
 import { UserProfileRole } from "../../../../../src/evolution-types/src/types/UserProfileRole";
+import { JWT } from "../../../../../src/shared/JWT";
 import { Logger } from "../../../../../src/shared/logger/domain/Logger";
 
 const wire = (value: unknown): unknown => JSON.parse(JSON.stringify(value));
@@ -67,6 +74,42 @@ const tournamentRepositoryWith = (
 	confirmTournamentEntry: async () => undefined,
 	...overrides,
 });
+
+const testJwt = new JWT({ issuer: "evolution-tests", secret: "test-secret" });
+
+// Mounts the real TournamentController so passthrough routes run their
+// actual fetch/response.json() handling; only the outbound call to the
+// tournaments service is faked.
+const buildTournamentApp = () => {
+	const rankingRepository: TournamentRankingRepository = {
+		findByUserId: async () => null,
+		save: async () => undefined,
+		getTopRankings: async () => [],
+	};
+	const userRepository = userRepositoryWith();
+	const tournamentRepository = tournamentRepositoryWith();
+	const controller = new TournamentController(
+		new UpdateRankingUseCase(
+			rankingRepository,
+			userRepository,
+			"https://tournaments.internal",
+			silentLogger,
+		),
+		new GetRankingUseCase(rankingRepository),
+		new CreateTournamentProxyUseCase(
+			"https://tournaments.internal",
+			"https://api.evolutionygo.com/api/v1/tournaments/webhook",
+		),
+		new TournamentEnrollmentUseCase(userRepository, tournamentRepository),
+		new TournamentWithdrawalUseCase(userRepository, tournamentRepository),
+		testJwt,
+	);
+
+	return new Elysia().use(controller.routes(new Elysia()));
+};
+
+const stubFetch = (body: unknown, status = 200): typeof fetch =>
+	(async () => new Response(JSON.stringify(body), { status })) as unknown as typeof fetch;
 
 describe("TournamentActionSchema", () => {
 	it("accepts the literal TournamentEnrollmentUseCase answers with, for an already-enrolled participant", async () => {
@@ -258,10 +301,10 @@ describe("CreatedTournamentSchema", () => {
 					id: "tournament-123",
 					name: "Weekly Lightning",
 					discipline: "Yu-Gi-Oh!",
-					format: "Single Elimination",
+					format: "SINGLE_ELIMINATION",
 					status: "PUBLISHED",
 					allowMixedParticipants: false,
-					participantType: "SINGLE",
+					participantType: "PLAYER",
 					maxParticipants: 8,
 					description: "Weekly Lightning Tournament",
 					startAt: "2025-11-24T11:33:08-04:00",
@@ -269,8 +312,10 @@ describe("CreatedTournamentSchema", () => {
 					location: "Online",
 					webhookUrl: "https://api.evolutionygo.com/api/v1/tournaments/webhook",
 					metadata: { banlist: "TCG" },
+					createdAt: "2025-11-20T10:00:00.000Z",
+					updatedAt: "2025-11-20T10:00:00.000Z",
 				}),
-				{ status: 200 },
+				{ status: 201 },
 			)) as unknown as typeof fetch;
 
 		const tournament = await new CreateTournamentProxyUseCase(
@@ -306,6 +351,269 @@ describe("CreatedTournamentSchema", () => {
 				endAt: "2025-11-24T11:33:08-04:00",
 				location: "Online",
 				banlist: "TCG",
+			}),
+		).toBe(false);
+	});
+});
+
+describe("UpstreamTournamentListSchema", () => {
+	let originalFetch: typeof fetch;
+
+	beforeEach(() => {
+		originalFetch = globalThis.fetch;
+	});
+
+	afterEach(() => {
+		globalThis.fetch = originalFetch;
+	});
+
+	it("accepts the list the tournaments service returns from toPresentation, without webhookUrl", async () => {
+		const upstreamBody = [
+			{
+				id: "tournament-001",
+				name: "Weekly Lightning",
+				description: null,
+				discipline: "Yu-Gi-Oh!",
+				format: "SINGLE_ELIMINATION",
+				status: "PUBLISHED",
+				allowMixedParticipants: false,
+				participantType: "PLAYER",
+				maxParticipants: 8,
+				startAt: "2025-11-24T11:33:08-04:00",
+				endAt: null,
+				location: "Online",
+				metadata: {},
+				createdAt: "2025-11-20T10:00:00.000Z",
+				updatedAt: "2025-11-20T10:00:00.000Z",
+			},
+		];
+		globalThis.fetch = stubFetch(upstreamBody);
+
+		const response = await buildTournamentApp().handle(
+			new Request("http://localhost/tournaments/"),
+		);
+		const body = await response.json();
+
+		expect(body).toEqual(upstreamBody);
+		expect(Value.Check(UpstreamTournamentListSchema, body)).toBe(true);
+	});
+
+	it("rejects the old fictional example missing every real Tournament field but id/name/status", () => {
+		expect(
+			Value.Check(UpstreamTournamentListSchema, [
+				{ id: "tournament-001", name: "Tournament 1", status: "open" },
+			]),
+		).toBe(false);
+	});
+});
+
+describe("TournamentBracketSchema", () => {
+	let originalFetch: typeof fetch;
+
+	beforeEach(() => {
+		originalFetch = globalThis.fetch;
+	});
+
+	afterEach(() => {
+		globalThis.fetch = originalFetch;
+	});
+
+	it("accepts the bracket view the tournaments service returns, keyed by slot rather than by match order", async () => {
+		const upstreamBody = {
+			tournamentId: "tournament-001",
+			rounds: [
+				{
+					roundNumber: 1,
+					matches: [
+						{
+							id: "match-1",
+							roundNumber: 1,
+							position: 1,
+							slotId: "R1-P1",
+							nextMatchId: null,
+							next: null,
+							from: [],
+							participant1: { id: "participant-1", displayName: "Player1", score: 2 },
+							participant2: { id: "participant-2", displayName: "Player2", score: 1 },
+							winnerId: "participant-1",
+						},
+					],
+				},
+			],
+		};
+		globalThis.fetch = stubFetch(upstreamBody);
+
+		const response = await buildTournamentApp().handle(
+			new Request("http://localhost/tournaments/tournament-001/bracket"),
+		);
+		const body = await response.json();
+
+		expect(body).toEqual(upstreamBody);
+		expect(Value.Check(TournamentBracketSchema, body)).toBe(true);
+	});
+
+	it("accepts a TBD slot, where the participant is omitted rather than null", async () => {
+		const upstreamBody = {
+			tournamentId: "tournament-001",
+			rounds: [
+				{
+					roundNumber: 2,
+					matches: [
+						{
+							id: "match-2",
+							roundNumber: 2,
+							position: 1,
+							slotId: "R2-P1",
+							nextMatchId: null,
+							next: null,
+							from: [{ round: 1, position: 1 }],
+							winnerId: null,
+						},
+					],
+				},
+			],
+		};
+
+		expect(Value.Check(TournamentBracketSchema, upstreamBody)).toBe(true);
+	});
+
+	it("rejects the old fictional example's match/participants/completedAt shape", () => {
+		expect(
+			Value.Check(TournamentBracketSchema, {
+				tournamentId: "tournament-001",
+				rounds: [
+					{
+						roundNumber: 1,
+						matches: [
+							{
+								id: "match-1",
+								tournamentId: "tournament-001",
+								roundNumber: 1,
+								matchNumber: 1,
+								participants: [
+									{ participantId: "p1", displayName: "Player1", score: null, result: null },
+								],
+								completedAt: null,
+							},
+						],
+					},
+				],
+			}),
+		).toBe(false);
+	});
+});
+
+describe("MessageResponseSchema reused for the bracket and match-result upstream proxies", () => {
+	let originalFetch: typeof fetch;
+
+	beforeEach(() => {
+		originalFetch = globalThis.fetch;
+	});
+
+	afterEach(() => {
+		globalThis.fetch = originalFetch;
+	});
+
+	it("accepts the message POST .../bracket answers with when it relays generate-full", async () => {
+		globalThis.fetch = stubFetch({ message: "Full bracket generated" }, 201);
+		const token = testJwt.generate({ id: "admin-1", role: UserProfileRole.ADMIN });
+
+		const response = await buildTournamentApp().handle(
+			new Request("http://localhost/tournaments/tournament-001/bracket", {
+				method: "POST",
+				headers: { authorization: `Bearer ${token}` },
+			}),
+		);
+		const body = await response.json();
+
+		expect(body).toEqual({ message: "Full bracket generated" });
+		expect(Value.Check(MessageResponseSchema, body)).toBe(true);
+	});
+
+	it("accepts the message POST .../matches/{matchId}/result answers with", async () => {
+		globalThis.fetch = stubFetch({ message: "Result saved" });
+		const token = testJwt.generate({ id: "admin-1", role: UserProfileRole.ADMIN });
+
+		const response = await buildTournamentApp().handle(
+			new Request("http://localhost/tournaments/tournament-001/matches/match-1/result", {
+				method: "POST",
+				headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+				body: JSON.stringify({
+					participants: [
+						{ participantId: "participant-1", score: 2 },
+						{ participantId: "participant-2", score: 1 },
+					],
+				}),
+			}),
+		);
+		const body = await response.json();
+
+		expect(body).toEqual({ message: "Result saved" });
+		expect(Value.Check(MessageResponseSchema, body)).toBe(true);
+	});
+
+	it("rejects the old fictional full-match-entity example neither route ever sends", () => {
+		expect(
+			Value.Check(MessageResponseSchema, {
+				id: "match-1",
+				tournamentId: "tournament-001",
+				roundNumber: 1,
+				participants: [],
+				completedAt: "2025-11-24T10:00:00Z",
+			}),
+		).toBe(false);
+	});
+});
+
+describe("TournamentEntryListSchema", () => {
+	let originalFetch: typeof fetch;
+
+	beforeEach(() => {
+		originalFetch = globalThis.fetch;
+	});
+
+	afterEach(() => {
+		globalThis.fetch = originalFetch;
+	});
+
+	it("accepts the entries the tournaments service lists, including the joined participant name", async () => {
+		const upstreamBody = [
+			{
+				id: "entry-123",
+				tournamentId: "tournament-001",
+				participantId: "participant-1",
+				status: "CONFIRMED",
+				groupId: null,
+				seed: 1,
+				metadata: {},
+				createdAt: "2025-11-20T10:00:00.000Z",
+				updatedAt: "2025-11-20T10:00:00.000Z",
+				participantName: "Player1",
+			},
+		];
+		globalThis.fetch = stubFetch(upstreamBody);
+
+		const response = await buildTournamentApp().handle(
+			new Request("http://localhost/tournaments/tournament-001/entries"),
+		);
+		const body = await response.json();
+
+		expect(body).toEqual(upstreamBody);
+		expect(Value.Check(TournamentEntryListSchema, body)).toBe(true);
+	});
+
+	it("rejects the old wrapped {entries:[...]} example with a userId field no entry has", () => {
+		expect(
+			Value.Check(TournamentEntryListSchema, {
+				entries: [
+					{
+						id: "123",
+						userId: "456",
+						tournamentId: "789",
+						createdAt: "2023-01-01T00:00:00.000Z",
+						updatedAt: "2023-01-01T00:00:00.000Z",
+					},
+				],
 			}),
 		).toBe(false);
 	});

@@ -9,7 +9,10 @@ type Operation = {
 	tags?: string[];
 	summary?: string;
 	security?: Record<string, string[]>[];
-	responses?: Record<string, { content?: Record<string, { schema?: unknown }> }>;
+	responses?: Record<
+		string,
+		{ description?: string; content?: Record<string, { schema?: unknown }> }
+	>;
 };
 
 type OpenApiDocument = {
@@ -62,6 +65,24 @@ const EMPTY_BODY_OPERATIONS = [
 // Operations that still lack a 2xx application/json schema. This list only
 // shrinks: documenting an operation's response requires removing it here.
 const PENDING_RESPONSE_SCHEMAS: string[] = [];
+
+// Tournaments operations that call the upstream tournaments service (directly
+// or through TournamentGateway/CreateTournamentProxyUseCase). A network
+// failure or a non-2xx upstream response throws a plain Error, which
+// `mapDomainErrorStatus` does not map, so it always reaches the client as an
+// unmapped 500. GET /tournaments/ranking is excluded: it reads Postgres only.
+const UPSTREAM_DEPENDENT_OPERATIONS = [
+	"GET /api/v1/tournaments/",
+	"POST /api/v1/tournaments/",
+	"POST /api/v1/tournaments/webhook",
+	"POST /api/v1/tournaments/{tournamentId}/enroll",
+	"POST /api/v1/tournaments/{tournamentId}/withdraw",
+	"GET /api/v1/tournaments/{tournamentId}/bracket",
+	"POST /api/v1/tournaments/{tournamentId}/bracket",
+	"POST /api/v1/tournaments/{tournamentId}/matches/{matchId}/result",
+	"DELETE /api/v1/tournaments/{tournamentId}/matches/{matchId}/result",
+	"GET /api/v1/tournaments/{tournamentId}/entries",
+];
 
 const successResponses = (operation: Operation) =>
 	Object.entries(operation.responses ?? {})
@@ -202,6 +223,18 @@ describe("OpenAPI document", () => {
 
 		expect(examples.length).toBeGreaterThan(0);
 		expect(invalid).toEqual([]);
+	});
+
+	it("documents the tournaments service being unavailable on every operation that calls it, and on no other tournaments operation", () => {
+		const byKey = new Map(operations.map(({ key, operation }) => [key, operation]));
+
+		for (const key of UPSTREAM_DEPENDENT_OPERATIONS) {
+			const response = byKey.get(key)?.responses?.["500"];
+			expect(response?.description).toBe("Upstream tournaments service unavailable");
+			expect((response?.content?.["text/plain"]?.schema as { type?: string })?.type).toBe("string");
+		}
+
+		expect(byKey.get("GET /api/v1/tournaments/ranking")?.responses?.["500"]).toBeUndefined();
 	});
 
 	it("groups every declared tag exactly once", () => {
