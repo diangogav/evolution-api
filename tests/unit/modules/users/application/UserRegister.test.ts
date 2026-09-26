@@ -30,8 +30,6 @@ describe("UserRegister", () => {
 			findByUsername: async () => null,
 			findById: async () => null,
 			update: async () => undefined,
-			updateParticipantId: async () => undefined,
-			findByParticipantId: async () => null,
 		};
 		hash = new Hash();
 		logger = new Pino();

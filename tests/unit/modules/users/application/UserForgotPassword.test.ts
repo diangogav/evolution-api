@@ -27,8 +27,6 @@ describe("UserForgotPassword", () => {
 			findByUsername: async () => null,
 			findById: async () => null,
 			update: async () => undefined,
-			updateParticipantId: async () => undefined,
-			findByParticipantId: async () => null,
 		};
 		emailSender = { send: async () => undefined };
 		jwt = new JWT({ issuer: "issuer", secret: "secret" });

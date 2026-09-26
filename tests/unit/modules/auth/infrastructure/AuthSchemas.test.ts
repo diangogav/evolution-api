@@ -22,8 +22,6 @@ const loginAs = async (user: User, password: string): Promise<unknown> => {
 		findByUsername: async () => null,
 		findById: async () => null,
 		update: async () => undefined,
-		updateParticipantId: async () => undefined,
-		findByParticipantId: async () => null,
 	};
 
 	return wire(await new UserAuth(repository, hash, jwt).login({ email: user.email, password }));

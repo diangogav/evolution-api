@@ -7,6 +7,4 @@ export interface UserRepository {
 	findByUsername(username: string): Promise<User | null>;
 	findById(id: string): Promise<User | null>;
 	update(user: User): Promise<void>;
-	updateParticipantId(userId: string, participantId: string): Promise<void>;
-	findByParticipantId(participantId: string): Promise<User | null>;
 }

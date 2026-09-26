@@ -6,7 +6,7 @@ import { EVOLUTION_SCALAR_CSS } from "./swagger-theme";
 const DESCRIPTION = [
 	"![Evolution YGO](https://evolutionygo.com/logo.svg)",
 	"",
-	"Backend of the Evolution YGO platform: player accounts, ranked play and tiers, tournaments, cosmetics and moderation.",
+	"Backend of the Evolution YGO platform: player accounts, ranked play and tiers, cosmetics and moderation.",
 	"",
 	"Every endpoint lives under the base path `/api/v1`.",
 	"",
@@ -29,16 +29,6 @@ const TAGS = [
 	{ name: "Ranked", description: "Tickets that admit authenticated players into ranked games" },
 	{ name: "Statistics", description: "Global and historical duel statistics" },
 	{ name: "Ban Lists", description: "Ban lists played during each season" },
-	{
-		name: "Tournaments",
-		description: "Callbacks from the tournaments service when a tournament completes",
-	},
-	{
-		name: "Lightning Tournaments",
-		description: "Lightning tournament listing, ranking, creation, entries and enrollment",
-	},
-	{ name: "Bracket Management", description: "Tournament bracket generation and retrieval" },
-	{ name: "Match Management", description: "Tournament match results and their annulment" },
 	{ name: "Cosmetics", description: "Cosmetics catalog, entitlements and player loadouts" },
 	{ name: "User Bans", description: "Ban, unban and ban history of players (admin only)" },
 	{
@@ -54,10 +44,6 @@ const TAGS = [
 const TAG_GROUPS = [
 	{ name: "Account", tags: ["Authentication", "User Management"] },
 	{ name: "Ranked", tags: ["Leaderboard", "Ranked", "Statistics", "Ban Lists"] },
-	{
-		name: "Tournaments",
-		tags: ["Tournaments", "Lightning Tournaments", "Bracket Management", "Match Management"],
-	},
 	{ name: "Cosmetics", tags: ["Cosmetics"] },
 	{ name: "Administration", tags: ["User Bans", "Match Moderation", "Cosmetics Admin"] },
 ];

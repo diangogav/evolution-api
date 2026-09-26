@@ -20,8 +20,6 @@ describe("UserGamePasswordGenerator", () => {
 			findByUsername: async () => null,
 			findById: async () => null,
 			update: async () => undefined,
-			updateParticipantId: async () => undefined,
-			findByParticipantId: async () => null,
 		};
 		hash = new Hash();
 		generator = new UserGamePasswordGenerator(repository, hash);

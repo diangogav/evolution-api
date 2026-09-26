@@ -24,8 +24,6 @@ describe("UserUpgradePassword", () => {
 			findByUsername: async () => null,
 			findById: async () => null,
 			update: async () => undefined,
-			updateParticipantId: async () => undefined,
-			findByParticipantId: async () => null,
 		};
 		hash = new Hash();
 		jwt = new JWT({ issuer: "issuer", secret: "secret" });

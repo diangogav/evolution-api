@@ -87,22 +87,4 @@ export class UserPostgresRepository implements UserRepository {
 
 		await repository.save(updatedUserProfileEntity);
 	}
-
-	async updateParticipantId(userId: string, participantId: string): Promise<void> {
-		const repository = dataSource.getRepository(UserProfileEntity);
-		await repository.update({ id: userId }, { participantId });
-	}
-
-	async findByParticipantId(participantId: string): Promise<User | null> {
-		const repository = dataSource.getRepository(UserProfileEntity);
-		const userProfileEntity = await repository.findOne({
-			where: { participantId },
-		});
-
-		if (!userProfileEntity) {
-			return null;
-		}
-
-		return User.from(userProfileEntity);
-	}
 }

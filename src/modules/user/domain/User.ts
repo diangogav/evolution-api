@@ -8,7 +8,6 @@ export class User {
 	public readonly securePassword: string | null;
 	private _username: string;
 	public readonly role: UserProfileRole;
-	public participantId: string | null;
 
 	private constructor({
 		id,
@@ -17,7 +16,6 @@ export class User {
 		password,
 		securePassword,
 		role,
-		participantId,
 	}: {
 		id: string;
 		username: string;
@@ -25,7 +23,6 @@ export class User {
 		password: string;
 		securePassword: string | null;
 		role: UserProfileRole;
-		participantId: string | null;
 	}) {
 		this.id = id;
 		this._username = username;
@@ -33,7 +30,6 @@ export class User {
 		this.password = password;
 		this.securePassword = securePassword;
 		this.role = role;
-		this.participantId = participantId;
 	}
 
 	static create({
@@ -70,7 +66,6 @@ export class User {
 			password,
 			securePassword: securePassword ?? null,
 			role,
-			participantId: null,
 		});
 	}
 
@@ -81,7 +76,6 @@ export class User {
 		securePassword: string | null;
 		email: string;
 		role: UserProfileRole;
-		participantId: string | null;
 	}): User {
 		return new User(data);
 	}
@@ -110,7 +104,6 @@ export class User {
 			securePassword: this.securePassword,
 			email: this.email,
 			role: this.role,
-			participantId: this.participantId,
 		});
 	}
 
@@ -126,7 +119,6 @@ export class User {
 			securePassword,
 			email: this.email,
 			role: this.role,
-			participantId: this.participantId,
 		});
 	}
 
