@@ -75,7 +75,11 @@ Slices (each at most about 400 production lines; S1 and S2 both touch `user-rout
   - [ ] S4-F1 (behavior, needs the user's decision) banning an unknown user id answers 500: `UserBanPostgresRepository` uses `findOneOrFail` and `mapDomainErrorStatus` does not map TypeORM's `EntityNotFoundError`. Unbanning a user with no active ban answers 200. The review warning about the dropped 404 is answered by this trace.
   - [ ] S4-F2 (SUGGESTION) the `BanActionSchema` test builds `{success: true}` itself instead of reading the router response.
   - Ban routes sit outside `banGuard` by design (admin endpoints); annulment routes use `JwtAdminAuthorizer`.
-- [ ] S5 tournaments (5 local shapes + upstream-owned proxies). ~200 prod + 80 test.
+- [x] S5 tournaments (11 ops; delegated; RED 6096bad and 71e08b2, GREEN 44e27bb; bun test 522 pass; lint and tsc clean; PENDING 11 -> 0, EMPTY_BODY 2; +330/-213 src, +652/-3 tests, single PR with size:exception by the user's decision; local: enroll, withdraw and webhook `{success: true}`, DELETE result `{message}`, ranking from TypeORM integer columns (not raw SQL, no string coercion); passthroughs derived from the upstream source github.com/diangogav/evolution-tournaments@c19746d (list, create, bracket view keyed by slot, generate-full and record-result return only `{message}`, entries array with `participantName`), open objects, upstream-owned wording; every upstream-dependent route documents 500 "Upstream tournaments service unavailable" via the new `errorResponse(description)` helper, confirmed live while the upstream was off (500 text/plain "Unable to connect"); live ranking `200 []` matches; old examples for list, create, bracket, generate, record-result and entries were fictional; native review review-e1248e129a40a5fb (medium, one reliability lens, consent granted) approved and acknowledged with 1 warning and 3 suggestions).
+  - [ ] S5-F1 (behavior, needs the user's decision) the webhook has no shared secret or signature check.
+  - [ ] S5-F2 (behavior) upstream 201 answers are relayed as 200; upstream 404s surface as 500 because gateway errors are plain `Error`.
+  - [ ] S5-F3 (cleanup) the DELETE result route duplicates `TournamentGateway.annulMatchResult` inline; 7 schemas in `swagger-schemas.ts` are stale or unused.
+- [ ] WU2-F1 route-level response tests: several schema tests check a literal instead of the handler output (S2-F1 empty bodies, S4-F2 ban action, S5 enroll/withdraw/webhook and DELETE result); the S5 create-tournament tests do not assert the outgoing mapping and one rejection test names the wrong reason. Mount the routes with fakes and assert the real bodies.
 
 ### Work unit 3 — `docs/` knowledge base (later)
 
@@ -93,4 +97,4 @@ Slices (each at most about 400 production lines; S1 and S2 both touch `user-rout
 
 ## Next step
 
-Work unit 1 merged (#91). Work unit 2: S0 (#93) and S1 (#94) merged; S2 merged (#95); S3 merged (#96); S4 moderation done on `docs/swagger-response-schemas-04-moderation`, PR pending; next S5 tournaments.
+Work unit 1 merged (#91). Work unit 2: S0 (#93) and S1 (#94) merged; S2 merged (#95); S3 merged (#96); S4 merged (#97); S5 tournaments done on `docs/swagger-response-schemas-05-tournaments`, PR pending. After it merges, work unit 2 is complete except its follow-ups; next is work unit 3 (`docs/` pages).
