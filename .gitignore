@@ -43,3 +43,5 @@ yarn-error.log*
 **/*.log
 package-lock.json
 **/*.bun
+# IDE
+.idea/
