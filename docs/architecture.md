@@ -106,7 +106,7 @@ Throw one of these from a use case or controller instead of setting `set.status`
 | `banGuard` | `src/server/guards/bandGuard.ts` | `beforeHandle` that decodes the bearer token and throws `AuthenticationError` (401) if it is missing or invalid, or `ForbiddenError` (403) if the user has an active ban. |
 | `JwtAdminAuthorizer` | `src/server/auth/AdminAuthorizer.ts` | `requireAdmin(token)`: throws `AuthenticationError` if the token is missing or has no user id, `ForbiddenError` if the decoded role is not `ADMIN`. Used by `admin-cosmetics-router.ts` and `admin-moderation-router.ts`. |
 
-Which routers use `banGuard`: **`user-router.ts`** (its authenticated, non-admin endpoints) and **`ticket-router.ts`** use it. **`cosmetics-router.ts`, `me-cosmetics-router.ts`, `loadout-router.ts`, `public-loadout-router.ts`, `admin-cosmetics-router.ts`, and `admin-moderation-router.ts` do not** — the cosmetics/loadout routers only decode the token with `bearer()`, so a banned user can still read and change cosmetics and their loadout (open follow-up, see `odd/tasks/swagger-docs.md` S3-F1). Admin endpoints inside `user-router.ts` (ban/unban a user) check the decoded `role` inline rather than through `JwtAdminAuthorizer`; `admin-cosmetics-router.ts` and `admin-moderation-router.ts` use `JwtAdminAuthorizer` consistently. Ban routes are intentionally outside `banGuard` (an admin must be able to act on a banned user); annulment routes use `JwtAdminAuthorizer`.
+Which routers use `banGuard`: **`user-router.ts`** (its authenticated, non-admin endpoints) and **`ticket-router.ts`** use it. **`cosmetics-router.ts`, `me-cosmetics-router.ts`, `loadout-router.ts`, `public-loadout-router.ts`, `admin-cosmetics-router.ts`, and `admin-moderation-router.ts` do not** — the cosmetics/loadout routers only decode the token with `bearer()`, so a banned user can still read and change cosmetics and their loadout. Admin endpoints inside `user-router.ts` (ban/unban a user) check the decoded `role` inline rather than through `JwtAdminAuthorizer`; `admin-cosmetics-router.ts` and `admin-moderation-router.ts` use `JwtAdminAuthorizer` consistently. Ban routes are intentionally outside `banGuard` (an admin must be able to act on a banned user); annulment routes use `JwtAdminAuthorizer`.
 
 ## External services
 
@@ -151,7 +151,7 @@ The ratchet enforces:
 
 ## Testing conventions
 
-Tests live under `tests/`, mirroring `src/` (for example `tests/unit/modules/<feature>/...`, `tests/unit/server/...`). Everything runs on `bun:test` (`describe`/`it`/`expect`, no separate framework). Repository tests generally use hand-written fakes over mocking libraries (see `tests/unit/modules/match-annulment/application/AnnulUnannulRatingCycle.test.ts` for an example) — there is no repo-wide statement requiring test-driven development; check the active workflow configuration for that.
+Tests live under `tests/`, mirroring `src/` (for example `tests/unit/modules/<feature>/...`, `tests/unit/server/...`). Everything runs on `bun:test` (`describe`/`it`/`expect`, no separate framework). Repository tests generally use hand-written fakes over mocking libraries (see `tests/unit/modules/match-annulment/application/AnnulUnannulRatingCycle.test.ts` for an example).
 
 ## Request flow
 
