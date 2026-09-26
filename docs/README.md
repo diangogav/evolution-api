@@ -18,5 +18,4 @@ Live Swagger: [`https://api.evolutionygo.com/swagger`](https://api.evolutionygo.
 | [domain/match-annulment.md](domain/match-annulment.md) | The annulment/reversal batch flow, per-game outcomes, the enable switch, idempotency |
 | [domain/moderation.md](domain/moderation.md) | User bans: lifecycle, `banGuard`, admin-only routes, relation to annulment |
 | [domain/cosmetics.md](domain/cosmetics.md) | Catalog, entitlements, loadout, signed asset URLs |
-| [domain/tournaments.md](domain/tournaments.md) | Lightning tournaments: upstream service vs local ranking, the webhook, the proxy |
 | [operations.md](operations.md) | Environment variables, running locally, migrations, seeds and scripts, deployment notes |

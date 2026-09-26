@@ -1,6 +1,8 @@
 # Architecture
 
-Evolution API is the backend for the Evolution Yu-Gi-Oh! platform: player accounts, ranked play and tiers, cosmetics, moderation, and a thin proxy in front of a separate tournaments service. It follows Hexagonal Architecture (ports and adapters) with a plain composition root — there is no dependency-injection container.
+Evolution API is the backend for the Evolution Yu-Gi-Oh! platform: player accounts, ranked play and tiers, cosmetics, and moderation. It follows Hexagonal Architecture (ports and adapters) with a plain composition root — there is no dependency-injection container.
+
+Tournaments were removed from this API (2026-09): the shared schema still owns the `lightning_*` and `tournaments` tables, but they now belong to the game server, not to this codebase.
 
 ## Stack
 
@@ -46,7 +48,6 @@ Modules that exist today (`src/modules/*`):
 | `stats` | Player and global statistics, leaderboard, player of the week. |
 | `ticket` | Ranked game tickets, backed by Redis. |
 | `tiers` | Ranked tier resolution and the tier catalog (see `ranked-tiers.md`). |
-| `tournaments` | Lightning tournaments: a proxy in front of the upstream tournaments service, plus locally-stored ranking. |
 | `user` | Registration, profile, password management, username, bans. |
 
 ## Composition root: routers
@@ -59,7 +60,6 @@ Modules that exist today (`src/modules/*`):
 | `leaderboardRouter` | `/stats` | `src/server/routes/leaderboard-router.ts` |
 | `rankedTiersRouter` | `/ranked-tiers` | `src/server/routes/ranked-tiers-router.ts` |
 | `banListRouter` | `/ban-lists` | `src/server/routes/ban-list-router.ts` |
-| `tournamentRouter` | `/tournaments` (via `TournamentController.routes`) | `src/server/routes/tournament-router.ts` |
 | `statsRouter` | `/historical-stats` | `src/server/routes/stats-router.ts` |
 | `ticketRouter` | `/game-tickets` | `src/server/routes/ticket-router.ts` |
 | `cosmeticsRouter` | `/cosmetics` | `src/server/routes/cosmetics-router.ts` |
@@ -68,8 +68,6 @@ Modules that exist today (`src/modules/*`):
 | `publicLoadoutRouter` | `/users/by-username/:username/loadout` | `src/server/routes/public-loadout-router.ts` |
 | `adminCosmeticsRouter` | `/admin/cosmetics` | `src/server/routes/admin-cosmetics-router.ts` |
 | `adminModerationRouter` | `/admin/matches` | `src/server/routes/admin-moderation-router.ts` |
-
-One router, `tournamentRouter`, does not wire dependencies inline like the others: it delegates entirely to `TournamentController` (`src/modules/tournaments/infrastructure/TournamentController.ts`), which owns its own routes and reads the bearer token itself for its admin-only operations. Keep this in mind when adding a protected route through a controller instead of a router file — see the Swagger checklist below.
 
 ## Data
 
@@ -82,7 +80,7 @@ Both `DataSource`s point at the same Postgres instance but track migrations inde
 
 `src/evolution-types/` is a vendored package owned by the game server. Do not edit its entities or migrations from this repository; it is shared infrastructure, not API-local code. The cosmetics `DataSource` declares its foreign key to `users(id)` in raw SQL inside its own migration, so it never manages the shared `users` table.
 
-Module-to-DataSource mapping: `catalog`, `loadout`, and `entitlements` use the cosmetics `DataSource`. Every other module that touches Postgres (`user`, `match`, `match-annulment`, `points-ledger`, `rating`, `stats`, `tiers`, `ban-list`, `tournaments`) uses the shared `evolution-types` `DataSource`. `ticket` uses Redis, not Postgres. Both `DataSource`s are initialized at startup in `src/index.ts`.
+Module-to-DataSource mapping: `catalog`, `loadout`, and `entitlements` use the cosmetics `DataSource`. Every other module that touches Postgres (`user`, `match`, `match-annulment`, `points-ledger`, `rating`, `stats`, `tiers`, `ban-list`) uses the shared `evolution-types` `DataSource`. `ticket` uses Redis, not Postgres. Both `DataSource`s are initialized at startup in `src/index.ts`.
 
 ## Errors
 
@@ -96,7 +94,7 @@ Shared error classes live in `src/shared/errors/`. `mapDomainErrorStatus` in `sr
 | `InvalidArgumentError` | 400 |
 | `ForbiddenError` | 403 |
 
-Throw one of these from a use case or controller instead of setting `set.status` by hand. Response bodies for mapped errors are `text/plain` (the error's message) — `onError` only sets the status code, it does not shape a body. Elysia's own request validation fails independently of `onError` and answers `422` with a JSON body; production only sends `type`, `on` and `found` (`src/server/openapi/responses.ts`, `ValidationErrorSchema`). Anything that is not one of the five classes above — a plain `Error`, a TypeORM `EntityNotFoundError` (for example `findOneOrFail` in `UserBanPostgresRepository`), or an upstream `fetch` failure from `TournamentGateway`/`TournamentController` — falls through unmapped and answers `500`.
+Throw one of these from a use case or controller instead of setting `set.status` by hand. Response bodies for mapped errors are `text/plain` (the error's message) — `onError` only sets the status code, it does not shape a body. Elysia's own request validation fails independently of `onError` and answers `422` with a JSON body; production only sends `type`, `on` and `found` (`src/server/openapi/responses.ts`, `ValidationErrorSchema`). Anything that is not one of the five classes above — a plain `Error`, or a TypeORM `EntityNotFoundError` (for example `findOneOrFail` in `UserBanPostgresRepository`) — falls through unmapped and answers `500`.
 
 ## Auth
 
@@ -114,7 +112,6 @@ Env var names only — never read `.env` values, only `src/config/index.ts`.
 
 | Service | Purpose | Env vars |
 | --- | --- | --- |
-| Tournaments service (`TournamentGateway`, `src/modules/tournaments/infrastructure/TournamentGateway.ts`, and `TournamentController`) | Upstream HTTP service that owns tournament brackets, entries and match results; this API proxies to it and stores only local ranking data. | `TOURNAMENTS_API_URL`, `TOURNAMENTS_WEBHOOK_URL` |
 | Email (Resend) | Sends password-reset and account emails from `user-router.ts` (`ResendEmailSender`, `src/shared/email/infrastructure/ResendEmailSender.ts`). | `RESEND_API_KEY`, `RESEND_FROM_EMAIL` |
 | R2 (Cloudflare) | Signs URLs and stores cosmetic asset files (`src/modules/assets/infrastructure/createR2AssetUrlSigner.ts`, `createR2CosmeticAssetStorage.ts`). | `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `R2_ENDPOINT`, `R2_SIGNED_URL_TTL` |
 | Redis | Backs ranked game tickets (`src/modules/ticket/infrastructure/BunRedisRankedTicketRepository.ts`). | `REDIS_URL` |
@@ -137,12 +134,11 @@ The ratchet enforces:
 - `info.title` is not tournament-specific, `info.version` matches semver, and `servers` is exactly production + local.
 - Every operation has a 2xx `application/json` schema, unless it is listed in `EMPTY_BODY_OPERATIONS` (genuinely empty body) or `PENDING_RESPONSE_SCHEMAS` (an explicit, shrinking allowlist for work still in progress).
 - Every response example that ships alongside a schema actually validates against that schema (`Value.Check`).
-- Every tournaments operation that calls the upstream service (`UPSTREAM_DEPENDENT_OPERATIONS`) documents a `500` with the description "Upstream tournaments service unavailable", and no other tournaments operation does.
 
 ### Adding a new endpoint: checklist
 
 1. Give the route a `detail` with `tags` (using an existing tag, or a new one added to `TAGS` in `swagger.ts` and to exactly one group in `TAG_GROUPS`), a `summary`, and a `description`.
-2. If the handler reads a bearer token — directly, through `banGuard`, through `JwtAdminAuthorizer`, or through a controller like `TournamentController` — add `security: [{ bearerAuth: [] }]` to `detail` **and** add its `METHOD /api/v1/<path>` key to `PROTECTED_OPERATIONS` in the ratchet test.
+2. If the handler reads a bearer token — directly, through `banGuard`, or through `JwtAdminAuthorizer` — add `security: [{ bearerAuth: [] }]` to `detail` **and** add its `METHOD /api/v1/<path>` key to `PROTECTED_OPERATIONS` in the ratchet test.
 3. Declare a 2xx response: `jsonOk(schema, description, example?)` for a JSON body, `emptyOk(description)` for no body (and add the key to `EMPTY_BODY_OPERATIONS`). Do not add new entries to `PENDING_RESPONSE_SCHEMAS` — it only shrinks.
 4. If you give a response an `example`, make sure it matches the schema — the ratchet validates it.
 5. Use `errorResponses(...)` for the standard error catalog, or `errorResponse(description)` for a route-specific failure (for example, an upstream dependency).
@@ -177,5 +173,5 @@ An error the use case does not throw as one of the five shared classes (a plain 
 
 ## Next steps
 
-- Ranked tiers, points, ratings, annulment, bans, cosmetics and tournaments as domain concepts: [`docs/domain/`](domain/README.md).
+- Ranked tiers, points, ratings, annulment, bans and cosmetics as domain concepts: [`docs/domain/`](domain/README.md).
 - Environment variables, running locally, migrations, seeds, deployment: [`docs/operations.md`](operations.md).
