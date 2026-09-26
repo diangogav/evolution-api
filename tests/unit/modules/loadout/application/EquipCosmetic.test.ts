@@ -92,6 +92,23 @@ describe("EquipCosmetic", () => {
 		).rejects.toBeInstanceOf(NotFoundError);
 	});
 
+	it("rejects an inactive cosmetic as not found, even when the user is entitled to it", async () => {
+		const inactive = Cosmetic.from({
+			id: "cosmetic-1",
+			type: CosmeticType.SLEEVE,
+			tier: CosmeticTier.STANDARD,
+			assetRef: "sleeves/a/",
+			displayName: "A",
+			active: false,
+		});
+		const { equip, saved } = build({ found: inactive });
+
+		await expect(
+			equip.run({ userId: "user-1", cosmeticType: CosmeticType.SLEEVE, cosmeticId: "cosmetic-1" }),
+		).rejects.toBeInstanceOf(NotFoundError);
+		expect(saved).toHaveLength(0);
+	});
+
 	it("rejects equipping a cosmetic in the wrong slot", async () => {
 		const { equip } = build({ found: cosmetic(CosmeticTier.STANDARD) });
 
