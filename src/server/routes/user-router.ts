@@ -44,6 +44,11 @@ import { UserBanUser } from "../../modules/user/application/UserBanUser";
 import { UserUnbanUser } from "../../modules/user/application/UserUnbanUser";
 import { UserGetActiveBan } from "../../modules/user/application/UserGetActiveBan";
 import { UserGetBanHistory } from "../../modules/user/application/UserGetBanHistory";
+import {
+	ActiveBanSchema,
+	BanActionSchema,
+	BanHistorySchema,
+} from "../../modules/user/infrastructure/UserBanSchemas";
 import { ForbiddenError } from "../../shared/errors/ForbiddenError";
 import { UserProfileRole } from "src/evolution-types/src/types/UserProfileRole";
 import { banGuard } from "../guards/bandGuard";
@@ -507,17 +512,8 @@ export const userRouter = new Elysia({ prefix: "/users" })
 					"Bans a user with a reason and optional expiration date. Requires admin privileges.",
 				security: [{ bearerAuth: [] }],
 				responses: {
-					200: {
-						description: "User banned successfully",
-						content: {
-							"application/json": {
-								example: { success: true },
-							},
-						},
-					},
-					401: { description: "Unauthorized - Missing or invalid token" },
-					403: { description: "Forbidden - Admin role required" },
-					404: { description: "User not found" },
+					200: jsonOk(BanActionSchema, "User banned successfully", { success: true }),
+					...errorResponses(401, 403),
 				},
 			},
 			params: t.Object({ userId: t.String() }),
@@ -544,17 +540,8 @@ export const userRouter = new Elysia({ prefix: "/users" })
 				description: "Removes an active ban from a user. Requires admin privileges.",
 				security: [{ bearerAuth: [] }],
 				responses: {
-					200: {
-						description: "User unbanned successfully",
-						content: {
-							"application/json": {
-								example: { success: true },
-							},
-						},
-					},
-					401: { description: "Unauthorized - Missing or invalid token" },
-					403: { description: "Forbidden - Admin role required" },
-					404: { description: "User or ban not found" },
+					200: jsonOk(BanActionSchema, "User unbanned successfully", { success: true }),
+					...errorResponses(401, 403),
 				},
 			},
 			params: t.Object({ userId: t.String() }),
@@ -580,27 +567,19 @@ export const userRouter = new Elysia({ prefix: "/users" })
 					"Retrieves the ban currently in force for a user, or null when the user is not banned. Requires admin privileges.",
 				security: [{ bearerAuth: [] }],
 				responses: {
-					200: {
-						description: "Active ban retrieved successfully",
-						content: {
-							"application/json": {
-								example: {
-									activeBan: {
-										id: "ban-123",
-										userId: "user-123",
-										reason: "Inappropriate behavior",
-										bannedAt: "2025-11-24T10:00:00Z",
-										expiresAt: "2025-12-24T10:00:00Z",
-										bannedBy: "admin-1",
-										createdAt: "2025-11-24T10:00:00Z",
-										updatedAt: "2025-11-24T10:00:00Z",
-									},
-								},
-							},
+					200: jsonOk(ActiveBanSchema, "Active ban retrieved successfully; null when not banned", {
+						activeBan: {
+							id: "ban-123",
+							userId: "user-123",
+							reason: "Inappropriate behavior",
+							bannedAt: "2025-11-24T10:00:00Z",
+							expiresAt: "2025-12-24T10:00:00Z",
+							bannedBy: "admin-1",
+							createdAt: "2025-11-24T10:00:00Z",
+							updatedAt: "2025-11-24T10:00:00Z",
 						},
-					},
-					401: { description: "Unauthorized - Missing or invalid token" },
-					403: { description: "Forbidden - Admin role required" },
+					}),
+					...errorResponses(401, 403),
 				},
 			},
 			params: t.Object({ userId: t.String() }),
@@ -623,27 +602,21 @@ export const userRouter = new Elysia({ prefix: "/users" })
 				description: "Retrieves the complete ban history for a user. Requires admin privileges.",
 				security: [{ bearerAuth: [] }],
 				responses: {
-					200: {
-						description: "Ban history retrieved successfully",
-						content: {
-							"application/json": {
-								example: {
-									history: [
-										{
-											id: "ban-123",
-											reason: "Inappropriate behavior",
-											bannedAt: "2025-11-24T10:00:00Z",
-											unbannedAt: "2025-11-25T10:00:00Z",
-											isActive: false,
-										},
-									],
-								},
+					200: jsonOk(BanHistorySchema, "Ban history retrieved successfully", {
+						history: [
+							{
+								id: "ban-123",
+								userId: "user-123",
+								reason: "Inappropriate behavior",
+								bannedAt: "2025-11-24T10:00:00Z",
+								expiresAt: null,
+								bannedBy: "admin-1",
+								createdAt: "2025-11-24T10:00:00Z",
+								updatedAt: "2025-11-24T10:00:00Z",
 							},
-						},
-					},
-					401: { description: "Unauthorized - Missing or invalid token" },
-					403: { description: "Forbidden - Admin role required" },
-					404: { description: "User not found" },
+						],
+					}),
+					...errorResponses(401, 403),
 				},
 			},
 			params: t.Object({ userId: t.String() }),
