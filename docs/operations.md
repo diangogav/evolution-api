@@ -192,9 +192,10 @@ found in this repository.
 - **Annulment switch**: `ANNULMENT_ENABLED` gates `AnnulMatchesUseCase` and `UnannulMatchesUseCase` (`src/server/routes/admin-moderation-router.ts`). See [domain/match-annulment.md](domain/match-annulment.md) for the full flow and idempotency guarantees.
 - **Redis dependency**: the `ticket` module (`BunRedisRankedTicketRepository`) is the only consumer of Redis. If `REDIS_URL` is wrong or Redis is unreachable, only ranked-ticket endpoints are affected — every other module uses the Postgres DataSources instead (see [architecture.md](architecture.md#data)).
 
-Tournaments were removed from this API: there is no more upstream tournaments
-proxy or outage note here. The shared schema still owns the `lightning_*` and
-`tournaments` tables, now solely for the game server.
+- **Removed variables and rollback**: versions before the removal of tournaments and SendGrid require
+  `TOURNAMENTS_API_URL`, `TOURNAMENTS_WEBHOOK_URL` and the three `SENDGRID_*` variables at startup. Remove them
+  from a deployed environment only once a rollback to such a version is no longer possible; otherwise the old
+  version fails to start. See [architecture.md](architecture.md) for what was removed.
 
 ## Next steps
 

@@ -30,7 +30,7 @@ Out: the shared schema in `src/evolution-types` (tables such as `lightning_ranki
 
 - [x] 1 Remove the module, router, mount, config, Swagger tags and groups, ratchet entries, tests and orphaned helpers; `bun test`, lint and build green. (delegated; branch `chore/retire-tournaments`)
 - [x] 2 Update docs: remove `docs/domain/tournaments.md`; update `docs/README.md`, `docs/domain/README.md`, `docs/architecture.md`, `docs/operations.md`, `README.md`. (delegated, same writer)
-- [ ] 3 Verify: no route under `/tournaments` in `/swagger/json`, no `TOURNAMENTS_` in `src`, native assessment, PR body.
+- [x] 3 Verify: no route under `/tournaments` in `/swagger/json`, no `TOURNAMENTS_` in `src`, native assessment, PR body.
 
 ## Progress and evidence
 
@@ -41,4 +41,4 @@ Out: the shared schema in `src/evolution-types` (tables such as `lightning_ranki
 
 ## Next step
 
-Tasks 1 and 2 done; task 3 (assessment and PR) in progress. The user removes `TOURNAMENTS_*` from `.env.example` and `.env.test` and from the deployed environment.
+All tasks done; native review review-745b6e79991a25ea (high because auth test fakes changed, four lenses, consent granted) approved and acknowledged; its three doc notes fixed (stale `errorResponse` checklist step, change-history paragraph, rollback warning). PR pending. The user removes `TOURNAMENTS_*` from `.env.example` and `.env.test`, and from the deployed environment only once a rollback to an older version is no longer possible (older versions require them at startup; same for `SENDGRID_*`).

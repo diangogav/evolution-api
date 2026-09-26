@@ -141,7 +141,7 @@ The ratchet enforces:
 2. If the handler reads a bearer token — directly, through `banGuard`, or through `JwtAdminAuthorizer` — add `security: [{ bearerAuth: [] }]` to `detail` **and** add its `METHOD /api/v1/<path>` key to `PROTECTED_OPERATIONS` in the ratchet test.
 3. Declare a 2xx response: `jsonOk(schema, description, example?)` for a JSON body, `emptyOk(description)` for no body (and add the key to `EMPTY_BODY_OPERATIONS`). Do not add new entries to `PENDING_RESPONSE_SCHEMAS` — it only shrinks.
 4. If you give a response an `example`, make sure it matches the schema — the ratchet validates it.
-5. Use `errorResponses(...)` for the standard error catalog, or `errorResponse(description)` for a route-specific failure (for example, an upstream dependency).
+5. Use `errorResponses(...)` for the standard error catalog.
 6. Run `bun test tests/unit/server/swagger` before opening a PR.
 
 ## Testing conventions
