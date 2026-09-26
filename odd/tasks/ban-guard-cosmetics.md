@@ -26,7 +26,7 @@ Out: public routes (catalog, public asset manifests, public loadout by username)
 
 - [x] 1 RED then GREEN: route tests proving 403 for a banned user and unchanged behavior for others on the four routes; wire `banGuard` like `ticket-router.ts`; add 403 to their documented errors. (delegated; branch `fix/ban-guard-cosmetics`)
 - [x] 2 Docs: auth section, moderation and cosmetics pages state that these routes reject banned users. (delegated, same writer)
-- [ ] 3 Verify, assess, PR body.
+- [x] 3 Verify, assess, PR body.
 
 ## Progress and evidence
 
@@ -34,7 +34,8 @@ Out: public routes (catalog, public asset manifests, public loadout by username)
 |------|-------|--------|-------|-------|
 | 1 guard and tests | delegated | eef620d | RED: the 4 "403 when banned" tests failed (got 200) with the routers at their previous state; GREEN: 12/12 focused, `bun test` 509 pass, lint and tsc clean | no production seam: tests stub the Postgres repositories with `spyOn` on their prototypes, because `mock.module` leaked across files in bun's shared module registry; `bandGuard.ts` unchanged; 17 lines changed ignoring indentation |
 | 2 docs | delegated | f2f49d6 | structural readback | architecture auth section and moderation page updated; the cosmetics page only mentions the public loadout route, which correctly stays unguarded |
+| 3 review | inline + delegated | 1dd0d2d | native review review-e54d56691fbe28b7 (medium, reliability lens, consent granted) approved and acknowledged; its three test suggestions added: no save on a banned PUT, 401 for malformed and badly signed tokens on all four routes, body checks on the 200 cases; focused 20 pass, `bun test` 517 pass; follow-up assessed under budget | |
 
 ## Next step
 
-Tasks 1 and 2 done; task 3 (assessment and PR) in progress.
+All tasks done; PR pending.
