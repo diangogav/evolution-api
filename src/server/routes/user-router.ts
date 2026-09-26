@@ -294,7 +294,7 @@ export const userRouter = new Elysia({ prefix: "/users" })
 						points: 62,
 						wins: 34,
 						losses: 21,
-						winRate: "61.82",
+						winRate: 61.82,
 						position: "12",
 						achievements: [],
 						ratings: [

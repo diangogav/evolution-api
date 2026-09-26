@@ -36,7 +36,7 @@ export const leaderboardRouter = new Elysia({ prefix: "/stats" })
 							points: 150,
 							wins: 80,
 							losses: 41,
-							winRate: "66.12",
+							winRate: 66.12,
 							position: "1",
 							achievements: [],
 							ratings: [],

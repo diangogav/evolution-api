@@ -37,7 +37,8 @@ const userStatsFields = {
 	points: t.Number(),
 	wins: t.Number(),
 	losses: t.Number(),
-	winRate: t.String(),
+	// Mirrors the pg wire format: a float8 column, null when the player has no decided game.
+	winRate: t.Nullable(t.Number({ description: "Percentage of games won, 0-100" })),
 	// Mirrors the pg wire format: bigint columns arrive as strings.
 	position: decimalString("Rank from a SQL window function"),
 	achievements: t.Array(UserAchievementSchema),
