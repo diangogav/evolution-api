@@ -23,7 +23,7 @@ export class EquipCosmetic {
 		cosmeticId: string;
 	}): Promise<void> {
 		const cosmetic = await this.cosmetics.findById(cosmeticId);
-		if (!cosmetic) {
+		if (!cosmetic || !cosmetic.active) {
 			throw new NotFoundError(`Cosmetic ${cosmeticId} not found`);
 		}
 		if (cosmetic.type !== cosmeticType) {
