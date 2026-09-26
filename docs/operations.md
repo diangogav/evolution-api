@@ -13,9 +13,12 @@ module layout, the two DataSources, auth and Swagger, see
 2. Copy `.env.example` to `.env` and fill in the variables listed below. Never commit `.env`.
 3. Start Postgres and Redis: `docker compose up -d` (`docker-compose.yaml`).
 4. Install dependencies: `bun install`.
-5. Apply the cosmetics migrations and seed them (see [Database and migrations](#database-and-migrations)).
-6. Start the dev server: `bun run dev` (watch mode over `src/index.ts`, `package.json`).
-7. Swagger UI is served at `/swagger` (see [architecture.md](architecture.md#swagger-and-the-openapi-ratchet)); locally that is `http://localhost:<PORT, default 3000>/swagger`.
+5. Create the shared schema. The game server owns it, so this repository does not run its migrations. For a local
+   database, run them from the `evolution-types` package (`migration:run` in `src/evolution-types/package.json`,
+   `synchronize` is off in `src/evolution-types/src/data-source.ts`), or restore a copy of an existing database.
+6. Apply the cosmetics migrations and seed them (see [Database and migrations](#database-and-migrations)).
+7. Start the dev server: `bun run dev` (watch mode over `src/index.ts`, `package.json`).
+8. Swagger UI is served at `/swagger` (see [architecture.md](architecture.md#swagger-and-the-openapi-ratchet)); locally that is `http://localhost:<PORT, default 3000>/swagger`.
 
 Tests, lint and build:
 
