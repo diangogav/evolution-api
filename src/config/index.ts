@@ -45,13 +45,6 @@ export const config = {
 	},
 	season: Number(ensureEnvVariable(process.env.SEASON as string, "SEASON")),
 	annulment: { enabled: process.env.ANNULMENT_ENABLED === "true" },
-	tournaments: {
-		apiUrl: ensureEnvVariable(process.env.TOURNAMENTS_API_URL as string, "TOURNAMENTS_API_URL"),
-		webhookUrl: ensureEnvVariable(
-			process.env.TOURNAMENTS_WEBHOOK_URL as string,
-			"TOURNAMENTS_WEBHOOK_URL",
-		),
-	},
 	passwordRecovery: {
 		defaultResetUrl: "https://evolutionygo.com/reset-account-password?token={token}",
 		frontends: [

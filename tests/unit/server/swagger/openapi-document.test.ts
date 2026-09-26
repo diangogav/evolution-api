@@ -38,12 +38,6 @@ const PROTECTED_OPERATIONS = [
 	"POST /api/v1/users/{userId}/unban",
 	"GET /api/v1/users/{userId}/ban/active",
 	"GET /api/v1/users/{userId}/ban/history",
-	"POST /api/v1/tournaments/",
-	"POST /api/v1/tournaments/{tournamentId}/enroll",
-	"POST /api/v1/tournaments/{tournamentId}/withdraw",
-	"POST /api/v1/tournaments/{tournamentId}/bracket",
-	"POST /api/v1/tournaments/{tournamentId}/matches/{matchId}/result",
-	"DELETE /api/v1/tournaments/{tournamentId}/matches/{matchId}/result",
 	"POST /api/v1/game-tickets/",
 	"GET /api/v1/me/cosmetics/",
 	"GET /api/v1/me/cosmetics/{id}/assets",
@@ -66,22 +60,14 @@ const EMPTY_BODY_OPERATIONS = [
 // shrinks: documenting an operation's response requires removing it here.
 const PENDING_RESPONSE_SCHEMAS: string[] = [];
 
-// Tournaments operations that call the upstream tournaments service (directly
-// or through TournamentGateway/CreateTournamentProxyUseCase). A network
-// failure or a non-2xx upstream response throws a plain Error, which
-// `mapDomainErrorStatus` does not map, so it always reaches the client as an
-// unmapped 500. GET /tournaments/ranking is excluded: it reads Postgres only.
-const UPSTREAM_DEPENDENT_OPERATIONS = [
-	"GET /api/v1/tournaments/",
-	"POST /api/v1/tournaments/",
-	"POST /api/v1/tournaments/webhook",
-	"POST /api/v1/tournaments/{tournamentId}/enroll",
-	"POST /api/v1/tournaments/{tournamentId}/withdraw",
-	"GET /api/v1/tournaments/{tournamentId}/bracket",
-	"POST /api/v1/tournaments/{tournamentId}/bracket",
-	"POST /api/v1/tournaments/{tournamentId}/matches/{matchId}/result",
-	"DELETE /api/v1/tournaments/{tournamentId}/matches/{matchId}/result",
-	"GET /api/v1/tournaments/{tournamentId}/entries",
+// Tags that only ever labeled tournament operations. Retired along with the
+// tournaments module: neither the tags nor any /tournaments operation may
+// reappear in the document.
+const RETIRED_TOURNAMENT_TAGS = [
+	"Tournaments",
+	"Lightning Tournaments",
+	"Bracket Management",
+	"Match Management",
 ];
 
 const successResponses = (operation: Operation) =>
@@ -225,16 +211,11 @@ describe("OpenAPI document", () => {
 		expect(invalid).toEqual([]);
 	});
 
-	it("documents the tournaments service being unavailable on every operation that calls it, and on no other tournaments operation", () => {
-		const byKey = new Map(operations.map(({ key, operation }) => [key, operation]));
+	it("mounts no tournament routes and declares no tournament tags", () => {
+		expect(operations.some(({ key }) => key.includes("/tournaments"))).toBe(false);
 
-		for (const key of UPSTREAM_DEPENDENT_OPERATIONS) {
-			const response = byKey.get(key)?.responses?.["500"];
-			expect(response?.description).toBe("Upstream tournaments service unavailable");
-			expect((response?.content?.["text/plain"]?.schema as { type?: string })?.type).toBe("string");
-		}
-
-		expect(byKey.get("GET /api/v1/tournaments/ranking")?.responses?.["500"]).toBeUndefined();
+		const declared = (document.tags ?? []).map((tag) => tag.name);
+		expect(RETIRED_TOURNAMENT_TAGS.some((tag) => declared.includes(tag))).toBe(false);
 	});
 
 	it("groups every declared tag exactly once", () => {

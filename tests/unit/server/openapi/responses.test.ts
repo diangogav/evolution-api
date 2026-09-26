@@ -6,7 +6,6 @@ import {
 	ErrorSchema,
 	ValidationErrorSchema,
 	emptyOk,
-	errorResponse,
 	errorResponses,
 	jsonOk,
 } from "../../../../src/server/openapi/responses";
@@ -46,13 +45,6 @@ describe("OpenAPI response helpers", () => {
 	it("errorResponses documents 422 as the Elysia validation error JSON", () => {
 		expect(errorResponses(422)[422].content).toEqual({
 			"application/json": { schema: ValidationErrorSchema },
-		});
-	});
-
-	it("errorResponse documents a status outside the fixed catalog with a caller-supplied description", () => {
-		expect(errorResponse("Upstream tournaments service unavailable")).toEqual({
-			description: "Upstream tournaments service unavailable",
-			content: { "text/plain": { schema: ErrorSchema } },
 		});
 	});
 

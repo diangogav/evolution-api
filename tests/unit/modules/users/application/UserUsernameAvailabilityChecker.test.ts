@@ -16,8 +16,6 @@ describe("UserUsernameAvailabilityChecker", () => {
 			findById: async () => null,
 			findByUsername: async () => null,
 			update: async () => undefined,
-			updateParticipantId: async () => undefined,
-			findByParticipantId: async () => null,
 		};
 		checker = new UserUsernameAvailabilityChecker(repository);
 	});

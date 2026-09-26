@@ -40,8 +40,6 @@ const repositoryWith = (user: User | null): UserRepository => ({
 	findByUsername: async () => user,
 	findById: async () => user,
 	update: async () => undefined,
-	updateParticipantId: async () => undefined,
-	findByParticipantId: async () => null,
 });
 
 const legacyUser = UserMother.create({ securePassword: null });

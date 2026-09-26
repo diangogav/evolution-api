@@ -89,15 +89,6 @@ same four names for the local Postgres container.
 | `R2_ENDPOINT` | Required | — | R2 S3-compatible endpoint. |
 | `R2_SIGNED_URL_TTL` | Optional | `600` | Seconds a signed asset URL stays valid. |
 
-### Tournaments (upstream service)
-
-| Name | Required | Default | Purpose |
-| --- | --- | --- | --- |
-| `TOURNAMENTS_API_URL` | Required | — | Base URL the proxy (`TournamentGateway`, `TournamentController`) calls. |
-| `TOURNAMENTS_WEBHOOK_URL` | Required | — | Webhook URL registered with the upstream service. |
-
-See [domain/tournaments.md](domain/tournaments.md) for what the proxy does with these.
-
 ### Season
 
 | Name | Required | Default | Purpose |
@@ -199,11 +190,15 @@ found in this repository.
 - **Startup order** (`src/index.ts`): shared Postgres DataSource `connect()` → cosmetics Postgres DataSource `initialize()` → Redis `connect()` → Elysia server `listen()`. Each connection is awaited, but a failure is only logged (`.catch(error => logger.error(error))`) — it is not fatal. The HTTP server still starts and listens even if Postgres or Redis failed to connect at boot; a failed connection then surfaces later, per request.
 - **Missing required env vars crash startup, not at request time.** `src/config/index.ts` and `src/evolution-types/src/config` are imported eagerly when the process starts; a missing `ensureEnvVariable`-validated variable throws synchronously with `Environment variable <NAME> is not set` before any DataSource or server code runs. `POSTGRES_*` variables are the exception — they are read directly without `ensureEnvVariable`, so a missing or wrong Postgres variable does not crash at startup; it only fails later, when the shared DataSource tries to connect.
 - **Annulment switch**: `ANNULMENT_ENABLED` gates `AnnulMatchesUseCase` and `UnannulMatchesUseCase` (`src/server/routes/admin-moderation-router.ts`). See [domain/match-annulment.md](domain/match-annulment.md) for the full flow and idempotency guarantees.
-- **Upstream tournaments outage**: tournament operations that call the upstream service document, and can return, a `500` with the plain-text description "Upstream tournaments service unavailable" (`src/modules/tournaments/infrastructure/TournamentController.ts`). See [domain/tournaments.md](domain/tournaments.md).
 - **Redis dependency**: the `ticket` module (`BunRedisRankedTicketRepository`) is the only consumer of Redis. If `REDIS_URL` is wrong or Redis is unreachable, only ranked-ticket endpoints are affected — every other module uses the Postgres DataSources instead (see [architecture.md](architecture.md#data)).
+
+- **Removed variables and rollback**: versions before the removal of tournaments and SendGrid require
+  `TOURNAMENTS_API_URL`, `TOURNAMENTS_WEBHOOK_URL` and the three `SENDGRID_*` variables at startup. Remove them
+  from a deployed environment only once a rollback to such a version is no longer possible; otherwise the old
+  version fails to start. See [architecture.md](architecture.md) for what was removed.
 
 ## Next steps
 
 - Module layout, the two DataSources, auth and Swagger: [architecture.md](architecture.md).
-- Domain concepts (seasons, points, ratings, annulment, bans, cosmetics, tournaments): [domain/README.md](domain/README.md).
+- Domain concepts (seasons, points, ratings, annulment, bans, cosmetics): [domain/README.md](domain/README.md).
 - Client-facing ranked tier integration guide: [ranked-tiers.md](ranked-tiers.md).

@@ -50,15 +50,6 @@ export function emptyOk(description: string): DocumentedResponse {
 	return { description };
 }
 
-/**
- * Documents an error status outside the fixed catalog `errorResponses`
- * covers, with a caller-supplied description for a failure specific to one
- * route (for example, an upstream dependency being unavailable).
- */
-export function errorResponse(description: string): Required<DocumentedResponse> {
-	return { description, content: { "text/plain": { schema: ErrorSchema } } };
-}
-
 export function errorResponses<S extends ErrorStatus>(
 	...statuses: S[]
 ): Record<S, Required<DocumentedResponse>> {

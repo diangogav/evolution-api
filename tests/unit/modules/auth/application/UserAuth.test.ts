@@ -27,8 +27,6 @@ describe("UserAuth", () => {
 			findByUsername: async () => null,
 			findById: async () => null,
 			update: async () => undefined,
-			updateParticipantId: async () => undefined,
-			findByParticipantId: async () => null,
 		};
 
 		userAuth = new UserAuth(repository, hash, jwt);

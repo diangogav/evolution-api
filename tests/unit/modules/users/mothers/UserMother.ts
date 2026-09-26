@@ -12,7 +12,6 @@ export class UserMother {
 			password: faker.internet.password(),
 			securePassword: null,
 			role: UserProfileRole.USER,
-			participantId: null,
 			...params,
 		});
 	}

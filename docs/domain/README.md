@@ -19,7 +19,6 @@ rules).
 | [match-annulment.md](match-annulment.md) | The annulment/reversal batch flow, per-game outcomes, the `ANNULMENT_ENABLED` switch, idempotency |
 | [moderation.md](moderation.md) | User bans: active ban, history, permanent vs expiring, `banGuard`, admin-only routes, and how bans relate to annulment |
 | [cosmetics.md](cosmetics.md) | Catalog, entitlements, loadout slots, standard cosmetics, signed asset URLs |
-| [tournaments.md](tournaments.md) | Lightning tournaments: what the upstream tournaments service owns vs what this API stores locally, the webhook, the proxy shape |
 
 **Ranked tiers.** Tiers (Rookie through Master) are their own client-facing
 guide, already written: [ranked-tiers.md](../ranked-tiers.md). This section

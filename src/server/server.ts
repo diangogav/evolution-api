@@ -19,7 +19,6 @@ import { adminCosmeticsRouter } from "./routes/admin-cosmetics-router";
 import { adminModerationRouter } from "./routes/admin-moderation-router";
 import { statsRouter } from "./routes/stats-router";
 import { ticketRouter } from "./routes/ticket-router";
-import { tournamentRouter } from "./routes/tournament-router";
 import { userRouter } from "./routes/user-router";
 import { createSwagger } from "./swagger";
 
@@ -73,7 +72,6 @@ export function mountApiV1Routes(app: Elysia) {
 			.use(leaderboardRouter)
 			.use(rankedTiersRouter)
 			.use(banListRouter)
-			.use(tournamentRouter)
 			.use(statsRouter)
 			.use(ticketRouter)
 			.use(cosmeticsRouter)

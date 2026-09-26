@@ -9,11 +9,10 @@
 
 ## About
 
-Evolution API is a high-performance backend built with Bun and ElysiaJS, serving as the core infrastructure for the Evolution competitive Yu-Gi-Oh! platform. It manages tournaments, player rankings, ban lists, and detailed match statistics to provide a seamless experience for players and organizers.
+Evolution API is a high-performance backend built with Bun and ElysiaJS, serving as the core infrastructure for the Evolution competitive Yu-Gi-Oh! platform. It manages player rankings, ban lists, and detailed match statistics to provide a seamless experience for players and organizers.
 
 ## Key Features
 
-- **🏆 Tournament Management**: Create, manage, and track competitive tournaments with automated bracket generation.
 - **📊 Real-time Leaderboards**: Dynamic ranking systems based on match performance.
 - **🚫 Ban List Management**: Maintain and enforce custom card ban lists for different formats.
 - **📈 Comprehensive Scatistics**: Detailed player stats, match history, and performance analytics.
