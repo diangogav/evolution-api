@@ -20,6 +20,14 @@ describe("OpenAPI response helpers", () => {
 		});
 	});
 
+	it("jsonOk attaches an example to the media type when given", () => {
+		const schema = t.Object({ id: t.String() });
+
+		expect(jsonOk(schema, "User found", { id: "1" }).content).toEqual({
+			"application/json": { schema, example: { id: "1" } },
+		});
+	});
+
 	it("emptyOk declares a success without a body", () => {
 		expect(emptyOk("Password changed")).toEqual({ description: "Password changed" });
 	});
