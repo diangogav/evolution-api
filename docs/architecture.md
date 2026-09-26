@@ -116,7 +116,6 @@ Env var names only — never read `.env` values, only `src/config/index.ts`.
 | --- | --- | --- |
 | Tournaments service (`TournamentGateway`, `src/modules/tournaments/infrastructure/TournamentGateway.ts`, and `TournamentController`) | Upstream HTTP service that owns tournament brackets, entries and match results; this API proxies to it and stores only local ranking data. | `TOURNAMENTS_API_URL`, `TOURNAMENTS_WEBHOOK_URL` |
 | Email (Resend) | Sends password-reset and account emails from `user-router.ts` (`ResendEmailSender`, `src/shared/email/infrastructure/ResendEmailSender.ts`). | `RESEND_API_KEY`, `RESEND_FROM_EMAIL` |
-| Email (SendGrid) | A `SengridEmailSender` class exists (`src/shared/email/infrastructure/SengridEmailSender.ts`) but is not wired into any router — Resend is the sender actually in use. | `SENDGRID_API_KEY`, `SENDGRID_FROM_EMAIL`, `SENDGRID_TEMPLATE_ID` |
 | R2 (Cloudflare) | Signs URLs and stores cosmetic asset files (`src/modules/assets/infrastructure/createR2AssetUrlSigner.ts`, `createR2CosmeticAssetStorage.ts`). | `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `R2_ENDPOINT`, `R2_SIGNED_URL_TTL` |
 | Redis | Backs ranked game tickets (`src/modules/ticket/infrastructure/BunRedisRankedTicketRepository.ts`). | `REDIS_URL` |
 

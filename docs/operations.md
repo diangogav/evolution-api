@@ -79,14 +79,6 @@ same four names for the local Postgres container.
 | `RESEND_API_KEY` | Required | — | `ResendEmailSender` (`src/shared/email/infrastructure/ResendEmailSender.ts`), used from `user-router.ts` for password-reset and account emails. |
 | `RESEND_FROM_EMAIL` | Required | — | Sender address for those emails. |
 
-### Email — SendGrid (present, not wired)
-
-| Name | Required | Default | Purpose |
-| --- | --- | --- | --- |
-| `SENDGRID_API_KEY` | Required | — | Validated at startup even though `SengridEmailSender` is not used by any router — see [architecture.md](architecture.md#external-services). |
-| `SENDGRID_FROM_EMAIL` | Required | — | Same. |
-| `SENDGRID_TEMPLATE_ID` | Required | — | Same. |
-
 ### R2 (Cloudflare — cosmetic assets)
 
 | Name | Required | Default | Purpose |
