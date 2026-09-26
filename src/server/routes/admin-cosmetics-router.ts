@@ -11,12 +11,18 @@ import type { CosmeticRepository } from "../../modules/catalog/domain/CosmeticRe
 import { CosmeticTier } from "../../modules/catalog/domain/CosmeticTier";
 import { CosmeticType } from "../../modules/catalog/domain/CosmeticType";
 import { CosmeticPostgresRepository } from "../../modules/catalog/infrastructure/CosmeticPostgresRepository";
+import {
+	AdminCosmeticCatalogSchema,
+	PublishedCosmeticSchema,
+} from "../../modules/catalog/infrastructure/CosmeticSchemas";
 import { GrantCosmeticToUser } from "../../modules/entitlements/application/GrantCosmeticToUser";
 import type { EntitlementRepository } from "../../modules/entitlements/domain/EntitlementRepository";
 import { EntitlementSource } from "../../modules/entitlements/domain/EntitlementSource";
 import { EntitlementPostgresRepository } from "../../modules/entitlements/infrastructure/EntitlementPostgresRepository";
+import { CosmeticGrantSchema } from "../../modules/entitlements/infrastructure/GrantSchemas";
 import type { UserDirectory } from "../../modules/loadout/domain/UserDirectory";
 import { UserDirectoryPostgresRepository } from "../../modules/loadout/infrastructure/UserDirectoryPostgresRepository";
+import { errorResponses, jsonOk } from "../openapi/responses";
 import { JWT } from "../../shared/JWT";
 import type { AdminAuthorizer } from "../auth/AdminAuthorizer";
 import { JwtAdminAuthorizer } from "../auth/AdminAuthorizer";
@@ -49,6 +55,25 @@ export function createAdminCosmeticsRouter(deps: AdminCosmeticsRouterDependencie
 					tags: ["Cosmetics Admin"],
 					summary: "List every cosmetic for backoffice administration",
 					security: [{ bearerAuth: [] }],
+					responses: {
+						200: jsonOk(AdminCosmeticCatalogSchema, "Catalog retrieved successfully", [
+							{
+								id: "4244bc19-0f5c-4e13-b260-137fd178ff2d",
+								type: "PLAYMAT",
+								tier: "EXCLUSIVE",
+								assetRef: "playmats/magma-forge/",
+								displayName: "Magma Forge",
+								active: true,
+								assetFiles: ["surface.webp"],
+								assets: {
+									"surface.webp":
+										"https://assets.evolutionygo.com/playmats/magma-forge/surface.webp?sig=...",
+								},
+								assetsExpiresAt: "2026-09-25T18:30:00.000Z",
+							},
+						]),
+						...errorResponses(401, 403),
+					},
 				},
 			},
 		)
@@ -81,6 +106,18 @@ export function createAdminCosmeticsRouter(deps: AdminCosmeticsRouterDependencie
 					tags: ["Cosmetics Admin"],
 					summary: "Upload and publish a cosmetic atomically",
 					security: [{ bearerAuth: [] }],
+					responses: {
+						200: jsonOk(PublishedCosmeticSchema, "Cosmetic published successfully", {
+							id: "4244bc19-0f5c-4e13-b260-137fd178ff2d",
+							type: "LANE",
+							tier: "STANDARD",
+							assetRef: "lanes/stone/",
+							displayName: "Losa de piedra",
+							active: true,
+							assetFiles: ["frame.webp"],
+						}),
+						...errorResponses(400, 401, 403, 409, 422),
+					},
 				},
 			},
 		)
@@ -104,6 +141,16 @@ export function createAdminCosmeticsRouter(deps: AdminCosmeticsRouterDependencie
 					tags: ["Cosmetics Admin"],
 					summary: "Grant a cosmetic to one user",
 					security: [{ bearerAuth: [] }],
+					responses: {
+						200: jsonOk(CosmeticGrantSchema, "Cosmetic granted successfully", {
+							cosmeticId: "4244bc19-0f5c-4e13-b260-137fd178ff2d",
+							userId: "user-1",
+							username: "Diango",
+							source: "CAMPAIGN",
+							created: true,
+						}),
+						...errorResponses(401, 403, 404, 422),
+					},
 				},
 			},
 		);

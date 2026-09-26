@@ -5,9 +5,14 @@ import { GetCosmeticAssets } from "../../modules/catalog/application/GetCosmetic
 import { GetCosmeticsCatalog } from "../../modules/catalog/application/GetCosmeticsCatalog";
 import { CosmeticTier } from "../../modules/catalog/domain/CosmeticTier";
 import { CosmeticType } from "../../modules/catalog/domain/CosmeticType";
+import {
+	CosmeticAssetsSchema,
+	CosmeticCatalogSchema,
+} from "../../modules/catalog/infrastructure/CosmeticSchemas";
 import { CosmeticPostgresRepository } from "../../modules/catalog/infrastructure/CosmeticPostgresRepository";
 import { EntitlementsGatekeeper } from "../../modules/entitlements/application/EntitlementsGatekeeper";
 import { EntitlementPostgresRepository } from "../../modules/entitlements/infrastructure/EntitlementPostgresRepository";
+import { errorResponses, jsonOk } from "../openapi/responses";
 import { preventSignedAssetResponseCaching } from "./signed-asset-response";
 
 const gatekeeper = new EntitlementsGatekeeper(new EntitlementPostgresRepository());
@@ -40,6 +45,22 @@ export const cosmeticsRouter = new Elysia({ prefix: "/cosmetics" })
 				summary: "List the cosmetics catalog",
 				description:
 					"Public catalog of cosmetics (STANDARD tier only). Filterable by type and tier. Each item includes a manifest of short-lived signed URLs, one per asset file under the cosmetic's storage prefix.",
+				responses: {
+					200: jsonOk(CosmeticCatalogSchema, "Catalog retrieved successfully", [
+						{
+							id: "playmats-arcane",
+							type: "PLAYMAT",
+							tier: "STANDARD",
+							displayName: "Salón arcano",
+							assets: {
+								"surface.webp":
+									"https://assets.evolutionygo.com/playmats/arcane/surface.webp?sig=...",
+							},
+							assetsExpiresAt: "2026-09-25T18:30:00.000Z",
+						},
+					]),
+					...errorResponses(422),
+				},
 			},
 		},
 	)
@@ -56,6 +77,16 @@ export const cosmeticsRouter = new Elysia({ prefix: "/cosmetics" })
 				summary: "Refresh one public cosmetic asset manifest",
 				description:
 					"Returns fresh signed URLs only for the requested STANDARD cosmetic, without reloading the catalog.",
+				responses: {
+					200: jsonOk(CosmeticAssetsSchema, "Asset manifest refreshed successfully", {
+						assets: {
+							"surface.webp":
+								"https://assets.evolutionygo.com/playmats/arcane/surface.webp?sig=...",
+						},
+						assetsExpiresAt: "2026-09-25T18:30:00.000Z",
+					}),
+					...errorResponses(404, 422),
+				},
 			},
 		},
 	);

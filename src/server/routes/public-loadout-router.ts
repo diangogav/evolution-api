@@ -4,8 +4,10 @@ import { createR2AssetUrlSigner } from "../../modules/assets/infrastructure/crea
 import { CosmeticPostgresRepository } from "../../modules/catalog/infrastructure/CosmeticPostgresRepository";
 import { GetMyLoadout } from "../../modules/loadout/application/GetMyLoadout";
 import { GetPublicLoadout } from "../../modules/loadout/application/GetPublicLoadout";
+import { LoadoutSchema } from "../../modules/loadout/infrastructure/LoadoutSchemas";
 import { LoadoutPostgresRepository } from "../../modules/loadout/infrastructure/LoadoutPostgresRepository";
 import { UserDirectoryPostgresRepository } from "../../modules/loadout/infrastructure/UserDirectoryPostgresRepository";
+import { errorResponses, jsonOk } from "../openapi/responses";
 import { preventSignedAssetResponseCaching } from "./signed-asset-response";
 
 const loadouts = new LoadoutPostgresRepository();
@@ -25,6 +27,19 @@ export const publicLoadoutRouter = new Elysia().get(
 			summary: "Get a user's public loadout by username",
 			description:
 				"Public, read-only loadout of a player addressed by username, with signed asset URLs. Returns 404 if the username does not exist (client falls back to the standard look).",
+			responses: {
+				200: jsonOk(LoadoutSchema, "Loadout retrieved successfully", [
+					{
+						cosmeticType: "SLEEVE",
+						cosmeticId: "cosmetic-1",
+						assets: {
+							"render.jpg": "https://assets.evolutionygo.com/sleeves/baby-frog/render.jpg?sig=...",
+						},
+						assetsExpiresAt: "2026-09-25T18:30:00.000Z",
+					},
+				]),
+				...errorResponses(404),
+			},
 		},
 	},
 );
