@@ -9,6 +9,7 @@ describe("UserGetBanHistory", () => {
 
 	beforeEach(() => {
 		repository = {
+			userExists: async () => true,
 			banUser: async () => undefined,
 			findActiveBanByUserId: async () => null,
 			unbanUser: async () => undefined,
