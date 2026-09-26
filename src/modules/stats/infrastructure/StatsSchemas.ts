@@ -3,8 +3,11 @@ import { t } from "elysia";
 import { TierViewSchema } from "../../tiers/infrastructure/TierSchemas";
 
 /** A bigint column produced by a SQL window or aggregate function. */
-const decimalString = (description: string) =>
-	t.String({ pattern: "^[0-9]+$", description: `${description}, as a decimal string` });
+const decimalString = (description: string, { signed = false } = {}) =>
+	t.String({
+		pattern: signed ? "^-?[0-9]+$" : "^[0-9]+$",
+		description: `${description}, as a decimal string`,
+	});
 
 const RankTypeSchema = t.Union([t.Literal("banlist"), t.Literal("group"), t.Literal("global")]);
 
@@ -68,7 +71,9 @@ export const PeriodUserStatsSchema = t.Object({
 	userId: t.String(),
 	username: t.String(),
 	// Mirrors the pg wire format: bigint columns arrive as strings.
-	points: decimalString("Points summed over the week"),
+	points: decimalString("Net points summed over the week, negative when losses outweigh wins", {
+		signed: true,
+	}),
 	// Mirrors the pg wire format: bigint columns arrive as strings.
 	wins: decimalString("Wins counted over the week"),
 	// Mirrors the pg wire format: bigint columns arrive as strings.
