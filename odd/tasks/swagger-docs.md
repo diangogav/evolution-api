@@ -47,12 +47,26 @@ Focused command: `bun test tests/unit/server/swagger`. Runtime harness: start th
 
 Lineage review-802a77a5d2e5c5b2 (medium, `executable_change` TournamentController.ts; consent granted by the user; one reliability lens): approved and acknowledged with two advisories, carried as follow-ups:
 
-- [ ] F1 The protected-route detection in `openapi-document.test.ts` reads the handler source with a regex; a handler that delegates token reading to a controller or helper would slip through (it already missed tournament enroll/withdraw until they were fixed by hand). Replace it with an explicit, reviewed list of protected operations or a marker set by the auth wiring, so a new protected route without `security` fails the test. (delegated, with work unit 2)
-- [ ] F2 Assert `info.version` is non-empty and the `servers` list matches production and local in the OpenAPI test. (delegated, with work unit 2)
+- [ ] F1 (lands in S0) The protected-route detection in `openapi-document.test.ts` reads the handler source with a regex; a handler that delegates token reading to a controller or helper would slip through (it already missed tournament enroll/withdraw until they were fixed by hand). Replace it with an explicit, reviewed list of protected operations or a marker set by the auth wiring, so a new protected route without `security` fails the test. (delegated, with work unit 2)
+- [ ] F2 (lands in S0) Assert `info.version` is non-empty and the `servers` list matches production and local in the OpenAPI test. (delegated, with work unit 2)
 
-### Work unit 2 — Response schemas (later)
+### Work unit 2 — Response schemas
 
-- [ ] 2.x Per module: TypeBox schemas in `detail.responses`, validated against the current responses in tests; extend the ratchet test to require them.
+Mapping (2026-09-26): 46 operations; only `GET /ranked-tiers` has a schema (runtime `response:`); about 17 have no `responses` at all; at least 9 examples contradict the code (login, validate-token, user matches, change-username, ban history, leaderboard, player-of-the-week, `GET /ban-lists`, tournament ranking). Schemas are written from the producer types, never from the old examples, and each slice replaces the wrong examples.
+
+Findings that are behavior, not documentation:
+- `server.ts` `onError` returns no body, so mapped errors reach clients as `text/plain` with the error message; validation errors are Elysia JSON (422). Documented as-is with a shared `ErrorSchema`; changing it is a contract change outside this work unit.
+- `UnauthorizedError` is not mapped in `onError`, so admin checks in `user-router` and `TournamentController` answer 500 while the docs say 401. Candidate fix pending the user's decision.
+- Seven tournament routes depend on the upstream tournaments service (5 passthroughs, 1 typed cast, 1 ignoring the upstream body); they get permissive schemas marked as upstream-owned. `tournaments/infrastructure/swagger-schemas.ts` holds 8 unused schemas to check against the upstream before reuse.
+
+Slices (each at most about 400 production lines; S1 and S2 both touch `user-router.ts`, merge in order):
+
+- [ ] S0 foundation: `src/server/openapi/` helpers (`jsonOk`, `ErrorSchema` for text/plain errors, `ValidationErrorSchema` for 422, an `errors(...)` builder); ratchet test with an explicit `PROTECTED_OPERATIONS` list replacing the regex (F1), version and servers assertions (F2), and "every operation declares a 2xx schema" with a shrinking `PENDING_RESPONSE_SCHEMAS` allowlist; empty-body routes exempted explicitly. ~60 prod + 90 test.
+- [ ] S1 ranked and stats (8 ops): `UserStatsSchema` reusing `TierViewSchema` for `/users/:id/stats` and `/stats`, player of the week, ban lists, global stats, game ticket, ranked-tiers catalog in `detail`. ~220 prod + 120 test.
+- [ ] S2 account and auth (12 ops of `user-router` outside bans). ~260 prod + 120 test.
+- [ ] S3 cosmetics (10 ops, 6 DTO schemas). ~250 prod + 120 test.
+- [ ] S4 moderation (2 annulment ops + 4 user-ban ops). ~170 prod + 80 test.
+- [ ] S5 tournaments (5 local shapes + upstream-owned proxies). ~200 prod + 80 test.
 
 ### Work unit 3 — `docs/` knowledge base (later)
 
@@ -70,4 +84,4 @@ Lineage review-802a77a5d2e5c5b2 (medium, `executable_change` TournamentControlle
 
 ## Next step
 
-Work unit 1 done and reviewed (receipt consumed); push and PR to main are the user's decision. Next: work unit 2 (response schemas per module).
+Work unit 1 merged (#91). Work unit 2 in progress: S0 foundation on `docs/swagger-response-schemas-00-foundation`.
