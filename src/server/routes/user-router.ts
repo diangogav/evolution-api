@@ -7,6 +7,7 @@ import { UserAuth } from "../../modules/auth/application/UserAuth";
 import { MatchesGetter } from "../../modules/match/application/MatchesGetter";
 import { MatchPostgresRepository } from "../../modules/match/infrastructure/MatchPostgresRepository";
 import { UserStatsFinder } from "../../modules/stats/application/UserStatsFinder";
+import { UserStatsSchema } from "../../modules/stats/infrastructure/StatsSchemas";
 import { UserStatsPostgresRepository } from "../../modules/stats/infrastructure/UserStatsPostgresRepository";
 import { TierResolver } from "../../modules/tiers/application/TierResolver";
 import { TiersPostgresRepository } from "../../modules/tiers/infrastructure/TiersPostgresRepository";
@@ -26,6 +27,7 @@ import { AuthenticationError } from "../../shared/errors/AuthenticationError";
 import { Hash } from "../../shared/Hash";
 import { JWT } from "../../shared/JWT";
 import { Pino } from "../../shared/logger/infrastructure/Pino";
+import { errorResponses, jsonOk } from "../openapi/responses";
 import { UserBanPostgresRepository } from "../../modules/user/infrastructure/UserBanPostgresRepository";
 import { UserBanUser } from "../../modules/user/application/UserBanUser";
 import { UserUnbanUser } from "../../modules/user/application/UserUnbanUser";
@@ -286,59 +288,49 @@ export const userRouter = new Elysia({ prefix: "/users" })
 				description:
 					"Retrieves user statistics for a specific ban list and season. Each ratings[] entry carries its live ranked tier (see TierViewSchema); tier is null for ranks without a ladder, such as Global.",
 				responses: {
-					200: {
-						description: "Statistics retrieved successfully",
-						content: {
-							"application/json": {
-								example: {
-									userId: "user-123",
-									username: "player1",
-									points: 62,
-									wins: 34,
-									losses: 21,
-									winRate: "61.82",
-									position: 12,
-									achievements: [],
-									ratings: [
-										{
-											banListName: "TCG",
-											rating: 1180,
-											gamesPlayed: 34,
-											peak: 1210,
-											provisional: false,
-											rankType: "banlist",
-											tier: {
-												id: "gold",
-												name: "Gold",
-												effectivePoints: 17,
-												gamesPlayed: 34,
-												progress: {
-													nextTierId: "platinum",
-													unit: "points",
-													current: 17,
-													target: 25,
-													distinctOpponentWins: { current: 4, required: 5 },
-												},
-											},
-										},
-										{
-											banListName: "Global",
-											rating: 1150,
-											gamesPlayed: 55,
-											peak: 1190,
-											provisional: false,
-											rankType: "global",
-											tier: null,
-										},
-									],
-									rating: 1150,
-									peak: 1190,
-									provisional: false,
+					200: jsonOk(UserStatsSchema, "Statistics retrieved successfully", {
+						userId: "user-123",
+						username: "player1",
+						points: 62,
+						wins: 34,
+						losses: 21,
+						winRate: "61.82",
+						position: 12,
+						achievements: [],
+						ratings: [
+							{
+								banListName: "TCG",
+								rating: 1180,
+								gamesPlayed: 34,
+								peak: 1210,
+								provisional: false,
+								rankType: "banlist",
+								tier: {
+									id: "gold",
+									name: "Gold",
+									effectivePoints: 17,
+									gamesPlayed: 34,
+									progress: {
+										nextTierId: "platinum",
+										unit: "points",
+										current: 17,
+										target: 25,
+										distinctOpponentWins: { current: 4, required: 5 },
+									},
 								},
 							},
-						},
-					},
-					404: { description: "User not found" },
+							{
+								banListName: "Global",
+								rating: 1150,
+								gamesPlayed: 55,
+								peak: 1190,
+								provisional: false,
+								rankType: "global",
+								tier: null,
+							},
+						],
+					}),
+					...errorResponses(404, 422),
 				},
 			},
 			query: t.Object({
