@@ -151,13 +151,13 @@ own DataSource connection.
 | --- | --- | --- | --- |
 | `assign-cosmetic.ts` | `bun run assign:cosmetic <userId> <assetRef> <source>` (all three args required) | One `entitlements` row (cosmetics DataSource) | Idempotent: no-ops if the user already has that cosmetic entitlement. Validates `source` against the `EntitlementSource` enum and throws if `assetRef` was not found (seed cosmetics first). The only way to grant an EXCLUSIVE-tier cosmetic. |
 | `index-cosmetic-assets.ts` | `bun run index:cosmetic-assets` | `assetFiles` on cosmetics that don't have it yet (cosmetics DataSource) + reads R2 via the asset signer | One-time/backfill indexer. Skips cosmetics that already have `assetFiles` set; no deletes. |
-| `rating-compensate.ts` | `bun run rating:compensate` | Rating-compensation rows via `RatingCompensationPostgresRepository` (shared DataSource) | Reads `matches.anulled = true` (shared schema, read-only). Per its own comment, idempotent and "safe to run on every deploy" — guarded by a `UNIQUE(match_id, user_id, kind)` constraint so already-compensated matches are skipped. |
+| `rating-compensate.ts` | `bun run rating:compensate` | `reversal` rows in `rating_history` and the `player_ratings` reprojection, via `RatingCompensationPostgresRepository` (shared DataSource) | Reads `matches.anulled = true` (shared schema, read-only). Idempotent: inserts use `ON CONFLICT DO NOTHING` against the unique index `(match_id, user_id, rank_id, kind, cycle)` on `rating_history` (`src/evolution-types/src/entities/RatingHistoryEntity.ts`), so already-compensated matches are skipped. The script's own header comment names an older three-column constraint; the entity is the source of truth. |
 | `run-cosmetics-migrations.ts` | see [Database and migrations](#database-and-migrations) | Cosmetics schema DDL | — |
 | `seed-cosmetics.ts` | see [Database and migrations](#database-and-migrations) | `catalog` rows (cosmetics DataSource) | Idempotent. |
 | `upload-cosmetic-asset.ts` | `bun run upload:cosmetic-asset <local-file> <r2-key> [--replace]` | One R2 object only (no database writes) | Refuses to overwrite an existing object unless `--replace` is passed; rejects keys that are absolute, contain `..`, or have no `/`; verifies the uploaded byte size matches the local file before reporting success. |
 
 None of these six write to the shared schema except `rating-compensate.ts`,
-and only to rating-compensation rows — never to `matches` or the points
+and only to rating history and ratings — never to `matches` or the points
 ledger directly.
 
 ### `database-scripts/` — manual, destructive SQL
@@ -166,6 +166,12 @@ The four files under `database-scripts/` are raw SQL, meant to be run by hand
 against Postgres (for example with `psql`). They are **not** wired to any
 `package.json` script or CLI argument parsing, and none of them has a
 dry-run mode.
+
+**These scripts are out of date.** All four read and write `player_stats.ban_list_name`, but
+`player_stats` is now keyed by `rank_id` (`src/evolution-types/src/entities/PlayerStatsEntity.ts`), so they
+no longer match the schema and must not be run as they are. `player_stats` is maintained as a projection
+of the points ledger (see [points ledger and ratings](domain/points-ledger-and-ratings.md)). The table below
+describes what each script was written to do.
 
 | File | Scope | Destructive? |
 | --- | --- | --- |
