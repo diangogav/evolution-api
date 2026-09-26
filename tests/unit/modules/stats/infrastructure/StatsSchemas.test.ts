@@ -94,7 +94,7 @@ const leaderboardRow = (userId: string, rating: number | null) =>
 	UserStats.from({
 		userId,
 		username: userId,
-		points: 40,
+		points: rating === null ? -5 : 40,
 		wins: 20,
 		losses: 14,
 		winRate: pgFloat(rating === null ? null : 58.82),
@@ -158,6 +158,28 @@ describe("PlayerOfTheWeekSchema", () => {
 		expect(Value.Check(PlayerOfTheWeekSchema, [])).toBe(true);
 	});
 
+	it("accepts a week whose best net points are zero or negative", async () => {
+		for (const points of [0, -3]) {
+			const week: UserStatsRepository = {
+				...statsRepository,
+				getBestPlayerOfLastCompletedWeek: async () => [
+					PeriodUserStats.from({
+						userId: "user-1",
+						username: "player1",
+						points: pgBigint(points),
+						wins: pgBigint(0),
+						losses: pgBigint(1),
+						from: "2026-09-14T00:00:00.000Z",
+						to: "2026-09-20T00:00:00.000Z",
+					}),
+				],
+			};
+			const players = wire(await new GetBestPlayerOfLastCompletedWeek(week).get());
+
+			expect(Value.Check(PlayerOfTheWeekSchema, players)).toBe(true);
+		}
+	});
+
 	it("rejects points that are not a decimal string", async () => {
 		const [player] = (await new GetBestPlayerOfLastCompletedWeek(statsRepository).get()).map(wire);
 
@@ -165,6 +187,7 @@ describe("PlayerOfTheWeekSchema", () => {
 		expect(Value.Check(PlayerOfTheWeekSchema, [{ ...(player as object), points: "3.5" }])).toBe(
 			false,
 		);
+		expect(Value.Check(PlayerOfTheWeekSchema, [{ ...(player as object), wins: "-1" }])).toBe(false);
 	});
 });
 
