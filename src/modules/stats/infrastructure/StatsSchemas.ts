@@ -19,6 +19,9 @@ export const UserAchievementSchema = t.Object({
 	unlockedAt: t.String({ description: "ISO 8601 timestamp" }),
 	description: t.String(),
 	earnedPoints: t.Number(),
+	code: t.Nullable(
+		t.String({ description: "Stable key of a gameplay achievement; null for tournament trophies" }),
+	),
 });
 
 export const RatingSummarySchema = t.Object({
