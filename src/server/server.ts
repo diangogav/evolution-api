@@ -8,6 +8,7 @@ import { InvalidArgumentError } from "../shared/errors/InvalidArgumentError";
 import { NotFoundError } from "../shared/errors/NotFoundError";
 import { Logger } from "../shared/logger/domain/Logger";
 
+import { achievementsRouter } from "./routes/achievements-router";
 import { banListRouter } from "./routes/ban-list-router";
 import { cosmeticsRouter } from "./routes/cosmetics-router";
 import { leaderboardRouter } from "./routes/leaderboard-router";
@@ -69,6 +70,7 @@ export function mountApiV1Routes(app: Elysia) {
 	return app.group("/api/v1", (group: Elysia) => {
 		return group
 			.use(userRouter)
+			.use(achievementsRouter)
 			.use(leaderboardRouter)
 			.use(rankedTiersRouter)
 			.use(banListRouter)

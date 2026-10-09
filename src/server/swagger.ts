@@ -27,6 +27,7 @@ const TAGS = [
 		description: "Season rankings, player of the week and the ranked tier catalog",
 	},
 	{ name: "Ranked", description: "Tickets that admit authenticated players into ranked games" },
+	{ name: "Achievements", description: "Gameplay achievement catalog and per-player records" },
 	{ name: "Statistics", description: "Global and historical duel statistics" },
 	{ name: "Ban Lists", description: "Ban lists played during each season" },
 	{ name: "Cosmetics", description: "Cosmetics catalog, entitlements and player loadouts" },
@@ -43,7 +44,7 @@ const TAGS = [
 
 const TAG_GROUPS = [
 	{ name: "Account", tags: ["Authentication", "User Management"] },
-	{ name: "Ranked", tags: ["Leaderboard", "Ranked", "Statistics", "Ban Lists"] },
+	{ name: "Ranked", tags: ["Leaderboard", "Ranked", "Statistics", "Ban Lists", "Achievements"] },
 	{ name: "Cosmetics", tags: ["Cosmetics"] },
 	{ name: "Administration", tags: ["User Bans", "Match Moderation", "Cosmetics Admin"] },
 ];
