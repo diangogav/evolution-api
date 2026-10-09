@@ -1,9 +1,17 @@
 import { describe, expect, it } from "bun:test";
+import { Elysia } from "elysia";
 import { Value } from "@sinclair/typebox/value";
 
 import { GetAchievementCatalog } from "../../../../src/modules/achievements/application/GetAchievementCatalog";
 import { AchievementCatalogSchema } from "../../../../src/modules/achievements/infrastructure/AchievementsSchemas";
-import { createAchievementsRouter } from "../../../../src/server/routes/achievements-router";
+import { GetUserAchievementRecord } from "../../../../src/modules/achievements/application/GetUserAchievementRecord";
+import { UserAchievementRecordSchema } from "../../../../src/modules/achievements/infrastructure/AchievementsSchemas";
+import { NotFoundError } from "../../../../src/shared/errors/NotFoundError";
+import {
+	createAchievementsRouter,
+	createUserAchievementsRouter,
+} from "../../../../src/server/routes/achievements-router";
+import { mapDomainErrorStatus } from "../../../../src/server/server";
 
 const router = createAchievementsRouter({
 	getCatalog: new GetAchievementCatalog({
@@ -48,5 +56,44 @@ describe("GET /achievements", () => {
 		const response = await get({ "if-none-match": '"stale"' });
 
 		expect(response.status).toBe(200);
+	});
+});
+
+describe("GET /users/:userId/achievements", () => {
+	const record = {
+		userId: "user-1",
+		asOf: "2026-10-09T20:00:00.000Z",
+		scope: "lifetime-ranked" as const,
+		achievements: [],
+		progress: {
+			rankedWins: 0,
+			rankedMatches: 0,
+			currentStreak: 0,
+			hasRankedWinByLadder: { TCG: false, OCG: false, Edison: false, JTP: false, Genesys: false },
+		},
+	};
+
+	const userRouter = (run: () => Promise<typeof record>) =>
+		new Elysia()
+			.onError(mapDomainErrorStatus)
+			.use(
+				createUserAchievementsRouter({ getRecord: { run } as unknown as GetUserAchievementRecord }),
+			);
+
+	it("serves the record unauthenticated and matching the response schema", async () => {
+		const response = await userRouter(async () => record).handle(
+			new Request("http://localhost/users/user-1/achievements"),
+		);
+
+		expect(response.status).toBe(200);
+		expect(Value.Check(UserAchievementRecordSchema, await response.json())).toBe(true);
+	});
+
+	it("answers 404 when the user does not exist", async () => {
+		const response = await userRouter(async () => {
+			throw new NotFoundError("User not found");
+		}).handle(new Request("http://localhost/users/ghost/achievements"));
+
+		expect(response.status).toBe(404);
 	});
 });

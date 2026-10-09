@@ -1,9 +1,14 @@
-import { Elysia } from "elysia";
+import { Elysia, t } from "elysia";
 
 import { GetAchievementCatalog } from "../../modules/achievements/application/GetAchievementCatalog";
 import { AchievementCatalogPostgresRepository } from "../../modules/achievements/infrastructure/AchievementCatalogPostgresRepository";
-import { AchievementCatalogSchema } from "../../modules/achievements/infrastructure/AchievementsSchemas";
-import { emptyOk, jsonOk } from "../openapi/responses";
+import { UserAchievementRecordPostgresRepository } from "../../modules/achievements/infrastructure/UserAchievementRecordPostgresRepository";
+import { GetUserAchievementRecord } from "../../modules/achievements/application/GetUserAchievementRecord";
+import {
+	AchievementCatalogSchema,
+	UserAchievementRecordSchema,
+} from "../../modules/achievements/infrastructure/AchievementsSchemas";
+import { emptyOk, errorResponses, jsonOk } from "../openapi/responses";
 
 type Dependencies = { getCatalog: GetAchievementCatalog };
 
@@ -61,4 +66,62 @@ export const createAchievementsRouter = ({ getCatalog }: Dependencies) =>
 
 export const achievementsRouter = createAchievementsRouter({
 	getCatalog: new GetAchievementCatalog(new AchievementCatalogPostgresRepository()),
+});
+
+export const createUserAchievementsRouter = ({
+	getRecord,
+}: {
+	getRecord: GetUserAchievementRecord;
+}) =>
+	new Elysia({ prefix: "/users" }).get(
+		"/:userId/achievements",
+		({ params }) => getRecord.run(params.userId),
+		{
+			detail: {
+				tags: ["Achievements"],
+				summary: "Get a user's achievement record",
+				description:
+					"Returns every award the user holds plus lifetime ranked progress (wins, matches, current win streak and a first-win flag per format ladder) computed from non-annulled, non-deleted ranked matches across all seasons. Season counters from the stats endpoint are not lifetime progress. Public, like the user stats.",
+				responses: {
+					200: jsonOk(UserAchievementRecordSchema, "Record retrieved successfully", {
+						userId: "user-123",
+						asOf: "2026-10-09T20:00:00.000Z",
+						scope: "lifetime-ranked",
+						achievements: [
+							{
+								awardId: "5b2c0e9e-7a4f-4c3b-9d1e-2f6a8b0c4d3e",
+								id: 1001,
+								code: "first_win",
+								icon: "sword",
+								name: "First Blood",
+								description: "Win your first ranked match",
+								labels: [],
+								unlockedAt: "2026-09-01T10:00:00.000Z",
+								season: 7,
+								earnedPoints: 0,
+							},
+						],
+						progress: {
+							rankedWins: 34,
+							rankedMatches: 55,
+							currentStreak: 2,
+							hasRankedWinByLadder: {
+								TCG: true,
+								OCG: false,
+								Edison: true,
+								JTP: false,
+								Genesys: false,
+							},
+						},
+					}),
+					...errorResponses(404, 422),
+				},
+			},
+			params: t.Object({ userId: t.String() }),
+			response: { 200: UserAchievementRecordSchema },
+		},
+	);
+
+export const userAchievementsRouter = createUserAchievementsRouter({
+	getRecord: new GetUserAchievementRecord(new UserAchievementRecordPostgresRepository()),
 });

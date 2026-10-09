@@ -27,3 +27,41 @@ export const AchievementCatalogSchema = t.Object({
 		}),
 	),
 });
+
+const LadderFlagsSchema = t.Object({
+	TCG: t.Boolean(),
+	OCG: t.Boolean(),
+	Edison: t.Boolean(),
+	JTP: t.Boolean(),
+	Genesys: t.Boolean(),
+});
+
+export const UserAchievementRecordSchema = t.Object({
+	userId: t.String(),
+	asOf: t.String({ description: "ISO 8601 timestamp of the progress snapshot" }),
+	scope: t.Literal("lifetime-ranked"),
+	achievements: t.Array(
+		t.Object({
+			awardId: t.String({ description: "Identity of this award (user_achievements.id)" }),
+			id: t.Number({ description: "Catalog id of the achievement" }),
+			code: t.Nullable(
+				t.String({
+					description: "Stable key of a gameplay achievement; null for tournament trophies",
+				}),
+			),
+			icon: t.String(),
+			name: t.String(),
+			description: t.String(),
+			labels: t.Array(t.String()),
+			unlockedAt: t.String({ description: "ISO 8601 timestamp" }),
+			season: t.Number(),
+			earnedPoints: t.Number(),
+		}),
+	),
+	progress: t.Object({
+		rankedWins: t.Number({ description: "Lifetime ranked wins" }),
+		rankedMatches: t.Number({ description: "Lifetime ranked matches" }),
+		currentStreak: t.Number({ description: "Consecutive ranked wins since the last loss" }),
+		hasRankedWinByLadder: LadderFlagsSchema,
+	}),
+});
