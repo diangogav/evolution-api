@@ -47,6 +47,7 @@ export class UserStatsPostgresRepository implements UserStatsRepository {
 														'description', a.description,
 														'icon', a.icon,
 														'earnedPoints', a.earned_points,
+														'code', a.code,
 														'unlockedAt', ua.unlocked_at,
 														'labels', ua.labels
 												)
@@ -177,6 +178,7 @@ export class UserStatsPostgresRepository implements UserStatsRepository {
                             'description', a.description,
                             'icon', a.icon,
                             'earnedPoints', a.earned_points,
+                            'code', a.code,
                             'unlockedAt', ua.unlocked_at,
                             'labels', ua.labels
                         )

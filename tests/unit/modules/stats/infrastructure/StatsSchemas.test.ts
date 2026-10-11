@@ -50,7 +50,10 @@ const achievement = {
 	unlockedAt: "2026-09-01T10:00:00.000Z",
 	description: "Win a ranked duel",
 	earnedPoints: 5,
+	code: null as string | null,
 };
+
+const gameplayAchievement = { ...achievement, id: 8, code: "first_win" };
 
 const profile = UserStats.from({
 	userId: "user-1",
@@ -60,7 +63,7 @@ const profile = UserStats.from({
 	losses: 21,
 	winRate: pgFloat(61.82),
 	position: pgBigint(12),
-	achievements: [achievement],
+	achievements: [achievement, gameplayAchievement],
 	ratings: RatingMembers.attach(
 		[
 			{
@@ -127,6 +130,20 @@ describe("UserStatsSchema", () => {
 		);
 
 		expect(Value.Check(UserStatsSchema, stats)).toBe(true);
+	});
+
+	it("carries the achievement code, null for tournament trophies, and rejects a non-string code", async () => {
+		const stats = wire(
+			await new UserStatsFinder(statsRepository, tierLookup).find({ userId: "user-1", season: 7 }),
+		) as { achievements: { id: number; code: string | null }[] };
+
+		expect(stats.achievements.map((a) => [a.id, a.code])).toEqual([
+			[7, null],
+			[8, "first_win"],
+		]);
+		expect(Value.Check(UserStatsSchema, stats)).toBe(true);
+		const broken = { ...stats, achievements: [{ ...stats.achievements[0], code: 5 }] };
+		expect(Value.Check(UserStatsSchema, broken)).toBe(false);
 	});
 
 	it("rejects a rating without its tier key", () => {

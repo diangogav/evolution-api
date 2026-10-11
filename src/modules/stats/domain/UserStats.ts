@@ -8,6 +8,7 @@ type UserAchievementParams = {
 	unlockedAt: string;
 	description: string;
 	earnedPoints: number;
+	code?: string | null;
 };
 
 export type RankType = "banlist" | "group" | "global";

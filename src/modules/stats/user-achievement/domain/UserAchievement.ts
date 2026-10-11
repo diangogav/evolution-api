@@ -6,6 +6,7 @@ export class UserAchievement {
 	public readonly unlockedAt: Date;
 	public readonly description: string;
 	public readonly earnedPoints: number;
+	public readonly code: string | null;
 
 	private constructor({
 		id,
@@ -15,6 +16,7 @@ export class UserAchievement {
 		unlockedAt,
 		description,
 		earnedPoints,
+		code = null,
 	}: {
 		id: number;
 		icon: string;
@@ -23,6 +25,7 @@ export class UserAchievement {
 		unlockedAt: Date;
 		description: string;
 		earnedPoints: number;
+		code?: string | null;
 	}) {
 		this.id = id;
 		this.icon = icon;
@@ -31,6 +34,7 @@ export class UserAchievement {
 		this.unlockedAt = new Date(unlockedAt);
 		this.description = description;
 		this.earnedPoints = earnedPoints;
+		this.code = code;
 	}
 
 	static create({
@@ -41,6 +45,7 @@ export class UserAchievement {
 		unlockedAt,
 		description,
 		earnedPoints,
+		code = null,
 	}: {
 		id: number;
 		icon: string;
@@ -49,6 +54,7 @@ export class UserAchievement {
 		unlockedAt: Date | string;
 		description: string;
 		earnedPoints: number;
+		code?: string | null;
 	}): UserAchievement {
 		return new UserAchievement({
 			id,
@@ -58,6 +64,7 @@ export class UserAchievement {
 			unlockedAt: new Date(unlockedAt),
 			description,
 			earnedPoints,
+			code,
 		});
 	}
 
@@ -69,6 +76,7 @@ export class UserAchievement {
 		unlockedAt,
 		description,
 		earnedPoints,
+		code = null,
 	}: {
 		id: number;
 		icon: string;
@@ -77,6 +85,7 @@ export class UserAchievement {
 		unlockedAt: Date | string;
 		description: string;
 		earnedPoints: number;
+		code?: string | null;
 	}): UserAchievement {
 		return new UserAchievement({
 			id,
@@ -86,6 +95,7 @@ export class UserAchievement {
 			unlockedAt: new Date(unlockedAt),
 			description,
 			earnedPoints,
+			code,
 		});
 	}
 
@@ -97,6 +107,7 @@ export class UserAchievement {
 		unlockedAt: string;
 		description: string;
 		earnedPoints: number;
+		code: string | null;
 	} {
 		return {
 			id: this.id,
@@ -106,6 +117,7 @@ export class UserAchievement {
 			unlockedAt: this.unlockedAt.toISOString(),
 			description: this.description,
 			earnedPoints: this.earnedPoints,
+			code: this.code,
 		};
 	}
 }

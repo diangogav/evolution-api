@@ -86,7 +86,9 @@ reprojection query sums `achievements.earned_points` for the user's unlocked
 achievements matching the rank's ban list name as a label
 (`ACHIEVEMENT_POINTS_QUERY`, same file, lines 30-33), and both the profile and
 leaderboard queries attach the matching achievement objects
-(`UserStatsPostgresRepository.ts:41-59`, `171-185`).
+(`UserStatsPostgresRepository.ts:41-59`, `171-185`). Each achievement object
+carries `code`, the stable key of a gameplay achievement, or `null` for
+tournament trophies.
 
 ### Player of the week
 
