@@ -75,7 +75,109 @@ describe("GetMyEmoteBar", () => {
 		const result = await build({ bar }).run("user-1");
 
 		expect(result.slots[0].ref).toBe("halloween/ghost");
-		expect(result.slots[1]).toEqual({ ref: "thumbsup", ...DEFAULT_SLOT });
+		expect(result.slots[1]).toEqual({ ref: "wave", ...DEFAULT_SLOT });
+	});
+
+	it("never repeats a default when a stale slot falls back", async () => {
+		const bar = barWith([0, "fire"], [2, "halloween/ghost"]);
+
+		const result = await build({ bar, cosmetics: [] }).run("user-1");
+
+		const refs = result.slots.map((slot) => slot.ref);
+		expect(refs).toEqual([
+			"fire",
+			"thumbsup",
+			"wave",
+			"thinking",
+			"cool",
+			"mindblown",
+			"sweat",
+			"cry",
+		]);
+		expect(new Set(refs).size).toBe(8);
+	});
+
+	it("gives each of several stale slots a different unused default", async () => {
+		const bar = barWith(
+			[0, "halloween/ghost"],
+			[1, "halloween/bat"],
+			[4, "gone/emote"],
+			[7, "gone/other"],
+		);
+
+		const result = await build({ bar, cosmetics: [] }).run("user-1");
+
+		const refs = result.slots.map((slot) => slot.ref);
+		expect(refs).toEqual([
+			"wave",
+			"thumbsup",
+			"fire",
+			"thinking",
+			"cool",
+			"mindblown",
+			"sweat",
+			"cry",
+		]);
+		expect(new Set(refs).size).toBe(8);
+	});
+
+	it("reads stored refs that are no longer valid as stale slots", async () => {
+		const stored = [
+			"removed-default",
+			"Not/A/Ref",
+			"fire",
+			"halloween/ghost",
+			"cool",
+			"mindblown",
+			"sweat",
+			"cry",
+		];
+		const useCase = new GetMyEmoteBar(
+			cosmeticsOf(pack()),
+			barsOf(stored).repository,
+			gatekeeperOf(grant(PACK_ID)),
+			signer,
+		);
+
+		const result = await useCase.run("user-1");
+
+		expect(result.slots.map((slot) => slot.ref)).toEqual([
+			"wave",
+			"thumbsup",
+			"fire",
+			"halloween/ghost",
+			"cool",
+			"mindblown",
+			"sweat",
+			"cry",
+		]);
+	});
+
+	it("reads a stored array of the wrong length as the default bar", async () => {
+		const useCase = new GetMyEmoteBar(
+			cosmeticsOf(pack()),
+			barsOf(["wave", "fire"]).repository,
+			gatekeeperOf(),
+			signer,
+		);
+
+		const result = await useCase.run("user-1");
+
+		expect(result.slots.map((slot) => slot.ref)).toEqual([...DEFAULT_EMOTE_IDS]);
+	});
+
+	it("reads repeated stored refs as one slot plus fallbacks", async () => {
+		const stored = ["wave", "wave", ...DEFAULT_EMOTE_IDS.slice(2)];
+		const useCase = new GetMyEmoteBar(
+			cosmeticsOf(pack()),
+			barsOf(stored).repository,
+			gatekeeperOf(),
+			signer,
+		);
+
+		const result = await useCase.run("user-1");
+
+		expect(result.slots.map((slot) => slot.ref)).toEqual([...DEFAULT_EMOTE_IDS]);
 	});
 
 	it("resolves the bar for whichever user id it is asked about", async () => {

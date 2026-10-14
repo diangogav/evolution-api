@@ -4,13 +4,20 @@ import { EMOTE_PACK_MANIFEST } from "../../catalog/domain/EmotePack";
 
 const PACK_PREFIX = "emote-packs/";
 
+function slugOf(assetRef: string): string | null {
+	const rest = assetRef.slice(PACK_PREFIX.length);
+	const slug = rest.endsWith("/") ? rest.slice(0, -1) : rest;
+	return slug === "" || slug.includes("/") ? null : slug;
+}
+
 /** Active EMOTE_PACK cosmetics keyed by the slug in their `emote-packs/<slug>/` folder. */
 export function activeEmotePacksBySlug(cosmetics: readonly Cosmetic[]): Map<string, Cosmetic> {
 	const bySlug = new Map<string, Cosmetic>();
 	for (const cosmetic of cosmetics) {
 		if (cosmetic.type !== CosmeticType.EMOTE_PACK || !cosmetic.active) continue;
 		if (!cosmetic.assetRef.startsWith(PACK_PREFIX)) continue;
-		bySlug.set(cosmetic.assetRef.slice(PACK_PREFIX.length, -1), cosmetic);
+		const slug = slugOf(cosmetic.assetRef);
+		if (slug) bySlug.set(slug, cosmetic);
 	}
 	return bySlug;
 }
