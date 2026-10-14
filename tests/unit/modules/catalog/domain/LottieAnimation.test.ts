@@ -115,4 +115,18 @@ describe("assertVectorLottie", () => {
 		const bytes = lottie({ layers: [{ ty: 4, shapes: [{ ty: "rc", x: 3 }] }] });
 		expect(() => assertVectorLottie("wave.json", bytes)).not.toThrow();
 	});
+
+	it("rejects deeply nested JSON as a validation error instead of overflowing the stack", () => {
+		const depth = 10_000;
+		const nested = JSON.parse(`${"[".repeat(depth)}${"]".repeat(depth)}`);
+		const bytes = lottie({ layers: [{ ty: 4, shapes: nested }] });
+		reject(bytes, "wave.json is nested too deeply");
+	});
+
+	it("accepts nesting just inside the depth limit", () => {
+		const depth = 40;
+		const nested = JSON.parse(`${"[".repeat(depth)}${"]".repeat(depth)}`);
+		const bytes = lottie({ layers: [{ ty: 4, shapes: nested }] });
+		expect(() => assertVectorLottie("wave.json", bytes)).not.toThrow();
+	});
 });

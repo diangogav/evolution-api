@@ -2,6 +2,7 @@ import { InvalidArgumentError } from "../../../shared/errors/InvalidArgumentErro
 
 export const MAX_LOTTIE_BYTES = 200 * 1024;
 export const MAX_LOTTIE_SECONDS = 3;
+export const MAX_LOTTIE_DEPTH = 64;
 
 const TEXT_LAYER_TYPE = 5;
 const VERSION = /^\d+(?:\.\d+)*$/;
@@ -17,13 +18,26 @@ function isFiniteNumber(value: unknown): value is number {
 }
 
 // Lottie keeps expressions in an `x` string next to the animated value it drives, at any
-// depth, so the whole tree has to be walked.
-function hasExpression(node: unknown): boolean {
-	if (Array.isArray(node)) return node.some(hasExpression);
-	if (!isObject(node)) return false;
-	return Object.entries(node).some(([key, value]) =>
-		key === "x" && typeof value === "string" ? true : hasExpression(value),
-	);
+// depth, so the whole tree has to be walked. The walk is iterative and bounded so hostile
+// nesting inside the size cap is rejected instead of exhausting the stack.
+function scanTree(fileName: string, root: unknown): { hasExpression: boolean } {
+	const pending: Array<{ node: unknown; depth: number }> = [{ node: root, depth: 0 }];
+	for (let entry = pending.pop(); entry; entry = pending.pop()) {
+		const { node, depth } = entry;
+		if (typeof node !== "object" || node === null) continue;
+		if (depth > MAX_LOTTIE_DEPTH) {
+			throw new InvalidArgumentError(`${fileName} is nested too deeply`);
+		}
+		if (Array.isArray(node)) {
+			for (const child of node) pending.push({ node: child, depth: depth + 1 });
+			continue;
+		}
+		for (const [key, value] of Object.entries(node)) {
+			if (key === "x" && typeof value === "string") return { hasExpression: true };
+			pending.push({ node: value, depth: depth + 1 });
+		}
+	}
+	return { hasExpression: false };
 }
 
 function layerGroups(rootLayers: unknown[], assets: unknown[]): unknown[][] {
@@ -91,7 +105,7 @@ export function assertVectorLottie(fileName: string, bytes: Uint8Array): void {
 	) {
 		throw new InvalidArgumentError(`${fileName} contains a text layer`);
 	}
-	if (hasExpression(animation)) {
+	if (scanTree(fileName, animation).hasExpression) {
 		throw new InvalidArgumentError(`${fileName} contains an expression`);
 	}
 }
