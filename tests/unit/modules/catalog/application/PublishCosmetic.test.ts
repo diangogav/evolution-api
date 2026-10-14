@@ -176,4 +176,100 @@ describe("PublishCosmetic", () => {
 			}),
 		).rejects.toThrow("assetRef for LANE must match lanes/kebab-case-slug/");
 	});
+	describe("EMOTE_PACK", () => {
+		const encoder = new TextEncoder();
+		const lottie = encoder.encode(
+			JSON.stringify({ v: "5.7.4", fr: 30, ip: 0, op: 30, w: 100, h: 100, layers: [] }),
+		);
+		const pack = (keys: string[]) => [
+			{
+				name: "pack.json",
+				bytes: encoder.encode(
+					JSON.stringify({
+						version: 1,
+						emotes: keys.map((key) => ({ key, label: key, file: `${key}.json` })),
+					}),
+				),
+			},
+			...keys.map((key) => ({ name: `${key}.json`, bytes: lottie })),
+		];
+		const emotePack = (files: ReturnType<typeof pack>, assetRef = "emote-packs/halloween/") => ({
+			type: CosmeticType.EMOTE_PACK,
+			tier: CosmeticTier.EXCLUSIVE,
+			assetRef,
+			displayName: "Halloween Duelist",
+			files,
+		});
+
+		it("publishes pack.json and its Lottie files under emote-packs/<slug>/", async () => {
+			const { publish, uploads, saved } = setup();
+
+			const result = await publish.run(emotePack(pack(["attack", "ghost-wave"])));
+
+			expect(uploads.map((upload) => [upload.key, upload.contentType])).toEqual([
+				["emote-packs/halloween/pack.json", "application/json"],
+				["emote-packs/halloween/attack.json", "application/json"],
+				["emote-packs/halloween/ghost-wave.json", "application/json"],
+			]);
+			expect(result.assetFiles).toEqual(["pack.json", "attack.json", "ghost-wave.json"]);
+			expect(saved).toHaveLength(1);
+		});
+
+		it("accepts 13 files: pack.json plus 12 emotes", async () => {
+			const { publish, uploads } = setup();
+			const keys = Array.from({ length: 12 }, (_, index) => `e${index}`);
+
+			await publish.run(emotePack(pack(keys)));
+
+			expect(uploads).toHaveLength(13);
+		});
+
+		it("keeps the 8 file limit for other types", async () => {
+			const { publish } = setup();
+			const files = Array.from({ length: 9 }, (_, index) => ({
+				name: `f${index}.png`,
+				bytes: new Uint8Array([1]),
+			}));
+
+			await expect(
+				publish.run({
+					type: CosmeticType.LANE,
+					tier: CosmeticTier.STANDARD,
+					assetRef: "lanes/stone/",
+					displayName: "Stone",
+					files,
+				}),
+			).rejects.toThrow("A cosmetic requires between 1 and 8 files");
+		});
+
+		it("rejects a pack with an invalid manifest or Lottie, before touching storage", async () => {
+			const { publish, uploads, saved } = setup();
+			const files = pack(["attack"]);
+			files[1] = { name: "attack.json", bytes: encoder.encode('{"v":"5.7.4"}') };
+
+			await expect(publish.run(emotePack(files))).rejects.toThrow(
+				"attack.json requires a frame rate fr greater than 0",
+			);
+
+			expect(uploads).toHaveLength(0);
+			expect(saved).toHaveLength(0);
+		});
+
+		it("rejects an assetRef outside emote-packs/<slug>/", async () => {
+			const { publish } = setup();
+
+			await expect(publish.run(emotePack(pack(["attack"]), "lanes/halloween/"))).rejects.toThrow(
+				"assetRef for EMOTE_PACK must match emote-packs/kebab-case-slug/",
+			);
+		});
+
+		it("rejects an emote ref over 48 bytes using the slug from the assetRef", async () => {
+			const { publish } = setup();
+			const slug = "s".repeat(30);
+
+			await expect(
+				publish.run(emotePack(pack(["k".repeat(19)]), `emote-packs/${slug}/`)),
+			).rejects.toThrow("exceeds 48 bytes");
+		});
+	});
 });

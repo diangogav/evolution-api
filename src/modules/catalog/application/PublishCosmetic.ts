@@ -5,8 +5,12 @@ import { Cosmetic } from "../domain/Cosmetic";
 import type { CosmeticRepository } from "../domain/CosmeticRepository";
 import { CosmeticTier } from "../domain/CosmeticTier";
 import { CosmeticType } from "../domain/CosmeticType";
+import { assertEmotePackFiles, MAX_EMOTE_PACK_FILES } from "../domain/EmotePack";
 
 const MAX_FILES = 8;
+const MAX_FILES_BY_TYPE: Partial<Record<CosmeticType, number>> = {
+	[CosmeticType.EMOTE_PACK]: MAX_EMOTE_PACK_FILES,
+};
 const MAX_TOTAL_BYTES = 25 * 1024 * 1024;
 const SAFE_FILE_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 const SAFE_SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -18,6 +22,7 @@ const PREFIX_BY_TYPE: Partial<Record<CosmeticType, string>> = {
 	[CosmeticType.PLAYMAT]: "playmats",
 	[CosmeticType.AVATAR]: "avatars",
 	[CosmeticType.LANE]: "lanes",
+	[CosmeticType.EMOTE_PACK]: "emote-packs",
 };
 
 export interface PublishCosmeticFile {
@@ -72,6 +77,10 @@ function assertAssetRef(type: CosmeticType, assetRef: string): void {
 	}
 }
 
+function slugOf(assetRef: string): string {
+	return assetRef.split("/")[1] ?? "";
+}
+
 function assertRequiredFiles(type: CosmeticType, names: ReadonlySet<string>): void {
 	const lower = new Set(Array.from(names, (name) => name.toLowerCase()));
 	if ((type === CosmeticType.SLEEVE || type === CosmeticType.AVATAR) && !lower.has("render.jpg")) {
@@ -100,8 +109,9 @@ export class PublishCosmetic {
 	async run(input: PublishCosmeticInput): Promise<PublishedCosmeticDto> {
 		assertAssetRef(input.type, input.assetRef);
 
-		if (input.files.length === 0 || input.files.length > MAX_FILES) {
-			throw new InvalidArgumentError(`A cosmetic requires between 1 and ${MAX_FILES} files`);
+		const maxFiles = MAX_FILES_BY_TYPE[input.type] ?? MAX_FILES;
+		if (input.files.length === 0 || input.files.length > maxFiles) {
+			throw new InvalidArgumentError(`A cosmetic requires between 1 and ${maxFiles} files`);
 		}
 
 		const names = new Set<string>();
@@ -124,6 +134,9 @@ export class PublishCosmetic {
 			throw new InvalidArgumentError("Cosmetic assets exceed the 25 MB upload limit");
 		}
 		assertRequiredFiles(input.type, names);
+		if (input.type === CosmeticType.EMOTE_PACK) {
+			assertEmotePackFiles(slugOf(input.assetRef), input.files);
+		}
 
 		const duplicate = (await this.cosmetics.findAll()).find(
 			(cosmetic) => cosmetic.assetRef === input.assetRef,
