@@ -255,4 +255,50 @@ describe("GetCosmeticsCatalog", () => {
 
 		expect(accessForCalls).toBe(1);
 	});
+
+	it("lists an entitled EMOTE_PACK with its pack.json and emote manifest", async () => {
+		const emotePack = Cosmetic.from({
+			id: "pack-1",
+			type: CosmeticType.EMOTE_PACK,
+			tier: CosmeticTier.DONOR,
+			assetRef: "emote-packs/halloween/",
+			displayName: "Halloween",
+			active: true,
+			assetFiles: ["pack.json", "ghost.json"],
+		});
+		const manifestSigner: AssetUrlSigner = {
+			...signer,
+			signManifest: async (prefix, files) => ({
+				assets: Object.fromEntries((files ?? []).map((file) => [file, `signed:${prefix}${file}`])),
+				expiresAt: "2030-01-01T00:00:00.000Z",
+			}),
+		};
+		const { gk } = gatekeeperWith([
+			Entitlement.create({
+				id: "e1",
+				userId: "user-1",
+				grantType: GrantType.COSMETIC,
+				grantValue: "pack-1",
+				source: EntitlementSource.CAMPAIGN,
+				expiresAt: null,
+			}),
+		]);
+		const catalog = new GetCosmeticsCatalog(fakeRepo([sleeve, emotePack]), manifestSigner, gk);
+
+		const result = await catalog.run({ type: CosmeticType.EMOTE_PACK }, "user-1");
+
+		expect(result).toEqual([
+			{
+				id: "pack-1",
+				type: CosmeticType.EMOTE_PACK,
+				tier: CosmeticTier.DONOR,
+				displayName: "Halloween",
+				assets: {
+					"pack.json": "signed:emote-packs/halloween/pack.json",
+					"ghost.json": "signed:emote-packs/halloween/ghost.json",
+				},
+				assetsExpiresAt: "2030-01-01T00:00:00.000Z",
+			},
+		]);
+	});
 });
