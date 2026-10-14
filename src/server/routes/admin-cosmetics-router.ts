@@ -100,7 +100,7 @@ export function createAdminCosmeticsRouter(deps: AdminCosmeticsRouterDependencie
 					tier: t.Enum(CosmeticTier),
 					assetRef: t.String({ minLength: 1, maxLength: 180 }),
 					displayName: t.String({ minLength: 1, maxLength: 80 }),
-					files: t.Files({ minItems: 1, maxItems: 8, maxSize: "12m" }),
+					files: t.Files({ minItems: 1, maxItems: 13, maxSize: "12m" }),
 				}),
 				detail: {
 					tags: ["Cosmetics Admin"],

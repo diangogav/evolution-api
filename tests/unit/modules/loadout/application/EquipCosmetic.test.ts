@@ -117,6 +117,24 @@ describe("EquipCosmetic", () => {
 		).rejects.toBeInstanceOf(InvalidArgumentError);
 	});
 
+	it("rejects equipping an EMOTE_PACK because it has no loadout slot", async () => {
+		const { equip, saved } = build({
+			found: Cosmetic.from({
+				id: "pack-1",
+				type: CosmeticType.EMOTE_PACK,
+				tier: CosmeticTier.STANDARD,
+				assetRef: "emote-packs/halloween/",
+				displayName: "Halloween",
+				active: true,
+			}),
+		});
+
+		await expect(
+			equip.run({ userId: "user-1", cosmeticType: CosmeticType.EMOTE_PACK, cosmeticId: "pack-1" }),
+		).rejects.toBeInstanceOf(InvalidArgumentError);
+		expect(saved).toHaveLength(0);
+	});
+
 	it("equips an AVATAR the user is entitled to", async () => {
 		const { equip, saved } = build({ found: avatar() });
 

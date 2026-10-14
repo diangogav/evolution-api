@@ -2,7 +2,7 @@ import { ForbiddenError } from "../../../shared/errors/ForbiddenError";
 import { InvalidArgumentError } from "../../../shared/errors/InvalidArgumentError";
 import { NotFoundError } from "../../../shared/errors/NotFoundError";
 import { CosmeticRepository } from "../../catalog/domain/CosmeticRepository";
-import { CosmeticType } from "../../catalog/domain/CosmeticType";
+import { CosmeticType, isEquippableType } from "../../catalog/domain/CosmeticType";
 import { EntitlementsGatekeeper } from "../../entitlements/application/EntitlementsGatekeeper";
 import { LoadoutRepository } from "../domain/LoadoutRepository";
 
@@ -25,6 +25,11 @@ export class EquipCosmetic {
 		const cosmetic = await this.cosmetics.findById(cosmeticId);
 		if (!cosmetic || !cosmetic.active) {
 			throw new NotFoundError(`Cosmetic ${cosmeticId} not found`);
+		}
+		if (!isEquippableType(cosmetic.type)) {
+			throw new InvalidArgumentError(
+				`${cosmetic.type} cosmetics cannot be equipped in the loadout`,
+			);
 		}
 		if (cosmetic.type !== cosmeticType) {
 			throw new InvalidArgumentError(
