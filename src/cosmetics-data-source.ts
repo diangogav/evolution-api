@@ -4,6 +4,7 @@ import { DataSource, DataSourceOptions } from "typeorm";
 import { config } from "./evolution-types/src/config";
 import { CosmeticEntity } from "./modules/catalog/infrastructure/CosmeticEntity";
 import { EntitlementEntity } from "./modules/entitlements/infrastructure/EntitlementEntity";
+import { UserEmoteBarEntity } from "./modules/emote-bar/infrastructure/UserEmoteBarEntity";
 import { UserLoadoutEntity } from "./modules/loadout/infrastructure/UserLoadoutEntity";
 
 // Cosmetics owns its own DataSource and migration history, isolated from the shared
@@ -21,7 +22,7 @@ const options: DataSourceOptions = {
 	database: config.postgres.database,
 	synchronize: false,
 	logging: true,
-	entities: [CosmeticEntity, UserLoadoutEntity, EntitlementEntity],
+	entities: [CosmeticEntity, UserLoadoutEntity, EntitlementEntity, UserEmoteBarEntity],
 	subscribers: [],
 	migrations: [join(__dirname, "/migrations/*.ts")],
 	migrationsTableName: "cosmetics_migrations",
