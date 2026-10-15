@@ -43,6 +43,8 @@ const PROTECTED_OPERATIONS = [
 	"GET /api/v1/me/cosmetics/{id}/assets",
 	"GET /api/v1/me/loadout/",
 	"PUT /api/v1/me/loadout/",
+	"GET /api/v1/me/emote-bar/",
+	"PUT /api/v1/me/emote-bar/",
 	"GET /api/v1/admin/cosmetics/",
 	"POST /api/v1/admin/cosmetics/",
 	"POST /api/v1/admin/cosmetics/{id}/grants",
