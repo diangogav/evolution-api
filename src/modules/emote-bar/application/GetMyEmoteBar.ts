@@ -3,9 +3,9 @@ import { EMOTE_PACK_MANIFEST } from "../../catalog/domain/EmotePack";
 import { Cosmetic } from "../../catalog/domain/Cosmetic";
 import { CosmeticRepository } from "../../catalog/domain/CosmeticRepository";
 import { EntitlementsGatekeeper } from "../../entitlements/application/EntitlementsGatekeeper";
-import { EmoteBar } from "../domain/EmoteBar";
+import { EMOTE_BAR_SLOTS } from "../domain/EmoteBar";
 import { EmoteBarRepository } from "../domain/EmoteBarRepository";
-import { DEFAULT_EMOTE_IDS } from "../domain/EmoteRef";
+import { DEFAULT_EMOTE_IDS, EmoteRef } from "../domain/EmoteRef";
 import { activeEmotePacksBySlug, emoteFileName, packHasEmote } from "./activeEmotePacks";
 
 export interface EmoteBarSlot {
@@ -23,19 +23,30 @@ export interface EmoteBarView {
 	slots: EmoteBarSlot[];
 }
 
-function defaultSlot(index: number): EmoteBarSlot {
-	return {
-		ref: DEFAULT_EMOTE_IDS[index],
-		packId: null,
-		assetUrl: null,
-		packUrl: null,
-		assetsExpiresAt: null,
-	};
+function defaultSlot(ref: string): EmoteBarSlot {
+	return { ref, packId: null, assetUrl: null, packUrl: null, assetsExpiresAt: null };
+}
+
+function parseRef(raw: string): EmoteRef | null {
+	try {
+		return EmoteRef.parse(raw);
+	} catch {
+		return null;
+	}
+}
+
+/** Each stale slot takes the first default emote that no other slot of the bar shows. */
+function fillStaleSlots(resolved: readonly (EmoteBarSlot | null)[]): EmoteBarSlot[] {
+	const used = new Set(resolved.flatMap((slot) => (slot ? [slot.ref] : [])));
+	const spare = DEFAULT_EMOTE_IDS.filter((id) => !used.has(id));
+	return resolved.map((slot) => slot ?? defaultSlot(spare.shift() as string));
 }
 
 /**
- * Resolves any user's bar against the catalog and their current entitlements. A saved slot
- * that is no longer usable reads as the default emote of that slot; storage is not rewritten.
+ * Resolves any user's bar against the catalog and their current entitlements. Stored refs are
+ * read leniently: a slot that is malformed, repeated, or no longer usable reads as the first
+ * default emote the rest of the bar does not show, so the result always has distinct emotes;
+ * storage is not rewritten. A stored bar of the wrong length reads as the default bar.
  */
 export class GetMyEmoteBar {
 	constructor(
@@ -46,14 +57,22 @@ export class GetMyEmoteBar {
 	) {}
 
 	async run(userId: string): Promise<EmoteBarView> {
-		const bar = (await this.bars.findByUserId(userId)) ?? EmoteBar.defaults();
-		const refs = bar.refs();
-		if (refs.every((ref) => ref.isDefault)) {
-			return { slots: refs.map((ref, index) => ({ ...defaultSlot(index), ref: ref.toString() })) };
-		}
+		const stored = await this.bars.findByUserId(userId);
+		const raws = stored?.length === EMOTE_BAR_SLOTS ? stored : DEFAULT_EMOTE_IDS;
 
-		const packs = activeEmotePacksBySlug(await this.cosmetics.findAll());
-		const access = await this.gatekeeper.accessFor(userId);
+		const seen = new Set<string>();
+		const refs = raws.map((raw) => {
+			const ref = parseRef(raw);
+			if (!ref || seen.has(raw)) return null;
+			seen.add(raw);
+			return ref;
+		});
+
+		const needsPacks = refs.some((ref) => ref && !ref.isDefault);
+		const packs = needsPacks
+			? activeEmotePacksBySlug(await this.cosmetics.findAll())
+			: new Map<string, Cosmetic>();
+		const access = needsPacks ? await this.gatekeeper.accessFor(userId) : null;
 		const manifests = new Map<string, Promise<SignedAssetManifest>>();
 		const manifestOf = (pack: Cosmetic) => {
 			let manifest = manifests.get(pack.id);
@@ -64,17 +83,18 @@ export class GetMyEmoteBar {
 			return manifest;
 		};
 
-		const slots = await Promise.all(
-			refs.map(async (ref, index): Promise<EmoteBarSlot> => {
-				if (ref.isDefault) return { ...defaultSlot(index), ref: ref.toString() };
+		const resolved = await Promise.all(
+			refs.map(async (ref): Promise<EmoteBarSlot | null> => {
+				if (!ref) return null;
+				if (ref.isDefault) return defaultSlot(ref.toString());
 
 				const pack = packs.get(ref.packSlug as string);
 				const key = ref.emoteKey as string;
-				if (!pack || !access.canUse(pack) || !packHasEmote(pack, key)) return defaultSlot(index);
+				if (!pack || !access?.canUse(pack) || !packHasEmote(pack, key)) return null;
 
 				const manifest = await manifestOf(pack);
 				const assetUrl = manifest.assets[emoteFileName(key)];
-				if (!assetUrl) return defaultSlot(index);
+				if (!assetUrl) return null;
 				return {
 					ref: ref.toString(),
 					packId: pack.id,
@@ -84,6 +104,6 @@ export class GetMyEmoteBar {
 				};
 			}),
 		);
-		return { slots };
+		return { slots: fillStaleSlots(resolved) };
 	}
 }

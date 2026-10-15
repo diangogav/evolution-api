@@ -51,10 +51,11 @@ export function gatekeeperOf(...entitlements: Entitlement[]): EntitlementsGateke
 	});
 }
 
-export function barsOf(initial: EmoteBar | null) {
+export function barsOf(initial: EmoteBar | readonly string[] | null) {
+	const stored = initial instanceof EmoteBar ? initial.refs().map(String) : initial;
 	const saved: Array<{ userId: string; bar: EmoteBar }> = [];
 	const repository: EmoteBarRepository = {
-		findByUserId: async () => initial,
+		findByUserId: async () => stored,
 		save: async (userId, bar) => {
 			saved.push({ userId, bar });
 		},

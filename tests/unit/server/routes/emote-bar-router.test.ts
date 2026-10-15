@@ -37,7 +37,7 @@ const pack = Cosmetic.from({
 	assetFiles: ["pack.json", "ghost.json"],
 });
 
-let stored = null as EmoteBar | null;
+let stored: string[] | null = null;
 const jwt = new JWT(config.jwt);
 const app = new Elysia()
 	.onError(({ error, set }) => {
@@ -71,7 +71,7 @@ const spies = [
 		async () => stored,
 	),
 	spyOn(EmoteBarPostgresRepository.prototype, "save").mockImplementation(async (_id, bar) => {
-		stored = bar;
+		stored = bar.refs().map(String);
 	}),
 ];
 
@@ -92,17 +92,20 @@ function call(method: string, token?: string, body?: unknown) {
 	);
 }
 
+const bodyFor = (method: string) =>
+	method === "PUT" ? { slots: [...DEFAULT_EMOTE_IDS] } : undefined;
+
 const withPackEmote = (): string[] => ["halloween/ghost", ...DEFAULT_EMOTE_IDS.slice(1)];
 
 describe("/me/emote-bar", () => {
 	for (const method of ["GET", "PUT"]) {
 		it(`answers 401 to ${method} without a token`, async () => {
-			expect((await call(method, undefined, { slots: [...DEFAULT_EMOTE_IDS] })).status).toBe(401);
+			expect((await call(method, undefined, bodyFor(method))).status).toBe(401);
 		});
 
 		it(`answers 403 to ${method} when the user is banned`, async () => {
 			const token = jwt.generate({ id: bannedUserId });
-			expect((await call(method, token, { slots: [...DEFAULT_EMOTE_IDS] })).status).toBe(403);
+			expect((await call(method, token, bodyFor(method))).status).toBe(403);
 		});
 	}
 
@@ -125,7 +128,7 @@ describe("/me/emote-bar", () => {
 		expect(response.status).toBe(200);
 		const body = (await response.json()) as { slots: { ref: string; packId: string | null }[] };
 		expect(body.slots[0]).toMatchObject({ ref: "halloween/ghost", packId: "pack-1" });
-		expect((stored as EmoteBar | null)?.refs().map(String)).toEqual(withPackEmote());
+		expect(stored as string[] | null).toEqual(withPackEmote());
 	});
 
 	it("answers 403 when saving a pack the user does not own", async () => {
