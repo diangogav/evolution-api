@@ -15,6 +15,7 @@ import { leaderboardRouter } from "./routes/leaderboard-router";
 import { emoteBarRouter } from "./routes/emote-bar-router";
 import { loadoutRouter } from "./routes/loadout-router";
 import { meCosmeticsRouter } from "./routes/me-cosmetics-router";
+import { publicEmoteBarRouter } from "./routes/public-emote-bar-router";
 import { publicLoadoutRouter } from "./routes/public-loadout-router";
 import { rankedTiersRouter } from "./routes/ranked-tiers-router";
 import { adminCosmeticsRouter } from "./routes/admin-cosmetics-router";
@@ -83,6 +84,7 @@ export function mountApiV1Routes(app: Elysia) {
 			.use(emoteBarRouter)
 			.use(loadoutRouter)
 			.use(publicLoadoutRouter)
+			.use(publicEmoteBarRouter)
 			.use(adminCosmeticsRouter)
 			.use(adminModerationRouter);
 	});
