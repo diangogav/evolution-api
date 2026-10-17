@@ -29,7 +29,7 @@ function build(cosmetic: Cosmetic | null): GetCosmeticAssets {
 		sign: () => "",
 		signMany: () => ({}),
 		signManifest: async (prefix) => ({
-			assets: { "surface.webp": `signed:${prefix}surface.webp` },
+			assets: { "background.webp": `signed:${prefix}background.webp` },
 			expiresAt: "2030-01-01T00:00:00.000Z",
 		}),
 	};
@@ -45,7 +45,7 @@ describe("GetCosmeticAssets", () => {
 		const result = await build(standard).run(standard.id, null);
 
 		expect(result).toEqual({
-			assets: { "surface.webp": "signed:playmats/standard/surface.webp" },
+			assets: { "background.webp": "signed:playmats/standard/background.webp" },
 			assetsExpiresAt: "2030-01-01T00:00:00.000Z",
 		});
 	});

@@ -9,8 +9,8 @@ export interface StandardCosmeticSeed {
 }
 
 // The cosmetic set seeded on bootstrap. asset_ref is the R2 folder prefix; the
-// individual files (render.jpg for sleeves and avatars; surface.webp, background.webp
-// and theme.json for the painted 2D stages) live under it and are resolved at serve
+// individual files (render.jpg for sleeves and avatars; background.webp, the
+// low-poly stage, for playmats) live under it and are resolved at serve
 // time. `tier` gates visibility/usage: anonymous players see STANDARD only;
 // REGISTERED requires an account. NOTE: the seed only INSERTS missing rows (matched by
 // asset_ref) — it never updates the tier of an already-seeded cosmetic, so changing an
@@ -52,10 +52,10 @@ export const STANDARD_COSMETICS: StandardCosmeticSeed[] = [
 		assetRef: "sleeves/evolution-black/",
 		displayName: "Evolution Black",
 	},
-	// Painted 2D stages for the DOM board: surface.webp (the player's half),
-	// background.webp (the arena backdrop) and theme.json (the palette). The
-	// client reads those three basenames. The old glTF playmats (plaque, pallet-*)
-	// were deactivated in the database when the 3D renderer was retired.
+	// Low-poly stages for the Pixi board: background.webp is the backdrop the
+	// board paints behind the zones, the only basename the client reads. The old
+	// glTF playmats (plaque, pallet-*) were deactivated in the database when the
+	// 3D renderer was retired.
 	// The arcane hall is also the client's bundled default; it is hosted here so a
 	// logged-in player keeps it once the server catalog replaces the bundled list.
 	{
@@ -82,8 +82,7 @@ export const STANDARD_COSMETICS: StandardCosmeticSeed[] = [
 		assetRef: "playmats/frog-pond/",
 		displayName: "Estanque de la Rana",
 	},
-	// Terrain without zones: the field comes from the separately equipped lane,
-	// and its theme.json projects the environment onto the table's own ground.
+	// Terrain without zones: the field comes from the separately equipped lane.
 	{
 		type: CosmeticType.PLAYMAT,
 		tier: CosmeticTier.STANDARD,

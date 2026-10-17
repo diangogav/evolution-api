@@ -45,30 +45,24 @@ describe("PublishCosmetic", () => {
 				displayName: "Ember Vault",
 				files: [{ name: "ember-vault.glb", bytes: new Uint8Array([1, 2, 3]) }],
 			}),
-		).rejects.toThrow("PLAYMAT requires surface.webp, surface.png or surface.jpg");
+		).rejects.toThrow("PLAYMAT requires background.webp, background.png or background.jpg");
 
 		expect(uploads).toHaveLength(0);
 		expect(saved).toHaveLength(0);
 	});
 
-	it("stores a 2D stage's images and theme.json with their real content types", async () => {
+	it("stores a playmat's stage with its real content type", async () => {
 		const { publish, uploads } = setup();
 		await publish.run({
 			type: CosmeticType.PLAYMAT,
 			tier: CosmeticTier.STANDARD,
 			assetRef: "playmats/kagura-castle/",
 			displayName: "Castillo de Kagura",
-			files: [
-				{ name: "surface.webp", bytes: new Uint8Array([1]) },
-				{ name: "background.webp", bytes: new Uint8Array([2]) },
-				{ name: "theme.json", bytes: new Uint8Array([3]) },
-			],
+			files: [{ name: "background.webp", bytes: new Uint8Array([1]) }],
 		});
 
 		expect(uploads.map((u) => [u.key, u.contentType])).toEqual([
-			["playmats/kagura-castle/surface.webp", "image/webp"],
 			["playmats/kagura-castle/background.webp", "image/webp"],
-			["playmats/kagura-castle/theme.json", "application/json"],
 		]);
 	});
 
@@ -100,7 +94,7 @@ describe("PublishCosmetic", () => {
 				tier: CosmeticTier.STANDARD,
 				assetRef: "playmats/../escape/",
 				displayName: "Unsafe",
-				files: [{ name: "surface.webp", bytes: new Uint8Array([1]) }],
+				files: [{ name: "background.webp", bytes: new Uint8Array([1]) }],
 			}),
 		).rejects.toThrow("assetRef");
 
@@ -123,7 +117,7 @@ describe("PublishCosmetic", () => {
 				tier: CosmeticTier.STANDARD,
 				assetRef: "playmats/existing/",
 				displayName: "Duplicate",
-				files: [{ name: "surface.webp", bytes: new Uint8Array([1]) }],
+				files: [{ name: "background.webp", bytes: new Uint8Array([1]) }],
 			}),
 		).rejects.toThrow("already uses assetRef");
 	});

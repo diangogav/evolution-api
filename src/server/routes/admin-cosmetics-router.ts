@@ -64,10 +64,10 @@ export function createAdminCosmeticsRouter(deps: AdminCosmeticsRouterDependencie
 								assetRef: "playmats/magma-forge/",
 								displayName: "Magma Forge",
 								active: true,
-								assetFiles: ["surface.webp"],
+								assetFiles: ["background.webp"],
 								assets: {
-									"surface.webp":
-										"https://assets.evolutionygo.com/playmats/magma-forge/surface.webp?sig=...",
+									"background.webp":
+										"https://assets.evolutionygo.com/playmats/magma-forge/background.webp?sig=...",
 								},
 								assetsExpiresAt: "2026-09-25T18:30:00.000Z",
 							},

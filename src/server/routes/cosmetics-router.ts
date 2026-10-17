@@ -53,8 +53,8 @@ export const cosmeticsRouter = new Elysia({ prefix: "/cosmetics" })
 							tier: "STANDARD",
 							displayName: "Salón arcano",
 							assets: {
-								"surface.webp":
-									"https://assets.evolutionygo.com/playmats/arcane/surface.webp?sig=...",
+								"background.webp":
+									"https://assets.evolutionygo.com/playmats/arcane/background.webp?sig=...",
 							},
 							assetsExpiresAt: "2026-09-25T18:30:00.000Z",
 						},
@@ -80,8 +80,8 @@ export const cosmeticsRouter = new Elysia({ prefix: "/cosmetics" })
 				responses: {
 					200: jsonOk(CosmeticAssetsSchema, "Asset manifest refreshed successfully", {
 						assets: {
-							"surface.webp":
-								"https://assets.evolutionygo.com/playmats/arcane/surface.webp?sig=...",
+							"background.webp":
+								"https://assets.evolutionygo.com/playmats/arcane/background.webp?sig=...",
 						},
 						assetsExpiresAt: "2026-09-25T18:30:00.000Z",
 					}),
