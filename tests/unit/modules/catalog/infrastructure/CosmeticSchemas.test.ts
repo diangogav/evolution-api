@@ -123,9 +123,16 @@ describe("PublishedCosmeticSchema", () => {
 			.run({
 				type: CosmeticType.LANE,
 				tier: CosmeticTier.STANDARD,
-				assetRef: "lanes/stone/",
-				displayName: "Losa de piedra",
-				files: [{ name: "frame.webp", bytes: new Uint8Array([1]) }],
+				assetRef: "lanes/bronze/",
+				displayName: "Bronce",
+				files: [
+					{
+						name: "plate.json",
+						bytes: new TextEncoder().encode(
+							JSON.stringify({ version: 1, base: "#c98a3a", accent: "#f0c070" }),
+						),
+					},
+				],
 			})
 			.then(wire);
 

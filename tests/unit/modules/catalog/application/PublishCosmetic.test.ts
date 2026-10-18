@@ -122,39 +122,84 @@ describe("PublishCosmetic", () => {
 		).rejects.toThrow("already uses assetRef");
 	});
 
-	// Lanes are the frame a player's zones wear — a cosmetic of their own, so
-	// any stage pairs with any lane.
-	it("stores a lane's frame under its own prefix", async () => {
-		const { publish, uploads, saved } = setup();
-
-		const result = await publish.run({
+	// Lanes are zone plates — a cosmetic of their own, so any stage pairs with
+	// any lane. The manifest is the whole asset.
+	describe("LANE", () => {
+		const encoder = new TextEncoder();
+		const plate = (manifest: unknown) => encoder.encode(JSON.stringify(manifest));
+		const valid = { version: 1, base: "#c98a3a", accent: "#f0c070", rim: "#8a5a2a" };
+		const lane = (files: { name: string; bytes: Uint8Array }[]) => ({
 			type: CosmeticType.LANE,
 			tier: CosmeticTier.STANDARD,
-			assetRef: "lanes/stone/",
-			displayName: "Losa de piedra",
-			files: [{ name: "frame.webp", bytes: new Uint8Array([1, 2, 3]) }],
+			assetRef: "lanes/bronze/",
+			displayName: "Bronce",
+			files,
 		});
 
-		expect(result.assetFiles).toEqual(["frame.webp"]);
-		expect(uploads[0]?.key).toBe("lanes/stone/frame.webp");
-		expect(uploads[0]?.contentType).toBe("image/webp");
-		expect(saved[0]?.type).toBe(CosmeticType.LANE);
-	});
+		it("stores a valid plate.json under the lane's prefix", async () => {
+			const { publish, uploads, saved } = setup();
 
-	it("rejects a lane with no frame, before touching storage", async () => {
-		const { publish, uploads } = setup();
+			const result = await publish.run(lane([{ name: "plate.json", bytes: plate(valid) }]));
 
-		await expect(
-			publish.run({
-				type: CosmeticType.LANE,
-				tier: CosmeticTier.STANDARD,
-				assetRef: "lanes/stone/",
-				displayName: "Losa de piedra",
-				files: [{ name: "readme.txt", bytes: new Uint8Array([1]) }],
-			}),
-		).rejects.toThrow("LANE requires frame.webp, frame.png or frame.jpg");
+			expect(result.assetFiles).toEqual(["plate.json"]);
+			expect(uploads[0]?.key).toBe("lanes/bronze/plate.json");
+			expect(uploads[0]?.contentType).toBe("application/json");
+			expect(saved[0]?.type).toBe(CosmeticType.LANE);
+		});
 
-		expect(uploads).toHaveLength(0);
+		it("rejects a differently cased plate.json, since the client fetches the exact key", async () => {
+			const { publish, uploads } = setup();
+
+			await expect(
+				publish.run(lane([{ name: "Plate.JSON", bytes: plate(valid) }])),
+			).rejects.toThrow("LANE requires exactly one file: plate.json");
+
+			expect(uploads).toHaveLength(0);
+		});
+
+		it("rejects a lane without plate.json, before touching storage", async () => {
+			const { publish, uploads } = setup();
+
+			await expect(
+				publish.run(lane([{ name: "frame.webp", bytes: new Uint8Array([1]) }])),
+			).rejects.toThrow("LANE requires exactly one file: plate.json");
+
+			expect(uploads).toHaveLength(0);
+		});
+
+		it("rejects any extra file next to plate.json", async () => {
+			const { publish, uploads } = setup();
+
+			await expect(
+				publish.run(
+					lane([
+						{ name: "plate.json", bytes: plate(valid) },
+						{ name: "frame.webp", bytes: new Uint8Array([1]) },
+					]),
+				),
+			).rejects.toThrow("LANE requires exactly one file: plate.json");
+
+			expect(uploads).toHaveLength(0);
+		});
+
+		it("rejects a bad colour, before touching storage", async () => {
+			const { publish, uploads, saved } = setup();
+
+			await expect(
+				publish.run(lane([{ name: "plate.json", bytes: plate({ ...valid, base: "red" }) }])),
+			).rejects.toThrow("plate.json base must be a #rrggbb colour");
+
+			expect(uploads).toHaveLength(0);
+			expect(saved).toHaveLength(0);
+		});
+
+		it("rejects a plate.json that is not JSON", async () => {
+			const { publish } = setup();
+
+			await expect(
+				publish.run(lane([{ name: "plate.json", bytes: encoder.encode("{nope") }])),
+			).rejects.toThrow("plate.json is not valid JSON");
+		});
 	});
 
 	it("keeps lanes out of the playmat prefix", async () => {
@@ -166,7 +211,7 @@ describe("PublishCosmetic", () => {
 				tier: CosmeticTier.STANDARD,
 				assetRef: "playmats/stone/",
 				displayName: "Losa de piedra",
-				files: [{ name: "frame.webp", bytes: new Uint8Array([1]) }],
+				files: [{ name: "plate.json", bytes: new Uint8Array([1]) }],
 			}),
 		).rejects.toThrow("assetRef for LANE must match lanes/kebab-case-slug/");
 	});
@@ -229,8 +274,8 @@ describe("PublishCosmetic", () => {
 				publish.run({
 					type: CosmeticType.LANE,
 					tier: CosmeticTier.STANDARD,
-					assetRef: "lanes/stone/",
-					displayName: "Stone",
+					assetRef: "lanes/bronze/",
+					displayName: "Bronce",
 					files,
 				}),
 			).rejects.toThrow("A cosmetic requires between 1 and 8 files");

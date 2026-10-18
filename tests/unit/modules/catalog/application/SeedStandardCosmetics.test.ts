@@ -107,23 +107,27 @@ describe("SeedStandardCosmetics", () => {
 	});
 
 	// Lanes ship as their own cosmetic so a player can pair any stage with any
-	// frame; the two art-less choices live in the client and need no row here.
+	// plate; the two art-less choices live in the client and need no row here.
 	describe("lanes", () => {
-		it("ships the painted lanes as STANDARD cosmetics under their own prefix", () => {
+		it("ships the zone-plate lanes as STANDARD cosmetics under their own prefix", () => {
 			const lanes = STANDARD_COSMETICS.filter((entry) => entry.type === CosmeticType.LANE);
 
 			expect(lanes.map((entry) => entry.assetRef)).toEqual([
-				"lanes/stone/",
-				"lanes/mossy-ruins/",
-				"lanes/arcane-bronze/",
-				"lanes/forest-roots/",
-				"lanes/kagura-iron/",
-				"lanes/pond-pebbles/",
-				"lanes/halloween-bones/",
+				"lanes/bronze/",
+				"lanes/moss/",
+				"lanes/ice/",
 			]);
 			for (const lane of lanes) {
 				expect(lane.tier).toBe(CosmeticTier.STANDARD);
 				expect(lane.displayName.trim()).not.toBe("");
+			}
+		});
+
+		it("seeds no row for the retired image lanes", () => {
+			const refs = STANDARD_COSMETICS.map((entry) => entry.assetRef);
+
+			for (const retired of ["stone", "mossy-ruins", "arcane-bronze", "forest-roots"]) {
+				expect(refs).not.toContain(`lanes/${retired}/`);
 			}
 		});
 
