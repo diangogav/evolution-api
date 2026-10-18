@@ -6,6 +6,7 @@ import type { CosmeticRepository } from "../domain/CosmeticRepository";
 import { CosmeticTier } from "../domain/CosmeticTier";
 import { CosmeticType } from "../domain/CosmeticType";
 import { assertEmotePackFiles, MAX_EMOTE_PACK_FILES } from "../domain/EmotePack";
+import { parseZonePlate, ZONE_PLATE_MANIFEST } from "../domain/ZonePlate";
 
 const MAX_FILES = 8;
 const MAX_FILES_BY_TYPE: Partial<Record<CosmeticType, number>> = {
@@ -15,7 +16,6 @@ const MAX_TOTAL_BYTES = 25 * 1024 * 1024;
 const SAFE_FILE_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 const SAFE_SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const STAGE_FILE = /^background\.(?:webp|png|jpe?g)$/;
-const FRAME_FILE = /^frame\.(?:webp|png|jpe?g)$/;
 
 const PREFIX_BY_TYPE: Partial<Record<CosmeticType, string>> = {
 	[CosmeticType.SLEEVE]: "sleeves",
@@ -95,10 +95,11 @@ function assertRequiredFiles(type: CosmeticType, names: ReadonlySet<string>): vo
 		);
 	}
 
-	// A lane is one square frame the board stamps into every zone; without it
-	// there is nothing to draw.
-	if (type === CosmeticType.LANE && ![...lower].some((name) => FRAME_FILE.test(name))) {
-		throw new InvalidArgumentError("LANE requires frame.webp, frame.png or frame.jpg");
+	// A lane is a zone plate the board draws procedurally from plate.json alone;
+	// any extra file would be served but never used. The name is exact: the
+	// client fetches the lowercase key from the signed manifest.
+	if (type === CosmeticType.LANE && (names.size !== 1 || !names.has(ZONE_PLATE_MANIFEST))) {
+		throw new InvalidArgumentError(`LANE requires exactly one file: ${ZONE_PLATE_MANIFEST}`);
 	}
 }
 
@@ -138,6 +139,9 @@ export class PublishCosmetic {
 		assertRequiredFiles(input.type, names);
 		if (input.type === CosmeticType.EMOTE_PACK) {
 			assertEmotePackFiles(slugOf(input.assetRef), input.files);
+		}
+		if (input.type === CosmeticType.LANE) {
+			parseZonePlate(input.files[0].bytes);
 		}
 
 		const duplicate = (await this.cosmetics.findAll()).find(

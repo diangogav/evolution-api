@@ -95,51 +95,29 @@ export const STANDARD_COSMETICS: StandardCosmeticSeed[] = [
 		assetRef: "playmats/halloween-graveyard/",
 		displayName: "Cementerio de Halloween",
 	},
-	// Lanes: the frame a player's zones wear, worn beside the playmat so any
-	// stage pairs with any frame. Only painted lanes need a row — "engraved"
-	// (the plaque the board generates) and "bare" (deliberately none) are
-	// choices the client already ships.
+	// Lanes: the zone plate a player's zones wear, worn beside the playmat so any
+	// stage pairs with any plate. A plate is a plate.json of colours the board
+	// draws procedurally — no image files. Only coloured plates need a row: the
+	// standard plate is the board's own default, tinted per seat, and lives in
+	// the client. This seed only inserts: rows from earlier lane sets stay in
+	// the database until deactivated there.
 	{
 		type: CosmeticType.LANE,
 		tier: CosmeticTier.STANDARD,
-		assetRef: "lanes/stone/",
-		displayName: "Losa de piedra",
+		assetRef: "lanes/bronze/",
+		displayName: "Bronce",
 	},
 	{
 		type: CosmeticType.LANE,
 		tier: CosmeticTier.STANDARD,
-		assetRef: "lanes/mossy-ruins/",
-		displayName: "Piedra musgosa",
+		assetRef: "lanes/moss/",
+		displayName: "Musgo",
 	},
 	{
 		type: CosmeticType.LANE,
 		tier: CosmeticTier.STANDARD,
-		assetRef: "lanes/arcane-bronze/",
-		displayName: "Bronce arcano",
-	},
-	{
-		type: CosmeticType.LANE,
-		tier: CosmeticTier.STANDARD,
-		assetRef: "lanes/forest-roots/",
-		displayName: "Raíces del bosque",
-	},
-	{
-		type: CosmeticType.LANE,
-		tier: CosmeticTier.STANDARD,
-		assetRef: "lanes/kagura-iron/",
-		displayName: "Hierro de Kagura",
-	},
-	{
-		type: CosmeticType.LANE,
-		tier: CosmeticTier.STANDARD,
-		assetRef: "lanes/pond-pebbles/",
-		displayName: "Guijarros del estanque",
-	},
-	{
-		type: CosmeticType.LANE,
-		tier: CosmeticTier.STANDARD,
-		assetRef: "lanes/halloween-bones/",
-		displayName: "Huesos de Halloween",
+		assetRef: "lanes/ice/",
+		displayName: "Hielo",
 	},
 	{
 		type: CosmeticType.AVATAR,

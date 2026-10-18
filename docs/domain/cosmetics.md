@@ -17,6 +17,11 @@ Data section).
 prefix, when known ahead of time) —
 `src/modules/catalog/domain/Cosmetic.ts:5-44`.
 
+A `LANE` is a zone plate: its only file is `plate.json`
+(`{ "version": 1, "base": "#rrggbb", "accent": "#rrggbb", "rim"?: "#rrggbb" }`),
+validated on publish by `parseZonePlate`
+(`src/modules/catalog/domain/ZonePlate.ts`); the board draws it procedurally.
+
 `GET /cosmetics` (public catalog) and `GET /me/cosmetics` (`me-cosmetics-router.ts`)
 both go through `GetCosmeticsCatalog.run`
 (`src/modules/catalog/application/GetCosmeticsCatalog.ts`), which:
