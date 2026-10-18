@@ -93,7 +93,7 @@ describe("admin cosmetics routes", () => {
 		form.set("tier", "EXCLUSIVE");
 		form.set("assetRef", "playmats/ember-vault/");
 		form.set("displayName", "Ember Vault");
-		form.append("files", new File([new Uint8Array([1, 2, 3])], "surface.webp"));
+		form.append("files", new File([new Uint8Array([1, 2, 3])], "background.webp"));
 
 		const response = await buildApp().handle(
 			new Request("http://localhost/admin/cosmetics/", {
@@ -108,7 +108,7 @@ describe("admin cosmetics routes", () => {
 			type: "PLAYMAT",
 			assetRef: "playmats/ember-vault/",
 			active: true,
-			assetFiles: ["surface.webp"],
+			assetFiles: ["background.webp"],
 		});
 	});
 
@@ -119,7 +119,7 @@ describe("admin cosmetics routes", () => {
 			tier: CosmeticTier.STANDARD,
 			assetRef: "playmats/kagura-castle/",
 			displayName: "Castillo de Kagura",
-			assetFiles: ["surface.webp"],
+			assetFiles: ["background.webp"],
 		});
 		const app = buildApp(playmat);
 

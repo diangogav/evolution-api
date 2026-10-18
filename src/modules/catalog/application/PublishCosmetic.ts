@@ -14,7 +14,7 @@ const MAX_FILES_BY_TYPE: Partial<Record<CosmeticType, number>> = {
 const MAX_TOTAL_BYTES = 25 * 1024 * 1024;
 const SAFE_FILE_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 const SAFE_SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-const SURFACE_FILE = /^surface\.(?:webp|png|jpe?g)$/;
+const STAGE_FILE = /^background\.(?:webp|png|jpe?g)$/;
 const FRAME_FILE = /^frame\.(?:webp|png|jpe?g)$/;
 
 const PREFIX_BY_TYPE: Partial<Record<CosmeticType, string>> = {
@@ -87,10 +87,12 @@ function assertRequiredFiles(type: CosmeticType, names: ReadonlySet<string>): vo
 		throw new InvalidArgumentError(`${type} requires render.jpg`);
 	}
 
-	// A playmat is a painted 2D stage: surface.<image> is the only file the DOM
-	// board needs; background.<image> and theme.json are optional extras.
-	if (type === CosmeticType.PLAYMAT && ![...lower].some((name) => SURFACE_FILE.test(name))) {
-		throw new InvalidArgumentError("PLAYMAT requires surface.webp, surface.png or surface.jpg");
+	// A playmat is one low-poly stage: background.<image> is the backdrop the
+	// board paints behind the zones, and the only file the client reads.
+	if (type === CosmeticType.PLAYMAT && ![...lower].some((name) => STAGE_FILE.test(name))) {
+		throw new InvalidArgumentError(
+			"PLAYMAT requires background.webp, background.png or background.jpg",
+		);
 	}
 
 	// A lane is one square frame the board stamps into every zone; without it

@@ -29,7 +29,7 @@ describe("CosmeticPostgresRepository", () => {
 	});
 
 	it("maps the asset file index and carries no animation when loading by uuid", async () => {
-		const assetFiles = ["surface.webp", "background.webp", "theme.json"];
+		const assetFiles = ["background.webp", "background.webp", "theme.json"];
 		const id = "11111111-1111-4111-8111-111111111111";
 		const findOne = mock(async () => ({
 			id,

@@ -32,7 +32,7 @@ export class Cosmetic {
 			throw new InvalidArgumentError("assetRef cannot be empty");
 		}
 		// assetRef is a folder prefix in object storage — its files (render.jpg for
-		// sleeves/avatars, surface/background/theme.json for stages) live under it,
+		// sleeves/avatars, background.webp for playmat stages) live under it,
 		// so it must end with "/".
 		if (!assetRef.endsWith("/")) {
 			throw new InvalidArgumentError("assetRef must be a folder prefix ending with '/'");

@@ -6,7 +6,7 @@ dotenv.config();
 
 const USAGE =
 	"Usage: bun run upload:cosmetic-asset <local-file> <r2-key> [--replace]\n" +
-	"Example: bun run upload:cosmetic-asset stages/kagura-castle/surface.webp playmats/kagura-castle/surface.webp\n" +
+	"Example: bun run upload:cosmetic-asset stages/kagura-castle-low-poly.webp playmats/kagura-castle/background.webp\n" +
 	"  --replace  overwrite an existing object. Renewing a theme's artwork is the\n" +
 	"             only routine reason to; without it an existing object is kept.";
 

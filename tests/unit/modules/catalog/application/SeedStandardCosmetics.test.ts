@@ -84,7 +84,7 @@ describe("SeedStandardCosmetics", () => {
 	});
 
 	// The 3D renderer is gone: companions have nothing to render and glTF playmats
-	// have no 2D surface, so neither may come back through a fresh seed.
+	// have no stage image, so neither may come back through a fresh seed.
 	describe("retired 3D cosmetics", () => {
 		it("ships no COMPANION cosmetic", () => {
 			expect(STANDARD_COSMETICS.some((entry) => entry.assetRef.startsWith("companions/"))).toBe(

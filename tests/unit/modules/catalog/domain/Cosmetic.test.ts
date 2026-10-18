@@ -7,7 +7,7 @@ import { InvalidArgumentError } from "../../../../../src/shared/errors/InvalidAr
 
 describe("Cosmetic", () => {
 	it("round-trips the persisted relative asset file index", () => {
-		const assetFiles = ["surface.webp", "background.webp", "theme.json"];
+		const assetFiles = ["background.webp", "background.webp", "theme.json"];
 		const cosmetic = Cosmetic.from({
 			id: "stage-1",
 			type: CosmeticType.PLAYMAT,

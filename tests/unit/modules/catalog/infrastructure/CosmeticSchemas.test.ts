@@ -29,14 +29,16 @@ const stage = Cosmetic.from({
 	assetRef: "playmats/kagura-castle/",
 	displayName: "Castillo de Kagura",
 	active: true,
-	assetFiles: ["surface.webp", "background.webp", "theme.json"],
+	assetFiles: ["background.webp"],
 });
 
 const signer: AssetUrlSigner = {
 	sign: () => "",
 	signMany: () => ({}),
 	signManifest: async (prefix, files) => ({
-		assets: Object.fromEntries((files ?? ["surface.webp"]).map((f) => [f, `signed:${prefix}${f}`])),
+		assets: Object.fromEntries(
+			(files ?? ["background.webp"]).map((f) => [f, `signed:${prefix}${f}`]),
+		),
 		expiresAt: "2030-01-01T00:00:00.000Z",
 	}),
 };
