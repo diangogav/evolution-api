@@ -105,6 +105,7 @@ describe("SeedStandardCosmetics", () => {
 				"playmats/mossy-ruins/",
 				"playmats/mystic-forest/",
 				"playmats/sakura-garden/",
+				"playmats/shadow-duel/",
 				"playmats/volcanic-forge/",
 			]);
 		});
