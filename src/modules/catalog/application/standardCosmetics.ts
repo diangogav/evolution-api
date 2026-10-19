@@ -119,6 +119,12 @@ export const STANDARD_COSMETICS: StandardCosmeticSeed[] = [
 		assetRef: "playmats/volcanic-forge/",
 		displayName: "Forja volcánica",
 	},
+	{
+		type: CosmeticType.PLAYMAT,
+		tier: CosmeticTier.STANDARD,
+		assetRef: "playmats/shadow-duel/",
+		displayName: "Duelo de las sombras",
+	},
 	// Lanes: the zone plate a player's zones wear, worn beside the playmat so any
 	// stage pairs with any plate. A plate is a plate.json of colours the board
 	// draws procedurally — no image files. Only coloured plates need a row: the
