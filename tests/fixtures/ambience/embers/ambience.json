@@ -1,0 +1,8 @@
+{
+	"version": 1,
+	"motes": [
+		{ "shape": "ember", "colors": ["#ff8a3d", "#ffb347", "#ff5e2e"], "share": 0.8 },
+		{ "shape": "spark", "colors": ["#ffe28a"], "share": 0.2 }
+	],
+	"sweep": "#ffb380"
+}

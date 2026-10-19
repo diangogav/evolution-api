@@ -1,0 +1,9 @@
+{
+	"version": 1,
+	"motes": [
+		{ "shape": "bat", "colors": ["#1a1024", "#2b1a3a"], "share": 0.5 },
+		{ "shape": "ember", "colors": ["#9b6bff", "#c69bff"], "share": 0.3 },
+		{ "shape": "spark", "colors": ["#d6c2ff"], "share": 0.2 }
+	],
+	"sweep": "#8a6bff"
+}
