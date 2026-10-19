@@ -143,6 +143,33 @@ export const STANDARD_COSMETICS: StandardCosmeticSeed[] = [
 		assetRef: "lanes/ice/",
 		displayName: "Hielo",
 	},
+	// Ambience: drifting motes and a light sweep over the stage, drawn from an
+	// ambience.json with no image files. The meadow default lives in the client
+	// like the standard plate, so it has no row.
+	{
+		type: CosmeticType.AMBIENCE,
+		tier: CosmeticTier.STANDARD,
+		assetRef: "ambience/embers/",
+		displayName: "Brasas",
+	},
+	{
+		type: CosmeticType.AMBIENCE,
+		tier: CosmeticTier.STANDARD,
+		assetRef: "ambience/snowfall/",
+		displayName: "Nevada",
+	},
+	{
+		type: CosmeticType.AMBIENCE,
+		tier: CosmeticTier.STANDARD,
+		assetRef: "ambience/petals/",
+		displayName: "Pétalos",
+	},
+	{
+		type: CosmeticType.AMBIENCE,
+		tier: CosmeticTier.STANDARD,
+		assetRef: "ambience/graveyard-bats/",
+		displayName: "Murciélagos del cementerio",
+	},
 	{
 		type: CosmeticType.AVATAR,
 		tier: CosmeticTier.REGISTERED,
