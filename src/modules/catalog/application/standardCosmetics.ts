@@ -95,6 +95,30 @@ export const STANDARD_COSMETICS: StandardCosmeticSeed[] = [
 		assetRef: "playmats/halloween-graveyard/",
 		displayName: "Cementerio de Halloween",
 	},
+	{
+		type: CosmeticType.PLAYMAT,
+		tier: CosmeticTier.STANDARD,
+		assetRef: "playmats/desert-temple/",
+		displayName: "Templo del desierto",
+	},
+	{
+		type: CosmeticType.PLAYMAT,
+		tier: CosmeticTier.STANDARD,
+		assetRef: "playmats/frozen-sanctuary/",
+		displayName: "Santuario helado",
+	},
+	{
+		type: CosmeticType.PLAYMAT,
+		tier: CosmeticTier.STANDARD,
+		assetRef: "playmats/sakura-garden/",
+		displayName: "Jardín de sakura",
+	},
+	{
+		type: CosmeticType.PLAYMAT,
+		tier: CosmeticTier.STANDARD,
+		assetRef: "playmats/volcanic-forge/",
+		displayName: "Forja volcánica",
+	},
 	// Lanes: the zone plate a player's zones wear, worn beside the playmat so any
 	// stage pairs with any plate. A plate is a plate.json of colours the board
 	// draws procedurally — no image files. Only coloured plates need a row: the

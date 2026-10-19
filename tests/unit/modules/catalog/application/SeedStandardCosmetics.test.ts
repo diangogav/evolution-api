@@ -97,11 +97,15 @@ describe("SeedStandardCosmetics", () => {
 			const playmats = STANDARD_COSMETICS.filter((entry) => entry.type === CosmeticType.PLAYMAT);
 			expect(playmats.map((entry) => entry.assetRef).sort()).toEqual([
 				"playmats/arcane/",
+				"playmats/desert-temple/",
 				"playmats/frog-pond/",
+				"playmats/frozen-sanctuary/",
 				"playmats/halloween-graveyard/",
 				"playmats/kagura-castle/",
 				"playmats/mossy-ruins/",
 				"playmats/mystic-forest/",
+				"playmats/sakura-garden/",
+				"playmats/volcanic-forge/",
 			]);
 		});
 	});
