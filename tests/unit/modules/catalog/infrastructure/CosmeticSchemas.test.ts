@@ -138,4 +138,37 @@ describe("PublishedCosmeticSchema", () => {
 
 		expect(Value.Check(PublishedCosmeticSchema, published)).toBe(true);
 	});
+
+	it("accepts a published AMBIENCE cosmetic", async () => {
+		const storage: CosmeticAssetStorage = {
+			put: async () => undefined,
+			delete: async () => undefined,
+		};
+		const repository: CosmeticRepository = {
+			findAll: async () => [],
+			findById: async () => null,
+			save: async () => undefined,
+		};
+		const published = await new PublishCosmetic(repository, storage)
+			.run({
+				type: CosmeticType.AMBIENCE,
+				tier: CosmeticTier.STANDARD,
+				assetRef: "ambience/embers/",
+				displayName: "Brasas",
+				files: [
+					{
+						name: "ambience.json",
+						bytes: new TextEncoder().encode(
+							JSON.stringify({
+								version: 1,
+								motes: [{ shape: "ember", colors: ["#ff8a3d"], share: 1 }],
+							}),
+						),
+					},
+				],
+			})
+			.then(wire);
+
+		expect(Value.Check(PublishedCosmeticSchema, published)).toBe(true);
+	});
 });

@@ -1,9 +1,12 @@
 import { describe, expect, it } from "bun:test";
 
 import { InvalidArgumentError } from "../../../../../src/shared/errors/InvalidArgumentError";
-import { parseAmbience } from "../../../../../src/modules/catalog/domain/Ambience";
+import {
+	type AmbienceMote,
+	parseAmbience,
+} from "../../../../../src/modules/catalog/domain/Ambience";
 
-const parsedValid = {
+const parsedValid: { motes: AmbienceMote[]; sweep: string } = {
 	motes: [
 		{ shape: "ember", colors: ["#ff8a3d", "#ffb347"], share: 0.8 },
 		{ shape: "spark", colors: ["#ffe28a"], share: 0.2 },

@@ -5,6 +5,7 @@ import { Cosmetic } from "../domain/Cosmetic";
 import type { CosmeticRepository } from "../domain/CosmeticRepository";
 import { CosmeticTier } from "../domain/CosmeticTier";
 import { CosmeticType } from "../domain/CosmeticType";
+import { AMBIENCE_MANIFEST, parseAmbience } from "../domain/Ambience";
 import { assertEmotePackFiles, MAX_EMOTE_PACK_FILES } from "../domain/EmotePack";
 import { parseZonePlate, ZONE_PLATE_MANIFEST } from "../domain/ZonePlate";
 
@@ -22,6 +23,7 @@ const PREFIX_BY_TYPE: Partial<Record<CosmeticType, string>> = {
 	[CosmeticType.PLAYMAT]: "playmats",
 	[CosmeticType.AVATAR]: "avatars",
 	[CosmeticType.LANE]: "lanes",
+	[CosmeticType.AMBIENCE]: "ambience",
 	[CosmeticType.EMOTE_PACK]: "emote-packs",
 };
 
@@ -101,6 +103,11 @@ function assertRequiredFiles(type: CosmeticType, names: ReadonlySet<string>): vo
 	if (type === CosmeticType.LANE && (names.size !== 1 || !names.has(ZONE_PLATE_MANIFEST))) {
 		throw new InvalidArgumentError(`LANE requires exactly one file: ${ZONE_PLATE_MANIFEST}`);
 	}
+
+	// Ambience is drawn from ambience.json alone, fetched by its exact key.
+	if (type === CosmeticType.AMBIENCE && (names.size !== 1 || !names.has(AMBIENCE_MANIFEST))) {
+		throw new InvalidArgumentError(`AMBIENCE requires exactly one file: ${AMBIENCE_MANIFEST}`);
+	}
 }
 
 export class PublishCosmetic {
@@ -142,6 +149,9 @@ export class PublishCosmetic {
 		}
 		if (input.type === CosmeticType.LANE) {
 			parseZonePlate(input.files[0].bytes);
+		}
+		if (input.type === CosmeticType.AMBIENCE) {
+			parseAmbience(input.files[0].bytes);
 		}
 
 		const duplicate = (await this.cosmetics.findAll()).find(
