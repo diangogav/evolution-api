@@ -110,6 +110,24 @@ describe("SeedStandardCosmetics", () => {
 		});
 	});
 
+	// Ambience is drifting motes drawn from ambience.json; the meadow default is
+	// client-only and needs no row.
+	describe("ambience", () => {
+		it("ships the ambience skins as STANDARD cosmetics under their own prefix", () => {
+			const skins = STANDARD_COSMETICS.filter((entry) => entry.type === CosmeticType.AMBIENCE);
+
+			expect(skins.map((entry) => [entry.assetRef, entry.displayName])).toEqual([
+				["ambience/embers/", "Brasas"],
+				["ambience/snowfall/", "Nevada"],
+				["ambience/petals/", "Pétalos"],
+				["ambience/graveyard-bats/", "Murciélagos del cementerio"],
+			]);
+			for (const skin of skins) {
+				expect(skin.tier).toBe(CosmeticTier.STANDARD);
+			}
+		});
+	});
+
 	// Lanes ship as their own cosmetic so a player can pair any stage with any
 	// plate; the two art-less choices live in the client and need no row here.
 	describe("lanes", () => {

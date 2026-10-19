@@ -8,6 +8,8 @@ export enum CosmeticType {
 	TITLE = "TITLE",
 	/** The frame a player's zones wear, worn beside the playmat. */
 	LANE = "LANE",
+	/** Drifting motes and a light sweep the board draws over the stage. */
+	AMBIENCE = "AMBIENCE",
 	/** A set of Lottie emotes a player can place on the emote bar. */
 	EMOTE_PACK = "EMOTE_PACK",
 }

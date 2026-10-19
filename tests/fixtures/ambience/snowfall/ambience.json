@@ -1,0 +1,5 @@
+{
+	"version": 1,
+	"motes": [{ "shape": "snow", "colors": ["#ffffff", "#dbeeff", "#bcd9ff"], "share": 1.0 }],
+	"sweep": "#e6f2ff"
+}

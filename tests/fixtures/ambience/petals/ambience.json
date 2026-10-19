@@ -1,0 +1,8 @@
+{
+	"version": 1,
+	"motes": [
+		{ "shape": "petal", "colors": ["#ffb7d5", "#ff8fbf", "#ffd3e5"], "share": 0.85 },
+		{ "shape": "bubble", "colors": ["#ffffff"], "share": 0.15 }
+	],
+	"sweep": "#ffe0ec"
+}

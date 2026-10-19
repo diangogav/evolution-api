@@ -215,6 +215,93 @@ describe("PublishCosmetic", () => {
 			}),
 		).rejects.toThrow("assetRef for LANE must match lanes/kebab-case-slug/");
 	});
+	describe("AMBIENCE", () => {
+		const encoder = new TextEncoder();
+		const manifest = (value: unknown) => encoder.encode(JSON.stringify(value));
+		const valid = {
+			version: 1,
+			motes: [{ shape: "ember", colors: ["#ff8a3d", "#ffb347"], share: 0.8 }],
+			sweep: "#ffb380",
+		};
+		const ambience = (files: { name: string; bytes: Uint8Array }[]) => ({
+			type: CosmeticType.AMBIENCE,
+			tier: CosmeticTier.STANDARD,
+			assetRef: "ambience/embers/",
+			displayName: "Brasas",
+			files,
+		});
+
+		it("stores a valid ambience.json under the ambience prefix", async () => {
+			const { publish, uploads, saved } = setup();
+
+			const result = await publish.run(
+				ambience([{ name: "ambience.json", bytes: manifest(valid) }]),
+			);
+
+			expect(result.assetFiles).toEqual(["ambience.json"]);
+			expect(uploads[0]?.key).toBe("ambience/embers/ambience.json");
+			expect(uploads[0]?.contentType).toBe("application/json");
+			expect(saved[0]?.type).toBe(CosmeticType.AMBIENCE);
+		});
+
+		it("rejects a wrongly named file, before touching storage", async () => {
+			const { publish, uploads } = setup();
+
+			await expect(
+				publish.run(ambience([{ name: "Ambience.JSON", bytes: manifest(valid) }])),
+			).rejects.toThrow("AMBIENCE requires exactly one file: ambience.json");
+
+			expect(uploads).toHaveLength(0);
+		});
+
+		it("rejects any extra file next to ambience.json", async () => {
+			const { publish, uploads } = setup();
+
+			await expect(
+				publish.run(
+					ambience([
+						{ name: "ambience.json", bytes: manifest(valid) },
+						{ name: "extra.webp", bytes: new Uint8Array([1]) },
+					]),
+				),
+			).rejects.toThrow("AMBIENCE requires exactly one file: ambience.json");
+
+			expect(uploads).toHaveLength(0);
+		});
+
+		it("rejects an invalid manifest, before touching storage", async () => {
+			const { publish, uploads, saved } = setup();
+
+			await expect(
+				publish.run(
+					ambience([
+						{
+							name: "ambience.json",
+							bytes: manifest({
+								...valid,
+								motes: [{ shape: "star", colors: ["#ffffff"], share: 1 }],
+							}),
+						},
+					]),
+				),
+			).rejects.toThrow("ambience.json motes[0].shape");
+
+			expect(uploads).toHaveLength(0);
+			expect(saved).toHaveLength(0);
+		});
+
+		it("keeps ambience out of other prefixes", async () => {
+			const { publish } = setup();
+
+			await expect(
+				publish.run({
+					...ambience([{ name: "ambience.json", bytes: manifest(valid) }]),
+					assetRef: "lanes/embers/",
+				}),
+			).rejects.toThrow("assetRef for AMBIENCE must match ambience/kebab-case-slug/");
+		});
+	});
+
 	describe("EMOTE_PACK", () => {
 		const encoder = new TextEncoder();
 		const lottie = encoder.encode(
