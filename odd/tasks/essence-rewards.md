@@ -49,7 +49,7 @@ Objective: a reward system with a currency ("Esencia", code name `essence`) earn
 | ID | Specs | Route | Status | Evidence |
 |---|---|---|---|---|
 | T1 | S1 | inline | done | commit "feat(rewards): add essence ledger with idempotent append and balance": RED 2 files failing (modules missing) → GREEN 8 tests; bun test 731 pass; lint and build clean. Risk: none. RDD assess: medium, review_due=false (under_budget), slice open from 6317f93 |
-| T2 | S2, S3 | inline | pending | catalog migration + seed + pure rules engine + tests |
+| T2 | S2, S3 | inline | done | commit "feat(rewards): add mission catalog and pure rules engine": RED 4 files failing → GREEN 28 module tests; suite green; lint and build clean. Catalog gained `name`/`description` columns (needed by S5 responses). Risk: none |
 | T3 | S4 | inline | pending | worker, cursor, progress projection, compose service, integration test |
 | T4 | S5 | inline | pending | missions router + claim use case + schema tests |
 | T5 | S6 | inline | pending | price migration, essence + shop routers, purchase use case |
@@ -70,4 +70,5 @@ Forecast: ~1,400 authored changed lines. Chain strategy (user, 2026-10-23): `sta
 - L6 (2026-10-23, user, verbatim): "si, con worker, arma la especificación" → this document created.
 - L7 (2026-10-23, user, verbatim): "en las misiones coviene solo ganar esencia ? o tmb cosmeticos?" → "si" to the proposal: regular missions reward essence only; `reward` becomes polymorphic (`essence` | `cosmetic`) so event missions can grant cosmetics later. S2 and S5 rewritten. Branch `feat/essence-rewards` created from main (6317f93).
 - L8 (2026-10-23, user): "t2 va en la misma pr>" → yes, PR1 = T1+T2; "q recomiendas?" → stacked-to-main, user: "si".
-- L9 (2026-10-23): T1 done (commit "feat(rewards): add essence ledger with idempotent append and balance"). Next: T2 (mission catalog migration + seed + pure rules engine).
+- L9 (2026-10-23): T1 done (commit "feat(rewards): add essence ledger with idempotent append and balance"). 
+- L10 (2026-10-23): T2 done. Next: open PR1 (T1+T2) against main, then T3 (worker) on a child branch.
