@@ -71,4 +71,4 @@ Forecast: ~1,400 authored changed lines. Chain strategy (user, 2026-10-23): `sta
 - L7 (2026-10-23, user, verbatim): "en las misiones coviene solo ganar esencia ? o tmb cosmeticos?" → "si" to the proposal: regular missions reward essence only; `reward` becomes polymorphic (`essence` | `cosmetic`) so event missions can grant cosmetics later. S2 and S5 rewritten. Branch `feat/essence-rewards` created from main (6317f93).
 - L8 (2026-10-23, user): "t2 va en la misma pr>" → yes, PR1 = T1+T2; "q recomiendas?" → stacked-to-main, user: "si".
 - L9 (2026-10-23): T1 done (commit "feat(rewards): add essence ledger with idempotent append and balance"). 
-- L10 (2026-10-23): T2 done. Next: open PR1 (T1+T2) against main, then T3 (worker) on a child branch.
+- L10 (2026-10-23): T2 done. PR1 = https://github.com/diangogav/evolution-api/pull/122 (feat/essence-rewards → main). Next: T3 (worker) on branch feat/essence-rewards-worker based on feat/essence-rewards, PR targeting main.
