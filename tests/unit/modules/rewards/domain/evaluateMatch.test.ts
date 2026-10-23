@@ -11,8 +11,8 @@ function mission(code: string, rule: MissionRule, period: Mission["period"] = "d
 	return {
 		id: `id-${code}`,
 		code,
-		name: code,
-		description: code,
+		name: { en: code },
+		description: { en: code },
 		period,
 		rule,
 		reward: { type: "essence", amount: 20 },

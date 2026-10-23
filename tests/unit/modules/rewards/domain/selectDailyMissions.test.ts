@@ -7,8 +7,8 @@ function mission(code: string, overrides: Partial<Mission> = {}): Mission {
 	return {
 		id: `id-${code}`,
 		code,
-		name: code,
-		description: code,
+		name: { en: code },
+		description: { en: code },
 		period: "daily",
 		rule: { metric: "duelsPlayed", target: 3 },
 		reward: { type: "essence", amount: 20 },

@@ -1,3 +1,5 @@
+import { LocalizedText } from "./LocalizedText";
+
 export type MissionPeriod = "daily" | "weekly";
 
 export const MISSION_METRICS = [
@@ -25,8 +27,8 @@ export type MissionReward =
 export type Mission = {
 	id: string;
 	code: string;
-	name: string;
-	description: string;
+	name: LocalizedText;
+	description: LocalizedText;
 	period: MissionPeriod;
 	rule: MissionRule;
 	reward: MissionReward;

@@ -19,8 +19,8 @@ describe("MissionCatalogPostgresRepository", () => {
 			{
 				id: "11111111-1111-4111-8111-111111111111",
 				code: "play_3",
-				name: "Play 3 duels",
-				description: "Play 3 duels today",
+				name: { en: "Play 3 duels", es: "Juega 3 duelos" },
+				description: { en: "Play 3 duels today", es: "Juega 3 duelos hoy" },
 				period: "daily",
 				rule: { metric: "duelsPlayed", target: 3 },
 				reward: { type: "essence", amount: 20 },
@@ -35,8 +35,8 @@ describe("MissionCatalogPostgresRepository", () => {
 			{
 				id: "11111111-1111-4111-8111-111111111111",
 				code: "play_3",
-				name: "Play 3 duels",
-				description: "Play 3 duels today",
+				name: { en: "Play 3 duels", es: "Juega 3 duelos" },
+				description: { en: "Play 3 duels today", es: "Juega 3 duelos hoy" },
 				period: "daily",
 				rule: { metric: "duelsPlayed", target: 3 },
 				reward: { type: "essence", amount: 20 },
