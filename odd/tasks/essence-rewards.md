@@ -58,7 +58,7 @@ Objective: a reward system with a currency ("Esencia", code name `essence`) earn
 
 Route note: all units touch shared files (worker, router registration) sequentially, so no parallel-writer reason holds; T3 and T5 name high-risk items (item 1: new persisted format with cursor; item 4: concurrency on claim/purchase) and get an independent verifier after their own checks.
 
-Forecast: ~1,400 authored changed lines; chain strategy to be asked at the first slice over 400 (`ask-on-risk`).
+Forecast: ~1,400 authored changed lines. Chain strategy (user, 2026-10-23): `stacked-to-main`, every PR targets main and merges in order. Slices: PR1 = T1+T2 (foundations, inert), PR2 = T3 alone (worker, high risk), PR3 = T4+T5 (API), PR4 = T6+T7. After each squash merge rebase the child `--onto main`; retarget the child to main before merging a base with branch deletion.
 
 ## Log
 
@@ -69,4 +69,5 @@ Forecast: ~1,400 authored changed lines; chain strategy to be asked at the first
 - L5 (2026-10-23, user, verbatim): "si, esencia" → currency named Esencia.
 - L6 (2026-10-23, user, verbatim): "si, con worker, arma la especificación" → this document created.
 - L7 (2026-10-23, user, verbatim): "en las misiones coviene solo ganar esencia ? o tmb cosmeticos?" → "si" to the proposal: regular missions reward essence only; `reward` becomes polymorphic (`essence` | `cosmetic`) so event missions can grant cosmetics later. S2 and S5 rewritten. Branch `feat/essence-rewards` created from main (6317f93).
-- L8 (2026-10-23): T1 done (commit "feat(rewards): add essence ledger with idempotent append and balance"). Next: T2 (mission catalog migration + seed + pure rules engine).
+- L8 (2026-10-23, user): "t2 va en la misma pr>" → yes, PR1 = T1+T2; "q recomiendas?" → stacked-to-main, user: "si".
+- L9 (2026-10-23): T1 done (commit "feat(rewards): add essence ledger with idempotent append and balance"). Next: T2 (mission catalog migration + seed + pure rules engine).
