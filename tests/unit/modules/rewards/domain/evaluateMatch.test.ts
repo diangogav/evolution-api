@@ -27,6 +27,7 @@ function facts(overrides: Partial<MatchFacts> = {}): MatchFacts {
 		userId: "user-1",
 		won: true,
 		ranked: true,
+		opponentRegistered: true,
 		banListName: "2026.10 TCG",
 		date: new Date("2026-10-23T10:00:00Z"),
 		duels: [{ result: "winner", turns: 8 }],
@@ -173,6 +174,27 @@ describe("evaluateMatch", () => {
 			value: 3,
 			completed: true,
 		});
+	});
+
+	it("pays win metrics only against a registered opponent, while play metrics still count", () => {
+		const guest = facts({
+			won: true,
+			opponentRegistered: false,
+			duels: [{ result: "winner", turns: 5 }],
+		});
+		const result = evaluateMatch(guest, state({ lastFormat: "Edison" }), [
+			play3,
+			win1,
+			winFast,
+			winOtherFormat,
+		]);
+
+		expect(result.progress.map((p) => [p.missionCode, p.value])).toEqual([
+			["play_3", 1],
+			["win_1", 0],
+			["win_fast", 0],
+			["win_other_format", 0],
+		]);
 	});
 
 	it("always records the match format as the new last format", () => {

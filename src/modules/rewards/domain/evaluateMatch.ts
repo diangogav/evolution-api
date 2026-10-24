@@ -10,6 +10,8 @@ export type MatchFacts = {
 	userId: string;
 	won: boolean;
 	ranked: boolean;
+	// True when every opponent has a user id. Wins against anonymous guests never pay.
+	opponentRegistered: boolean;
 	banListName: string;
 	date: Date;
 	duels: DuelFacts[];
@@ -81,22 +83,23 @@ function nextValue(
 	state: RewardState,
 	rankedStreak: number,
 ): number {
+	const paidWin = facts.won && facts.opponentRegistered;
 	switch (metric) {
 		case "duelsPlayed":
 			return current + 1;
 		case "duelsWon":
-			return current + (facts.won ? 1 : 0);
+			return current + (paidWin ? 1 : 0);
 		case "rankedDuelsPlayed":
 			return current + (facts.ranked ? 1 : 0);
 		case "rankedWinStreak":
 			// A completed streak stays completed; otherwise the live streak is the value.
 			return Math.max(current, rankedStreak);
 		case "winUnder10Turns":
-			return current + (facts.won && wonAnyDuelFast(facts) ? 1 : 0);
+			return current + (paidWin && wonAnyDuelFast(facts) ? 1 : 0);
 		case "winDifferentFormat":
 			return (
 				current +
-				(facts.won && state.lastFormat !== null && state.lastFormat !== facts.banListName ? 1 : 0)
+				(paidWin && state.lastFormat !== null && state.lastFormat !== facts.banListName ? 1 : 0)
 			);
 	}
 }
