@@ -35,10 +35,12 @@ Modules that exist today (`src/modules/*`):
 
 | Module | Responsibility |
 | --- | --- |
+| `achievements` | Achievement catalog and a user's achievement record. |
 | `assets` | Signed URLs and storage for cosmetic asset files, backed by R2. |
 | `auth` | Login use case and its request/response schemas. |
 | `ban-list` | Ban list catalog and grouping by format. |
 | `catalog` | Cosmetics catalog: listing, admin listing, publishing, seeding standard cosmetics. |
+| `emote-bar` | A player's equipped emote bar — own view and public view. |
 | `entitlements` | What cosmetics a user has access to, and granting them. |
 | `loadout` | A player's equipped cosmetics — own view and public view. |
 | `match` | Match history retrieval. |
@@ -58,6 +60,8 @@ Modules that exist today (`src/modules/*`):
 | Router | Prefix | Source |
 | --- | --- | --- |
 | `userRouter` | `/users` | `src/server/routes/user-router.ts` |
+| `achievementsRouter` | `/achievements` | `src/server/routes/achievements-router.ts` |
+| `userAchievementsRouter` | `/users` | `src/server/routes/achievements-router.ts` |
 | `leaderboardRouter` | `/stats` | `src/server/routes/leaderboard-router.ts` |
 | `rankedTiersRouter` | `/ranked-tiers` | `src/server/routes/ranked-tiers-router.ts` |
 | `banListRouter` | `/ban-lists` | `src/server/routes/ban-list-router.ts` |
@@ -65,10 +69,15 @@ Modules that exist today (`src/modules/*`):
 | `ticketRouter` | `/game-tickets` | `src/server/routes/ticket-router.ts` |
 | `cosmeticsRouter` | `/cosmetics` | `src/server/routes/cosmetics-router.ts` |
 | `meCosmeticsRouter` | `/me/cosmetics` | `src/server/routes/me-cosmetics-router.ts` |
+| `emoteBarRouter` | `/me/emote-bar` | `src/server/routes/emote-bar-router.ts` |
 | `loadoutRouter` | `/me/loadout` | `src/server/routes/loadout-router.ts` |
 | `publicLoadoutRouter` | `/users/by-username/:username/loadout` | `src/server/routes/public-loadout-router.ts` |
+| `publicEmoteBarRouter` | `/users/by-username/:username/emote-bar` | `src/server/routes/public-emote-bar-router.ts` |
 | `adminCosmeticsRouter` | `/admin/cosmetics` | `src/server/routes/admin-cosmetics-router.ts` |
 | `adminModerationRouter` | `/admin/matches` | `src/server/routes/admin-moderation-router.ts` |
+| `missionsRouter` | `/me/missions` | `src/server/routes/missions-router.ts` |
+| `essenceRouter` | `/me/essence` | `src/server/routes/shop-router.ts` |
+| `shopRouter` | `/shop` | `src/server/routes/shop-router.ts` |
 
 ## Data
 
@@ -77,11 +86,11 @@ Both `DataSource`s point at the same Postgres instance but track migrations inde
 | DataSource | File | Scope | Migrations table |
 | --- | --- | --- | --- |
 | Shared (evolution-types) | `src/evolution-types/src/data-source.ts` | Users, matches, tournaments, stats, bans, achievements, ratings, points ledger, lightning tournaments/ranking | `migrations` (owned and run by the game server) |
-| Cosmetics | `src/cosmetics-data-source.ts` | Cosmetics, entitlements, user loadouts | `cosmetics_migrations`, migrations in `src/migrations/` |
+| Cosmetics | `src/cosmetics-data-source.ts` | Cosmetics, entitlements, user loadouts and emote bars, rewards (essence ledger, missions, claims, projections) | `cosmetics_migrations`, migrations in `src/migrations/` |
 
 `src/evolution-types/` is a vendored package owned by the game server. Do not edit its entities or migrations from this repository; it is shared infrastructure, not API-local code. The cosmetics `DataSource` declares its foreign key to `users(id)` in raw SQL inside its own migration, so it never manages the shared `users` table.
 
-Module-to-DataSource mapping: `catalog`, `loadout`, and `entitlements` use the cosmetics `DataSource`. Every other module that touches Postgres (`user`, `match`, `match-annulment`, `points-ledger`, `rating`, `stats`, `tiers`, `ban-list`) uses the shared `evolution-types` `DataSource`. `ticket` uses Redis, not Postgres. Both `DataSource`s are initialized at startup in `src/index.ts`.
+Module-to-DataSource mapping: `catalog`, `loadout`, `emote-bar`, `entitlements`, and `rewards` use the cosmetics `DataSource` (`rewards` also reads matches and achievements from the shared schema through its `*Source` adapters). Every other module that touches Postgres (`user`, `achievements`, `match`, `match-annulment`, `points-ledger`, `rating`, `stats`, `tiers`, `ban-list`) uses the shared `evolution-types` `DataSource`. `ticket` uses Redis, not Postgres. Both `DataSource`s are initialized at startup in `src/index.ts`.
 
 ## Errors
 
@@ -94,8 +103,10 @@ Shared error classes live in `src/shared/errors/`. `mapDomainErrorStatus` in `sr
 | `NotFoundError` | 404 |
 | `InvalidArgumentError` | 400 |
 | `ForbiddenError` | 403 |
+| `UnprocessableError` | 422 |
+| `PaymentRequiredError` | 402 |
 
-Throw one of these from a use case or controller instead of setting `set.status` by hand. Response bodies for mapped errors are `text/plain` (the error's message) — `onError` only sets the status code, it does not shape a body. Elysia's own request validation fails independently of `onError` and answers `422` with a JSON body; production only sends `type`, `on` and `found` (`src/server/openapi/responses.ts`, `ValidationErrorSchema`). Anything that is not one of the five classes above — a plain `Error`, or an unmapped TypeORM `EntityNotFoundError` from a raw `findOneOrFail` — falls through unmapped and answers `500`. A use case should check existence itself and throw `NotFoundError` before reaching for `findOneOrFail`, the way `UserBanUser` does via `UserBanRepository.userExists`, so an unknown id answers a mapped `404` instead.
+Throw one of these from a use case or controller instead of setting `set.status` by hand. Response bodies for mapped errors are `text/plain` (the error's message) — `onError` only sets the status code, it does not shape a body. Elysia's own request validation fails independently of `onError` and answers `422` with a JSON body; production only sends `type`, `on` and `found` (`src/server/openapi/responses.ts`, `ValidationErrorSchema`). Anything that is not one of the seven classes above — a plain `Error`, or an unmapped TypeORM `EntityNotFoundError` from a raw `findOneOrFail` — falls through unmapped and answers `500`. A use case should check existence itself and throw `NotFoundError` before reaching for `findOneOrFail`, the way `UserBanUser` does via `UserBanRepository.userExists`, so an unknown id answers a mapped `404` instead.
 
 ## Auth
 
@@ -105,7 +116,7 @@ Throw one of these from a use case or controller instead of setting `set.status`
 | `banGuard` | `src/server/guards/bandGuard.ts` | `beforeHandle` that decodes the bearer token and throws `AuthenticationError` (401) if it is missing or invalid, or `ForbiddenError` (403) if the user has an active ban. |
 | `JwtAdminAuthorizer` | `src/server/auth/AdminAuthorizer.ts` | `requireAdmin(token)`: throws `AuthenticationError` if the token is missing or has no user id, `ForbiddenError` if the decoded role is not `ADMIN`. Used by `admin-cosmetics-router.ts` and `admin-moderation-router.ts`. |
 
-Which routers use `banGuard`: **`user-router.ts`** (its authenticated, non-admin endpoints), **`ticket-router.ts`**, **`me-cosmetics-router.ts`**, and **`loadout-router.ts`** use it. **`cosmetics-router.ts`, `public-loadout-router.ts`, `admin-cosmetics-router.ts`, and `admin-moderation-router.ts` do not** — `cosmetics-router.ts` and `public-loadout-router.ts` serve public, unauthenticated reads, so there is no bearer token to check a ban against. Admin endpoints inside `user-router.ts` (ban/unban a user) check the decoded `role` inline rather than through `JwtAdminAuthorizer`; `admin-cosmetics-router.ts` and `admin-moderation-router.ts` use `JwtAdminAuthorizer` consistently. Ban routes are intentionally outside `banGuard` (an admin must be able to act on a banned user); annulment routes use `JwtAdminAuthorizer`.
+Which routers use `banGuard`: **`user-router.ts`** (its authenticated, non-admin endpoints), **`ticket-router.ts`**, **`me-cosmetics-router.ts`**, **`loadout-router.ts`**, **`emote-bar-router.ts`**, **`missions-router.ts`**, and **`shop-router.ts`** use it. **`cosmetics-router.ts`, `public-loadout-router.ts`, `public-emote-bar-router.ts`, `achievements-router.ts`, `admin-cosmetics-router.ts`, and `admin-moderation-router.ts` do not** — `cosmetics-router.ts`, `public-loadout-router.ts`, `public-emote-bar-router.ts`, and `achievements-router.ts` serve public, unauthenticated reads, so there is no bearer token to check a ban against. Admin endpoints inside `user-router.ts` (ban/unban a user) check the decoded `role` inline rather than through `JwtAdminAuthorizer`; `admin-cosmetics-router.ts` and `admin-moderation-router.ts` use `JwtAdminAuthorizer` consistently. Ban routes are intentionally outside `banGuard` (an admin must be able to act on a banned user); annulment routes use `JwtAdminAuthorizer`.
 
 ## External services
 
@@ -170,7 +181,7 @@ Domain error?  ──yes──▶ mapDomainErrorStatus (server.ts) ──▶ map
 2xx JSON response (schema documented in detail.responses)
 ```
 
-An error the use case does not throw as one of the five shared classes (a plain `Error`, an unwrapped `EntityNotFoundError`, an upstream fetch failure) skips the mapping step and reaches the client as an unmapped `500`.
+An error the use case does not throw as one of the seven shared classes (a plain `Error`, an unwrapped `EntityNotFoundError`, an upstream fetch failure) skips the mapping step and reaches the client as an unmapped `500`.
 
 `UserBanUser` avoids this for `POST /:userId/ban` by checking
 `UserBanRepository.userExists` up front (including soft-deleted, i.e.
