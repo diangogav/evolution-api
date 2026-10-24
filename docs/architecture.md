@@ -45,6 +45,7 @@ Modules that exist today (`src/modules/*`):
 | `match-annulment` | Batch annulment and reinstatement of ranked matches. |
 | `points-ledger` | Per-match points entries that feed the ranked tiers. |
 | `rating` | Elo rating compensation when a match is annulled or reinstated. |
+| `rewards` | Essence ledger, missions, the worker that projects progress from match results, the shop (see `rewards.md`). |
 | `stats` | Player and global statistics, leaderboard, player of the week. |
 | `ticket` | Ranked game tickets, backed by Redis. |
 | `tiers` | Ranked tier resolution and the tier catalog (see `ranked-tiers.md`). |
