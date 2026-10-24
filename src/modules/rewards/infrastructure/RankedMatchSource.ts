@@ -66,7 +66,7 @@ export class RankedMatchSource implements MatchSource {
 
 // opponent_ids is a simple-array column: comma-separated, empty when unknown. Every
 // slot must carry an id for the opponent side to count as registered.
-function hasRegisteredOpponents(opponentIds: string | null): boolean {
+export function hasRegisteredOpponents(opponentIds: string | null): boolean {
 	if (!opponentIds) return false;
 	return opponentIds.split(",").every((id) => id.trim().length > 0);
 }

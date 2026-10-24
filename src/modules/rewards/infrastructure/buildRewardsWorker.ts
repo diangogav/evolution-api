@@ -7,12 +7,13 @@ import { MissionCatalogPostgresRepository } from "./MissionCatalogPostgresReposi
 import { RankedMatchSource } from "./RankedMatchSource";
 import { RewardsProjectionPostgresRepository } from "./RewardsProjectionPostgresRepository";
 import { RewardsWorker } from "./RewardsWorker";
+import { UnrankedMatchSource } from "./UnrankedMatchSource";
 import { UserAchievementSource } from "./UserAchievementSource";
 
 // Composition root for the worker, shared by the API process and the standalone entrypoint.
 export function buildRewardsWorker(logger: Logger): RewardsWorker {
 	const tick = new ProcessRewardsTick(
-		[new RankedMatchSource()],
+		[new RankedMatchSource(), new UnrankedMatchSource()],
 		new RewardsProjectionPostgresRepository(),
 		new MissionCatalogPostgresRepository(),
 		new CosmeticsUnitOfWork(),
