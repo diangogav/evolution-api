@@ -20,21 +20,29 @@ const cosmetic = Cosmetic.create({
 
 function setup(existing: Entitlement[] = []) {
 	const saved: Entitlement[] = [];
+	const managers: unknown[] = [];
 	const cosmetics: CosmeticRepository = {
 		findAll: async () => [cosmetic],
-		findById: async (id) => (id === cosmetic.id ? cosmetic : null),
+		findById: async (id, manager) => {
+			managers.push(manager);
+			return id === cosmetic.id ? cosmetic : null;
+		},
 		save: async () => undefined,
 	};
 	const entitlements: EntitlementRepository = {
-		findByUserId: async () => existing,
-		save: async (entitlement) => {
+		findByUserId: async (_userId, manager) => {
+			managers.push(manager);
+			return existing;
+		},
+		save: async (entitlement, manager) => {
+			managers.push(manager);
 			saved.push(entitlement);
 		},
 	};
 	const grant = new GrantCosmeticToUser(cosmetics, entitlements, {
 		findUserIdByUsername: async (username) => (username === "Diango" ? "user-1" : null),
 	});
-	return { grant, saved };
+	return { grant, saved, managers };
 }
 
 describe("GrantCosmeticToUser", () => {
@@ -63,6 +71,18 @@ describe("GrantCosmeticToUser", () => {
 		await expect(
 			grant.run({ cosmeticId: "missing", username: "Nobody", source: EntitlementSource.CAMPAIGN }),
 		).rejects.toThrow('Cosmetic "missing" not found');
+	});
+
+	it("runs every read and write on the caller's transaction manager when given", async () => {
+		const { grant, managers } = setup();
+		const manager = { query: async () => [] };
+
+		await grant.runForUserId(
+			{ cosmeticId: cosmetic.id, userId: "user-9", source: EntitlementSource.PURCHASE },
+			manager,
+		);
+
+		expect(managers).toEqual([manager, manager, manager]);
 	});
 
 	it("grants by user id without a directory lookup", async () => {

@@ -1,11 +1,12 @@
-import { cosmeticsDataSource } from "../../../cosmetics-data-source";
+import type { QueryableManager } from "../../../shared/persistence/QueryableManager";
+import { repositoryOn } from "../../../shared/persistence/repositoryOn";
 import { Entitlement } from "../domain/Entitlement";
 import { EntitlementRepository } from "../domain/EntitlementRepository";
 import { EntitlementEntity } from "./EntitlementEntity";
 
 export class EntitlementPostgresRepository implements EntitlementRepository {
-	async findByUserId(userId: string): Promise<Entitlement[]> {
-		const repository = cosmeticsDataSource.getRepository(EntitlementEntity);
+	async findByUserId(userId: string, manager?: QueryableManager): Promise<Entitlement[]> {
+		const repository = repositoryOn(manager, EntitlementEntity);
 		const rows = await repository.find({ where: { userId } });
 
 		return rows.map((row) =>
@@ -20,8 +21,8 @@ export class EntitlementPostgresRepository implements EntitlementRepository {
 		);
 	}
 
-	async save(entitlement: Entitlement): Promise<void> {
-		const repository = cosmeticsDataSource.getRepository(EntitlementEntity);
+	async save(entitlement: Entitlement, manager?: QueryableManager): Promise<void> {
+		const repository = repositoryOn(manager, EntitlementEntity);
 		const data = entitlement.toPrimitives();
 
 		const entity = repository.create({

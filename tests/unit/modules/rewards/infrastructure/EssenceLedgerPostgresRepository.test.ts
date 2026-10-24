@@ -62,4 +62,15 @@ describe("EssenceLedgerPostgresRepository", () => {
 		querySpy.mockResolvedValueOnce([{ balance: null }]);
 		expect(await repository.balanceOf("user-2")).toBe(0);
 	});
+
+	it("lockUser takes a transaction-scoped advisory lock keyed by user", async () => {
+		const manager = { query: mock(async (_sql: string, _params?: unknown[]) => []) };
+
+		await repository.lockUser("user-1", manager);
+
+		const [sql, params] = manager.query.mock.calls[0];
+		expect(sql).toContain("pg_advisory_xact_lock");
+		expect(sql).toContain("'essence:'");
+		expect(params).toEqual(["user-1"]);
+	});
 });

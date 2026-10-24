@@ -11,10 +11,17 @@ import {
 const APPEND_QUERY = `INSERT INTO essence_ledger (user_id, kind, reference_key, delta)
 	VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING RETURNING id`;
 
+// Transaction-scoped, released with commit or rollback; keyed per user.
+const LOCK_QUERY = `SELECT pg_advisory_xact_lock(hashtextextended('essence:' || $1, 0))`;
+
 const BALANCE_QUERY = `SELECT COALESCE(SUM(delta), 0)::int AS balance
 	FROM essence_ledger WHERE user_id = $1`;
 
 export class EssenceLedgerPostgresRepository implements EssenceLedgerRepository {
+	async lockUser(userId: string, manager: QueryableManager): Promise<void> {
+		await manager.query(LOCK_QUERY, [userId]);
+	}
+
 	async append(
 		entry: EssenceLedgerEntry,
 		manager?: QueryableManager,

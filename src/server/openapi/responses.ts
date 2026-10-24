@@ -24,6 +24,7 @@ export const ValidationErrorSchema = t.Object({
 const ERROR_DESCRIPTIONS = {
 	400: "Invalid argument",
 	401: "Missing or invalid credentials",
+	402: "Not enough essence",
 	403: "Not allowed for this account",
 	404: "Resource not found",
 	409: "Conflicts with the current state",

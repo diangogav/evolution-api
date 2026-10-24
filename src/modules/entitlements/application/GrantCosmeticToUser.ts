@@ -2,6 +2,7 @@ import type { Cosmetic } from "../../catalog/domain/Cosmetic";
 import type { CosmeticRepository } from "../../catalog/domain/CosmeticRepository";
 import type { UserDirectory } from "../../loadout/domain/UserDirectory";
 import { NotFoundError } from "../../../shared/errors/NotFoundError";
+import type { QueryableManager } from "../../../shared/persistence/QueryableManager";
 import { Entitlement } from "../domain/Entitlement";
 import type { EntitlementRepository } from "../domain/EntitlementRepository";
 import { EntitlementSource } from "../domain/EntitlementSource";
@@ -45,15 +46,20 @@ export class GrantCosmeticToUser {
 	}
 
 	// Same grant keyed by user id, for callers that already hold it (mission rewards).
+	// `manager` runs every read and write on the caller's transaction.
 	async runForUserId(
 		input: GrantCosmeticByUserIdInput,
+		manager?: QueryableManager,
 	): Promise<Omit<CosmeticGrantDto, "username">> {
-		const cosmetic = await this.findActiveCosmetic(input.cosmeticId);
-		return this.grant(input.userId, cosmetic, input.source);
+		const cosmetic = await this.findActiveCosmetic(input.cosmeticId, manager);
+		return this.grant(input.userId, cosmetic, input.source, manager);
 	}
 
-	private async findActiveCosmetic(cosmeticId: string): Promise<Cosmetic> {
-		const cosmetic = await this.cosmetics.findById(cosmeticId);
+	private async findActiveCosmetic(
+		cosmeticId: string,
+		manager?: QueryableManager,
+	): Promise<Cosmetic> {
+		const cosmetic = await this.cosmetics.findById(cosmeticId, manager);
 		if (!cosmetic || !cosmetic.active) {
 			throw new NotFoundError(`Cosmetic "${cosmeticId}" not found`);
 		}
@@ -64,8 +70,9 @@ export class GrantCosmeticToUser {
 		userId: string,
 		cosmetic: Cosmetic,
 		source: EntitlementSource,
+		manager?: QueryableManager,
 	): Promise<Omit<CosmeticGrantDto, "username">> {
-		const existing = await this.entitlements.findByUserId(userId);
+		const existing = await this.entitlements.findByUserId(userId, manager);
 		const alreadyGranted = existing.some(
 			(entitlement) =>
 				entitlement.grantType === GrantType.COSMETIC &&
@@ -83,6 +90,7 @@ export class GrantCosmeticToUser {
 					source,
 					expiresAt: null,
 				}),
+				manager,
 			);
 		}
 
