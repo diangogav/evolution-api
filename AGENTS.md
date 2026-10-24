@@ -1,63 +1,69 @@
 # Repository Guidelines
 
-## How to Use This Guide
+Backend API (`evolution-api`) for the Evolution Yu-Gi-Oh! platform: accounts, ranked play
+and tiers, cosmetics, rewards, and moderation. Bun + ElysiaJS + TypeORM (PostgreSQL),
+Hexagonal Architecture + DDD.
 
-- Start here for project norms and development patterns.
-- This project is the backend API (`evolution-api`) for the Evolution Yu-Gi-Oh! platform.
-- Consult specific skills in the `.agent/skills/` directory for detailed implementation guides.
+`docs/architecture.md` is the reference for stack versions, modules, routers, auth, the
+error map, and the OpenAPI ratchet. `docs/operations.md`, `docs/rewards.md`, and
+`docs/ranked-tiers.md` cover their topics.
 
-## Available Skills
+## Skills
 
-Use these skills for detailed patterns on-demand:
+Skills live in `.agent/skills/`. Read the matching `SKILL.md` before acting:
 
-### Generic Skills
-| Skill | Description | URL |
-|-------|-------------|-----|
-| `ddd-implementation` | Patterns for Entities, Value Objects, Aggregates, and Domain Services in TypeScript | [SKILL.md](.agent/skills/ddd-implementation/SKILL.md) |
-| `hexagonal-architecture` | Guide for Ports and Adapters, layer responsibilities, and dependency rules | [SKILL.md](.agent/skills/hexagonal-architecture/SKILL.md) |
-| `elysiajs` | ElysiaJS framework patterns, plugins, and integrations | [SKILL.md](.agent/skills/elysiajs/SKILL.md) |
+| When you are... | Skill |
+| --- | --- |
+| Adding or changing a module, use case, repository, endpoint, migration, or test | [`evolution-api-modules`](.agent/skills/evolution-api-modules/SKILL.md) |
+| Writing router code, guards, or TypeBox schemas | [`elysiajs`](.agent/skills/elysiajs/SKILL.md) |
+| Checking how the game server produces match results or stats | [`evolution-server`](.agent/skills/evolution-server/SKILL.md) |
 
-### Project-Specific Skills
-| Skill | Description | URL |
-|-------|-------------|-----|
-| `evolution-server` | Reference to EDOpro-server-ts for stats calculation and game logic | [SKILL.md](.agent/skills/evolution-server/SKILL.md) |
+## Commands
 
-### Auto-invoke Skills
+The runtime is **Bun**, not Node.
 
-When performing these actions, ALWAYS invoke the corresponding skill FIRST:
+```bash
+bun run dev                       # watch-mode dev server (src/index.ts)
+bun run src/worker.ts             # standalone rewards worker
+bun test                          # all tests
+bun test tests/unit/modules/rewards   # a folder or file
+bun test -t "test name"           # tests matching a name
+bun run lint                      # Biome check (lint + format)
+bun run lint:fix                  # Biome autofix
+bun run build                     # tsc type-check and emit to ./build
+bun run migration:cosmetics:run   # API-owned migrations (src/migrations/)
+bun run migration:cosmetics:revert
+```
 
-| Action | Skill |
-|--------|-------|
-| Implementing Business Logic | `ddd-implementation` |
-| Creating new Use Cases/Endpoints | `hexagonal-architecture` |
-| Designing Domain Models | `ddd-implementation` |
-| Checking Stats/Game Logic | `evolution-server` |
+Before finishing a change, run the focused tests, then `bun test` and `bun run lint`.
 
----
+## Critical rules
 
-## Project Overview
+- **Two DataSources, one Postgres.** `src/cosmetics-data-source.ts` owns the API's tables
+  (cosmetics, entitlements, loadout, rewards); its migrations live in `src/migrations/`
+  and are tracked in `cosmetics_migrations`. `src/evolution-types/` is the game server's
+  vendored shared schema (users, matches, stats, bans): do not edit its entities or
+  migrations from this repo.
+- **Dependency rule:** `infrastructure -> application -> domain`. Domain imports no
+  framework or ORM code. Never return TypeORM or domain entities from a router; return
+  use case results typed by TypeBox schemas.
+- **Composition root:** `src/server/routes/*-router.ts` `new` up dependencies by hand (no
+  DI container). Routers are mounted under `/api/v1` in `src/server/server.ts`.
+- **Errors:** throw the classes in `src/shared/errors/`; `mapDomainErrorStatus` in
+  `src/server/server.ts` maps them to status codes. Do not set status codes by hand. A
+  plain `Error` answers 500.
+- **New endpoints** must satisfy the OpenAPI ratchet test
+  (`tests/unit/server/swagger/openapi-document.test.ts`); follow the checklist in
+  `docs/architecture.md`.
+- **Rewards worker:** the API runs it in-process when `REWARDS_WORKER_ENABLED=true`, and
+  `src/worker.ts` runs it standalone. Instances share a lock, so only one makes progress
+  at a time.
+- **Config:** env vars are read and validated in `src/config/index.ts`. Never read or
+  print `.env` values.
 
-This is the **Backend API** for the Evolution project.
-**Goal**: Provide a robust, scalable API using Domain-Driven Design and Hexagonal Architecture.
+## Code style
 
-### Tech Stack
-- **Runtime**: Bun
-- **Framework**: ElysiaJS
-- **Database**: PostgreSQL (via TypeORM)
-- **Language**: TypeScript
-- **Architecture**: Hexagonal + DDD
-
----
-
-## Development Guidelines
-
-### Architecture & Design
-- **Hexagonal Architecture**: Strictly follow the dependency rule: `Infrastructure -> Application -> Domain`.
-- **DDD**: Use Aggregates, Entities, and Value Objects. Logic belongs in the Domain layer.
-- **DTOs**: Always use DTOs for input/output in the Application layer. Never expose Domain entities directly in Controllers.
-
-### Code Style
-- Use `camelCase` for variables and functions.
-- Use `PascalCase` for classes and types.
-- **Always** use strict typing.
-- Follow the directory structure defined in `hexagonal-architecture`.
+- `camelCase` for variables and functions, `PascalCase` for classes and types, strict
+  typing. Biome formats (tabs); do not hand-format against it.
+- Tests use `bun:test` under `tests/unit/`, mirroring `src/` by layer.
+- Commits follow Conventional Commits (commitlint, enforced via husky + lint-staged).
