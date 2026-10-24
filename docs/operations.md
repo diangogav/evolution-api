@@ -101,6 +101,15 @@ same four names for the local Postgres container.
 | --- | --- | --- | --- |
 | `ANNULMENT_ENABLED` | Optional | `false` | Only the literal string `"true"` enables it. Gates the annulment/reinstatement use cases; see [Operational notes](#operational-notes) and [domain/match-annulment.md](domain/match-annulment.md). |
 
+### Rewards worker
+
+| Name | Required | Default | Purpose |
+| --- | --- | --- | --- |
+| `REWARDS_WORKER_ENABLED` | Optional | `false` | Only the literal string `"true"` starts the in-process worker that projects mission progress from `matches` (`src/index.ts`). Safe to enable on several instances: a Postgres advisory lock lets one tick run at a time. |
+| `REWARDS_WORKER_INTERVAL_MS` | Optional | `3000` | Pause between ticks. |
+| `REWARDS_WORKER_LAG_MS` | Optional | `5000` | Rows younger than this are left for a later tick, so a match whose duels are still being written is never read half-complete. |
+| `REWARDS_WORKER_BATCH_SIZE` | Optional | `200` | Maximum rows drained per source per tick. |
+
 ## Database and migrations
 
 Both DataSources point at the same Postgres instance but track migrations

@@ -44,6 +44,12 @@ export const config = {
 		signedUrlTtlSeconds: Number(process.env.R2_SIGNED_URL_TTL ?? "600"),
 	},
 	season: Number(ensureEnvVariable(process.env.SEASON as string, "SEASON")),
+	rewardsWorker: {
+		enabled: process.env.REWARDS_WORKER_ENABLED === "true",
+		intervalMs: Number(process.env.REWARDS_WORKER_INTERVAL_MS ?? 3000),
+		lagMs: Number(process.env.REWARDS_WORKER_LAG_MS ?? 5000),
+		batchSize: Number(process.env.REWARDS_WORKER_BATCH_SIZE ?? 200),
+	},
 	annulment: { enabled: process.env.ANNULMENT_ENABLED === "true" },
 	passwordRecovery: {
 		defaultResetUrl: "https://evolutionygo.com/reset-account-password?token={token}",
