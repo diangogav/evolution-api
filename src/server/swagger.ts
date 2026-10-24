@@ -31,6 +31,7 @@ const TAGS = [
 	{ name: "Statistics", description: "Global and historical duel statistics" },
 	{ name: "Ban Lists", description: "Ban lists played during each season" },
 	{ name: "Cosmetics", description: "Cosmetics catalog, entitlements and player loadouts" },
+	{ name: "Rewards", description: "Daily and weekly missions and the essence they pay" },
 	{ name: "User Bans", description: "Ban, unban and ban history of players (admin only)" },
 	{
 		name: "Match Moderation",
@@ -46,6 +47,7 @@ const TAG_GROUPS = [
 	{ name: "Account", tags: ["Authentication", "User Management"] },
 	{ name: "Ranked", tags: ["Leaderboard", "Ranked", "Statistics", "Ban Lists", "Achievements"] },
 	{ name: "Cosmetics", tags: ["Cosmetics"] },
+	{ name: "Rewards", tags: ["Rewards"] },
 	{ name: "Administration", tags: ["User Bans", "Match Moderation", "Cosmetics Admin"] },
 ];
 

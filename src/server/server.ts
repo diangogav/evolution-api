@@ -4,6 +4,7 @@ import { Elysia } from "elysia";
 import { AuthenticationError } from "../shared/errors/AuthenticationError";
 import { ConflictError } from "../shared/errors/ConflictError";
 import { ForbiddenError } from "../shared/errors/ForbiddenError";
+import { UnprocessableError } from "../shared/errors/UnprocessableError";
 import { InvalidArgumentError } from "../shared/errors/InvalidArgumentError";
 import { NotFoundError } from "../shared/errors/NotFoundError";
 import { Logger } from "../shared/logger/domain/Logger";
@@ -15,6 +16,7 @@ import { leaderboardRouter } from "./routes/leaderboard-router";
 import { emoteBarRouter } from "./routes/emote-bar-router";
 import { loadoutRouter } from "./routes/loadout-router";
 import { meCosmeticsRouter } from "./routes/me-cosmetics-router";
+import { missionsRouter } from "./routes/missions-router";
 import { publicEmoteBarRouter } from "./routes/public-emote-bar-router";
 import { publicLoadoutRouter } from "./routes/public-loadout-router";
 import { rankedTiersRouter } from "./routes/ranked-tiers-router";
@@ -46,6 +48,10 @@ export function mapDomainErrorStatus({ error, set }: ErrorHookContext): void {
 
 	if (error instanceof ForbiddenError) {
 		set.status = 403;
+	}
+
+	if (error instanceof UnprocessableError) {
+		set.status = 422;
 	}
 }
 
@@ -86,6 +92,7 @@ export function mountApiV1Routes(app: Elysia) {
 			.use(publicLoadoutRouter)
 			.use(publicEmoteBarRouter)
 			.use(adminCosmeticsRouter)
-			.use(adminModerationRouter);
+			.use(adminModerationRouter)
+			.use(missionsRouter);
 	});
 }

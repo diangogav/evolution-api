@@ -12,6 +12,12 @@ export interface GrantCosmeticToUserInput {
 	readonly source: EntitlementSource;
 }
 
+export interface GrantCosmeticByUserIdInput {
+	readonly cosmeticId: string;
+	readonly userId: string;
+	readonly source: EntitlementSource;
+}
+
 export interface CosmeticGrantDto {
 	readonly cosmeticId: string;
 	readonly userId: string;
@@ -28,16 +34,28 @@ export class GrantCosmeticToUser {
 	) {}
 
 	async run(input: GrantCosmeticToUserInput): Promise<CosmeticGrantDto> {
+		const username = input.username.trim();
+		const userId = await this.users.findUserIdByUsername(username);
+		if (!userId) throw new NotFoundError(`User "${username}" not found`);
+
+		const granted = await this.runForUserId({
+			cosmeticId: input.cosmeticId,
+			userId,
+			source: input.source,
+		});
+		return { ...granted, username };
+	}
+
+	// Same grant keyed by user id, for callers that already hold it (mission rewards).
+	async runForUserId(
+		input: GrantCosmeticByUserIdInput,
+	): Promise<Omit<CosmeticGrantDto, "username">> {
 		const cosmetic = await this.cosmetics.findById(input.cosmeticId);
 		if (!cosmetic || !cosmetic.active) {
 			throw new NotFoundError(`Cosmetic "${input.cosmeticId}" not found`);
 		}
 
-		const username = input.username.trim();
-		const userId = await this.users.findUserIdByUsername(username);
-		if (!userId) throw new NotFoundError(`User "${username}" not found`);
-
-		const existing = await this.entitlements.findByUserId(userId);
+		const existing = await this.entitlements.findByUserId(input.userId);
 		const alreadyGranted = existing.some(
 			(entitlement) =>
 				entitlement.grantType === GrantType.COSMETIC &&
@@ -49,7 +67,7 @@ export class GrantCosmeticToUser {
 			await this.entitlements.save(
 				Entitlement.create({
 					id: crypto.randomUUID(),
-					userId,
+					userId: input.userId,
 					grantType: GrantType.COSMETIC,
 					grantValue: cosmetic.id,
 					source: input.source,
@@ -60,8 +78,7 @@ export class GrantCosmeticToUser {
 
 		return {
 			cosmeticId: cosmetic.id,
-			userId,
-			username,
+			userId: input.userId,
 			source: input.source,
 			created: !alreadyGranted,
 		};

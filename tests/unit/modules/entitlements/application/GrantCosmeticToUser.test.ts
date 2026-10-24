@@ -57,6 +57,23 @@ describe("GrantCosmeticToUser", () => {
 		expect(saved[0]?.grantValue).toBe(cosmetic.id);
 	});
 
+	it("grants by user id without a directory lookup", async () => {
+		const { grant, saved } = setup();
+		const result = await grant.runForUserId({
+			cosmeticId: cosmetic.id,
+			userId: "user-9",
+			source: EntitlementSource.CAMPAIGN,
+		});
+
+		expect(result).toEqual({
+			cosmeticId: cosmetic.id,
+			userId: "user-9",
+			source: EntitlementSource.CAMPAIGN,
+			created: true,
+		});
+		expect(saved[0]?.userId).toBe("user-9");
+	});
+
 	it("is idempotent when the active grant already exists", async () => {
 		const existing = Entitlement.create({
 			id: crypto.randomUUID(),
