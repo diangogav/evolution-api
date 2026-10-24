@@ -16,7 +16,12 @@ import { DAILY_MISSIONS_PER_DAY } from "../domain/selectDailyMissions";
 export const DAILY_BONUS_ESSENCE = 30;
 
 export type ClaimMissionInput = { userId: string; code: string; now: Date };
-export type ClaimMissionResult = { balance: number; reward: MissionReward };
+export type ClaimMissionResult = {
+	balance: number;
+	reward: MissionReward;
+	/** Essence credited on top of the reward because this claim completed the day; 0 otherwise. */
+	dailyBonus: number;
+};
 
 // Only the current period can be claimed; a day that ended with completed but
 // unclaimed missions pays nothing. A cosmetic reward is granted before the claim row is
@@ -51,19 +56,20 @@ export class ClaimMission {
 			});
 		}
 
-		const balance = await this.transactions.run(async (manager) => {
+		const { balance, dailyBonus } = await this.transactions.run(async (manager) => {
 			await this.claims.lockUserPeriod(input.userId, periodKey, manager);
 			const inserted = await this.claims.insert(input.userId, mission.id, periodKey, manager);
 			if (inserted === "skipped") throw new ConflictError("Mission already claimed");
 
 			await this.payEssence(input.userId, mission, periodKey, manager);
-			if (mission.period === "daily") {
-				await this.payDailyBonus(input.userId, dailyIds, periodKey, manager);
-			}
-			return this.ledger.balanceOf(input.userId, manager);
+			const dailyBonus =
+				mission.period === "daily"
+					? await this.payDailyBonus(input.userId, dailyIds, periodKey, manager)
+					: 0;
+			return { balance: await this.ledger.balanceOf(input.userId, manager), dailyBonus };
 		});
 
-		return { balance, reward: mission.reward };
+		return { balance, reward: mission.reward, dailyBonus };
 	}
 
 	private async payEssence(
@@ -89,10 +95,10 @@ export class ClaimMission {
 		dailyIds: string[],
 		periodKey: string,
 		manager: QueryableManager,
-	): Promise<void> {
+	): Promise<number> {
 		const claimed = await this.claims.countClaims(userId, dailyIds, periodKey, manager);
-		if (claimed < DAILY_MISSIONS_PER_DAY) return;
-		await this.ledger.append(
+		if (claimed < DAILY_MISSIONS_PER_DAY) return 0;
+		const appended = await this.ledger.append(
 			essenceLedgerEntry({
 				userId,
 				kind: "daily_bonus",
@@ -101,6 +107,7 @@ export class ClaimMission {
 			}),
 			manager,
 		);
+		return appended === "inserted" ? DAILY_BONUS_ESSENCE : 0;
 	}
 }
 

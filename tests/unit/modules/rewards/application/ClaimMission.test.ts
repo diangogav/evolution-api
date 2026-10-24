@@ -124,7 +124,7 @@ describe("ClaimMission", () => {
 
 		const result = await fakes.useCase().run({ userId: "user-1", code: target.code, now });
 
-		expect(result).toEqual({ balance: 20, reward: essence20 });
+		expect(result).toEqual({ balance: 20, reward: essence20, dailyBonus: 0 });
 		expect(fakes.ledger).toEqual([
 			{ userId: "user-1", kind: "mission", referenceKey: `${target.code}:${today}`, delta: 20 },
 		]);
@@ -180,10 +180,13 @@ describe("ClaimMission", () => {
 		const fakes = new Fakes();
 		for (const m of todays) fakes.completed.add(`${m.id}|${today}`);
 
-		await fakes.useCase().run({ userId: "user-1", code: todays[0].code, now });
-		await fakes.useCase().run({ userId: "user-1", code: todays[1].code, now });
+		const first = await fakes.useCase().run({ userId: "user-1", code: todays[0].code, now });
+		const second = await fakes.useCase().run({ userId: "user-1", code: todays[1].code, now });
 		const third = await fakes.useCase().run({ userId: "user-1", code: todays[2].code, now });
 
+		expect(first.dailyBonus).toBe(0);
+		expect(second.dailyBonus).toBe(0);
+		expect(third.dailyBonus).toBe(30);
 		expect(third.balance).toBe(90);
 		expect(fakes.ledger[fakes.ledger.length - 1]).toEqual({
 			userId: "user-1",
@@ -199,7 +202,11 @@ describe("ClaimMission", () => {
 
 		const result = await fakes.useCase().run({ userId: "user-1", code: "event_sleeve", now });
 
-		expect(result).toEqual({ balance: 0, reward: { type: "cosmetic", cosmeticId: "sleeve-1" } });
+		expect(result).toEqual({
+			balance: 0,
+			reward: { type: "cosmetic", cosmeticId: "sleeve-1" },
+			dailyBonus: 0,
+		});
 		expect(fakes.granted).toEqual([
 			{ userId: "user-1", cosmeticId: "sleeve-1", source: EntitlementSource.CAMPAIGN },
 		]);
