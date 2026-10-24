@@ -52,6 +52,7 @@ export class ClaimMission {
 		}
 
 		const balance = await this.transactions.run(async (manager) => {
+			await this.claims.lockUserPeriod(input.userId, periodKey, manager);
 			const inserted = await this.claims.insert(input.userId, mission.id, periodKey, manager);
 			if (inserted === "skipped") throw new ConflictError("Mission already claimed");
 

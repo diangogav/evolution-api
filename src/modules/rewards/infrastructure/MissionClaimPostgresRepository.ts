@@ -10,10 +10,22 @@ const FIND_CLAIMED_QUERY = `SELECT mission_id AS "missionId" FROM mission_claims
 const INSERT_QUERY = `INSERT INTO mission_claims (user_id, mission_id, period_key)
 	VALUES ($1, $2, $3) ON CONFLICT DO NOTHING RETURNING user_id`;
 
+// Transaction-scoped, released with commit or rollback. Keyed by user and period so
+// unrelated users never wait on each other.
+const LOCK_QUERY = `SELECT pg_advisory_xact_lock(hashtextextended('mission-claim:' || $1 || ':' || $2, 0))`;
+
 const COUNT_QUERY = `SELECT count(*)::int AS count FROM mission_claims
 	WHERE user_id = $1 AND mission_id = ANY($2::uuid[]) AND period_key = $3`;
 
 export class MissionClaimPostgresRepository implements MissionClaimRepository {
+	async lockUserPeriod(
+		userId: string,
+		periodKey: string,
+		manager: QueryableManager,
+	): Promise<void> {
+		await manager.query(LOCK_QUERY, [userId, periodKey]);
+	}
+
 	async findClaimedMissionIds(
 		userId: string,
 		missionIds: string[],

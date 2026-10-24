@@ -23,3 +23,17 @@ describe("missions router — transport", () => {
 		expect(response.status).toBe(401);
 	});
 });
+
+describe("missions router — domain error mapping", () => {
+	it("maps UnprocessableError to 422 with the message as plain text", async () => {
+		const { UnprocessableError } = await import("../../../../src/shared/errors/UnprocessableError");
+		const probe = new Elysia().onError(mapDomainErrorStatus).get("/probe", () => {
+			throw new UnprocessableError("Mission not completed");
+		});
+
+		const response = await probe.handle(new Request("http://localhost/probe"));
+
+		expect(response.status).toBe(422);
+		expect(await response.text()).toBe("Mission not completed");
+	});
+});

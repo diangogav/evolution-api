@@ -1,3 +1,4 @@
+import type { Cosmetic } from "../../catalog/domain/Cosmetic";
 import type { CosmeticRepository } from "../../catalog/domain/CosmeticRepository";
 import type { UserDirectory } from "../../loadout/domain/UserDirectory";
 import { NotFoundError } from "../../../shared/errors/NotFoundError";
@@ -34,15 +35,12 @@ export class GrantCosmeticToUser {
 	) {}
 
 	async run(input: GrantCosmeticToUserInput): Promise<CosmeticGrantDto> {
+		const cosmetic = await this.findActiveCosmetic(input.cosmeticId);
 		const username = input.username.trim();
 		const userId = await this.users.findUserIdByUsername(username);
 		if (!userId) throw new NotFoundError(`User "${username}" not found`);
 
-		const granted = await this.runForUserId({
-			cosmeticId: input.cosmeticId,
-			userId,
-			source: input.source,
-		});
+		const granted = await this.grant(userId, cosmetic, input.source);
 		return { ...granted, username };
 	}
 
@@ -50,12 +48,24 @@ export class GrantCosmeticToUser {
 	async runForUserId(
 		input: GrantCosmeticByUserIdInput,
 	): Promise<Omit<CosmeticGrantDto, "username">> {
-		const cosmetic = await this.cosmetics.findById(input.cosmeticId);
-		if (!cosmetic || !cosmetic.active) {
-			throw new NotFoundError(`Cosmetic "${input.cosmeticId}" not found`);
-		}
+		const cosmetic = await this.findActiveCosmetic(input.cosmeticId);
+		return this.grant(input.userId, cosmetic, input.source);
+	}
 
-		const existing = await this.entitlements.findByUserId(input.userId);
+	private async findActiveCosmetic(cosmeticId: string): Promise<Cosmetic> {
+		const cosmetic = await this.cosmetics.findById(cosmeticId);
+		if (!cosmetic || !cosmetic.active) {
+			throw new NotFoundError(`Cosmetic "${cosmeticId}" not found`);
+		}
+		return cosmetic;
+	}
+
+	private async grant(
+		userId: string,
+		cosmetic: Cosmetic,
+		source: EntitlementSource,
+	): Promise<Omit<CosmeticGrantDto, "username">> {
+		const existing = await this.entitlements.findByUserId(userId);
 		const alreadyGranted = existing.some(
 			(entitlement) =>
 				entitlement.grantType === GrantType.COSMETIC &&
@@ -67,20 +77,15 @@ export class GrantCosmeticToUser {
 			await this.entitlements.save(
 				Entitlement.create({
 					id: crypto.randomUUID(),
-					userId: input.userId,
+					userId,
 					grantType: GrantType.COSMETIC,
 					grantValue: cosmetic.id,
-					source: input.source,
+					source,
 					expiresAt: null,
 				}),
 			);
 		}
 
-		return {
-			cosmeticId: cosmetic.id,
-			userId: input.userId,
-			source: input.source,
-			created: !alreadyGranted,
-		};
+		return { cosmeticId: cosmetic.id, userId, source, created: !alreadyGranted };
 	}
 }

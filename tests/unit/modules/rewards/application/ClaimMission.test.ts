@@ -64,10 +64,15 @@ class Fakes {
 				.filter((p) => this.completed.has(`${p.missionId}|${p.periodKey}`))
 				.map((p) => ({ ...p, value: 3, completed: true })),
 	} as unknown as RewardsProjectionRepository;
+	events: string[] = [];
 	readonly claimRepository: MissionClaimRepository = {
+		lockUserPeriod: async (_u, periodKey) => {
+			this.events.push(`lock:${periodKey}`);
+		},
 		findClaimedMissionIds: async (_u, ids, periodKey) =>
 			ids.filter((id) => this.claims.has(`${id}|${periodKey}`)),
 		insert: async (_u, missionId, periodKey) => {
+			this.events.push("insert");
 			const key = `${missionId}|${periodKey}`;
 			if (this.claims.has(key)) return "skipped";
 			this.claims.add(key);
@@ -122,6 +127,16 @@ describe("ClaimMission", () => {
 		expect(fakes.ledger).toEqual([
 			{ userId: "user-1", kind: "mission", referenceKey: `${target.code}:${today}`, delta: 20 },
 		]);
+	});
+
+	it("takes the user's period lock before inserting, so concurrent claims of different missions count the bonus serially", async () => {
+		const fakes = new Fakes();
+		const target = todays[0];
+		fakes.completed.add(`${target.id}|${today}`);
+
+		await fakes.useCase().run({ userId: "user-1", code: target.code, now });
+
+		expect(fakes.events).toEqual([`lock:${today}`, "insert"]);
 	});
 
 	it("rejects a second claim of the same mission and period with 409", async () => {

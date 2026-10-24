@@ -53,4 +53,15 @@ describe("MissionClaimPostgresRepository", () => {
 		expect(manager.query).toHaveBeenCalledTimes(1);
 		expect(querySpy).not.toHaveBeenCalled();
 	});
+
+	it("lockUserPeriod takes a transaction-scoped advisory lock keyed by user and period", async () => {
+		const manager = { query: mock(async (_sql: string, _params?: unknown[]) => []) };
+
+		await repository.lockUserPeriod("user-1", "2026-10-23", manager);
+
+		const [sql, params] = manager.query.mock.calls[0];
+		expect(sql).toContain("pg_advisory_xact_lock");
+		expect(sql).toContain("'mission-claim:'");
+		expect(params).toEqual(["user-1", "2026-10-23"]);
+	});
 });

@@ -57,6 +57,14 @@ describe("GrantCosmeticToUser", () => {
 		expect(saved[0]?.grantValue).toBe(cosmetic.id);
 	});
 
+	it("reports the unknown cosmetic before the unknown user, as before", async () => {
+		const { grant } = setup();
+
+		await expect(
+			grant.run({ cosmeticId: "missing", username: "Nobody", source: EntitlementSource.CAMPAIGN }),
+		).rejects.toThrow('Cosmetic "missing" not found');
+	});
+
 	it("grants by user id without a directory lookup", async () => {
 		const { grant, saved } = setup();
 		const result = await grant.runForUserId({
