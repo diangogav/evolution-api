@@ -21,7 +21,7 @@ describe("RankedMatchSource", () => {
 		querySpy.mockResolvedValueOnce([
 			{
 				id: "row-1",
-				createdAt: new Date("2026-10-23T10:00:05Z"),
+				createdAt: "2026-10-23 10:00:05.123456",
 				gameId: "game-1",
 				userId: "user-1",
 				winner: true,
@@ -35,7 +35,7 @@ describe("RankedMatchSource", () => {
 			},
 			{
 				id: "row-2",
-				createdAt: new Date("2026-10-23T10:00:05Z"),
+				createdAt: "2026-10-23 10:00:05.123456",
 				gameId: "game-1",
 				userId: "user-2",
 				winner: false,
@@ -55,7 +55,7 @@ describe("RankedMatchSource", () => {
 		expect(rows).toEqual([
 			{
 				sourceId: "row-1",
-				createdAt: new Date("2026-10-23T10:00:05Z"),
+				createdAt: "2026-10-23 10:00:05.123456",
 				gameId: "game-1",
 				userId: "user-1",
 				won: true,
@@ -70,7 +70,7 @@ describe("RankedMatchSource", () => {
 			},
 			{
 				sourceId: "row-2",
-				createdAt: new Date("2026-10-23T10:00:05Z"),
+				createdAt: "2026-10-23 10:00:05.123456",
 				gameId: "game-1",
 				userId: "user-2",
 				won: false,
@@ -85,7 +85,7 @@ describe("RankedMatchSource", () => {
 
 	it("queries after the cursor in (created_at, id) order, skipping annulled and deleted rows, bounded by the lag", async () => {
 		await new RankedMatchSource().fetchAfter(
-			{ lastCreatedAt: new Date("2026-10-23T10:00:05Z"), lastId: "row-1" },
+			{ lastCreatedAt: "2026-10-23 10:00:05.123456", lastId: "row-1" },
 			50,
 			new Date("2026-10-23T10:00:55Z"),
 		);
@@ -97,7 +97,7 @@ describe("RankedMatchSource", () => {
 		expect(sql).toContain("ORDER BY m.created_at ASC, m.id ASC");
 		expect(sql).toContain("$1::timestamp IS NULL");
 		expect(sql).toContain("m.created_at <= $3::timestamp");
-		expect(params).toEqual(["2026-10-23 10:00:05.000", "row-1", "2026-10-23 10:00:55.000", 50]);
+		expect(params).toEqual(["2026-10-23 10:00:05.123456", "row-1", "2026-10-23 10:00:55.000", 50]);
 	});
 
 	it("reads timestamp-without-zone columns as UTC instants and passes a null cursor on the first run", async () => {
@@ -108,7 +108,7 @@ describe("RankedMatchSource", () => {
 		);
 
 		const [sql, params] = querySpy.mock.calls[0] as [string, unknown[]];
-		expect(sql).toContain(`m.created_at AT TIME ZONE 'UTC' AS "createdAt"`);
+		expect(sql).toContain(`to_char(m.created_at, 'YYYY-MM-DD HH24:MI:SS.US') AS "createdAt"`);
 		expect(sql).toContain(`m.date AT TIME ZONE 'UTC' AS "date"`);
 		expect(params[0]).toBeNull();
 	});

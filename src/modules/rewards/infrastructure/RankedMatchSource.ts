@@ -4,7 +4,7 @@ import { MatchSource, SourceCursor, SourcedMatchFacts } from "../domain/MatchSou
 
 type MatchRow = {
 	id: string;
-	createdAt: Date;
+	createdAt: string;
 	gameId: string;
 	userId: string;
 	winner: boolean;
@@ -22,9 +22,12 @@ type MatchRow = {
 // created_at and date are `timestamp without time zone` holding UTC wall-clock values.
 // node-postgres would read them as host-local time and write Date parameters with the
 // host offset, shifting every instant on a non-UTC host. Both sides are pinned instead:
-// columns are read through AT TIME ZONE 'UTC' (a real instant) and bounds are passed as
-// UTC wall-clock strings cast to `timestamp`.
-const FETCH_QUERY = `SELECT m.id, m.created_at AT TIME ZONE 'UTC' AS "createdAt", m.game_id AS "gameId",
+// `date` is read through AT TIME ZONE 'UTC' (a real instant), `created_at` as text with
+// its full microsecond precision (it is the cursor), and bounds are passed as UTC
+// wall-clock strings cast to `timestamp`.
+const CREATED_AT_TEXT = `to_char(m.created_at, 'YYYY-MM-DD HH24:MI:SS.US')`;
+
+const FETCH_QUERY = `SELECT m.id, ${CREATED_AT_TEXT} AS "createdAt", m.game_id AS "gameId",
 	m.user_id AS "userId", m.winner, m.ban_list_name AS "banListName",
 	m.date AT TIME ZONE 'UTC' AS "date", m.opponent_ids AS "opponentIds",
 	(SELECT json_agg(json_build_object('result', d.result, 'turns', d.turns) ORDER BY d.date ASC)
@@ -44,12 +47,7 @@ export class RankedMatchSource implements MatchSource {
 		limit: number,
 		notAfter: Date,
 	): Promise<SourcedMatchFacts[]> {
-		const params = [
-			cursor.lastCreatedAt ? toUtcTimestamp(cursor.lastCreatedAt) : null,
-			cursor.lastId ?? "",
-			toUtcTimestamp(notAfter),
-			limit,
-		];
+		const params = [cursor.lastCreatedAt, cursor.lastId ?? "", toUtcTimestamp(notAfter), limit];
 		const rows = (await dataSource.query(FETCH_QUERY, params)) as MatchRow[];
 		return rows.map((row) => ({
 			sourceId: row.id,

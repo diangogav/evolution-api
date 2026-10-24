@@ -22,14 +22,30 @@ describe("RewardsProjectionPostgresRepository", () => {
 
 	it("advanceCursor upserts the source row", async () => {
 		await repository.advanceCursor("matches", {
-			lastCreatedAt: new Date("2026-10-23T10:00:05Z"),
+			lastCreatedAt: "2026-10-23 10:00:05.123456",
 			lastId: "row-1",
 		});
 
 		const [sql, params] = querySpy.mock.calls[0] as [string, unknown[]];
 		expect(sql).toContain("INSERT INTO rewards_cursor");
 		expect(sql).toContain("ON CONFLICT (source) DO UPDATE");
-		expect(params).toEqual(["matches", new Date("2026-10-23T10:00:05Z"), "row-1"]);
+		expect(sql).toContain("$2::timestamp AT TIME ZONE 'UTC'");
+		expect(params).toEqual(["matches", "2026-10-23 10:00:05.123456", "row-1"]);
+	});
+
+	it("readCursor returns the stored instant as UTC text with microseconds, never as a Date", async () => {
+		querySpy.mockResolvedValueOnce([
+			{ lastCreatedAt: "2026-10-23 10:00:05.123456", lastId: "row-1" },
+		]);
+
+		expect(await repository.readCursor("matches")).toEqual({
+			lastCreatedAt: "2026-10-23 10:00:05.123456",
+			lastId: "row-1",
+		});
+		const [sql] = querySpy.mock.calls[0] as [string];
+		expect(sql).toContain(
+			"to_char(last_created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI:SS.US')",
+		);
 	});
 
 	it("saveProgress upserts each row keyed by user, mission and period and only sets completed_at once", async () => {

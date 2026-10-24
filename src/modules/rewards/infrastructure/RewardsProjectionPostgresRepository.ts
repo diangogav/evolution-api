@@ -7,11 +7,13 @@ import {
 	UserRewardState,
 } from "../domain/RewardsProjectionRepository";
 
-const READ_CURSOR_QUERY = `SELECT last_created_at AS "lastCreatedAt", last_id AS "lastId"
-	FROM rewards_cursor WHERE source = $1`;
+// The cursor instant travels as UTC text with microseconds in both directions; a JS Date
+// would truncate it to milliseconds and re-read the last processed row (see SourceCursor).
+const READ_CURSOR_QUERY = `SELECT to_char(last_created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI:SS.US') AS "lastCreatedAt",
+	last_id AS "lastId" FROM rewards_cursor WHERE source = $1`;
 
 const ADVANCE_CURSOR_QUERY = `INSERT INTO rewards_cursor (source, last_created_at, last_id)
-	VALUES ($1, $2, $3) ON CONFLICT (source) DO UPDATE
+	VALUES ($1, ($2::timestamp AT TIME ZONE 'UTC'), $3) ON CONFLICT (source) DO UPDATE
 	SET last_created_at = EXCLUDED.last_created_at, last_id = EXCLUDED.last_id, updated_at = now()`;
 
 const LOAD_PROGRESS_QUERY = `SELECT mission_id AS "missionId", period_key AS "periodKey", value,
