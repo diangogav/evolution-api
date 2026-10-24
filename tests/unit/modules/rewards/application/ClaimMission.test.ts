@@ -82,6 +82,7 @@ class Fakes {
 			ids.filter((id) => this.claims.has(`${id}|${periodKey}`)).length,
 	};
 	readonly ledgerRepository: EssenceLedgerRepository = {
+		lockUser: async () => undefined,
 		append: async (entry) => {
 			this.ledger.push(entry);
 			this.balance += entry.delta;

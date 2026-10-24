@@ -31,7 +31,10 @@ const TAGS = [
 	{ name: "Statistics", description: "Global and historical duel statistics" },
 	{ name: "Ban Lists", description: "Ban lists played during each season" },
 	{ name: "Cosmetics", description: "Cosmetics catalog, entitlements and player loadouts" },
-	{ name: "Rewards", description: "Daily and weekly missions and the essence they pay" },
+	{
+		name: "Rewards",
+		description: "Daily and weekly missions, the essence they pay and the shop that spends it",
+	},
 	{ name: "User Bans", description: "Ban, unban and ban history of players (admin only)" },
 	{
 		name: "Match Moderation",
