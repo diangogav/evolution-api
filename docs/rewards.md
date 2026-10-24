@@ -54,7 +54,7 @@ The game server writes match results straight to the shared Postgres (`matches`,
 3. Each row becomes facts for one user and goes through the pure rules engine against that user's stored progress and state. Progress rows (`mission_progress`), per-user state (`user_reward_state`: last format, live ranked streak) and the cursor are written in the same transaction.
 4. Commit. If the process dies first, nothing moved and the next tick repeats the batch.
 
-Sources today: `matches` (ranked, one row per player per match) and `user_achievements` (each new row credits essence). Unranked matches are a planned third source once `unranked_matches` carries user ids.
+Sources today: `matches` (ranked, one row per player per match), `unranked_matches` (one row per match that fans out into one fact per registered user on either side; guests carry no id, so wins against them never count) and `user_achievements` (each new row credits essence).
 
 The cursor is stored as UTC text with microseconds. Postgres timestamps keep microseconds and a JS `Date` keeps milliseconds; a cursor that went through a `Date` would re-read the last processed row every tick.
 
