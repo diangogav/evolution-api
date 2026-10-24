@@ -14,7 +14,8 @@ export type PurchaseCosmeticInput = { userId: string; cosmeticId: string };
 // Debit and grant happen under the user's ledger lock: the balance read cannot be
 // undercut by a concurrent debit, and the ledger's unique (user, 'purchase', cosmetic)
 // key turns a replayed purchase into a conflict instead of a second debit. The grant
-// runs inside the transaction callback so a failed grant rolls the debit back.
+// runs on the same transaction manager, so debit and grant commit or roll back together
+// and the transaction never waits on a second pool connection.
 export class PurchaseCosmetic {
 	constructor(
 		private readonly shop: ShopCatalogRepository,
@@ -49,11 +50,10 @@ export class PurchaseCosmetic {
 			);
 			if (debited === "skipped") throw new ConflictError("Cosmetic already owned");
 
-			await this.grantCosmetic.runForUserId({
-				userId: input.userId,
-				cosmeticId: cosmetic.id,
-				source: EntitlementSource.PURCHASE,
-			});
+			await this.grantCosmetic.runForUserId(
+				{ userId: input.userId, cosmeticId: cosmetic.id, source: EntitlementSource.PURCHASE },
+				manager,
+			);
 			return this.ledger.balanceOf(input.userId, manager);
 		});
 

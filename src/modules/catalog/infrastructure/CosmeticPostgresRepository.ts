@@ -1,4 +1,6 @@
 import { cosmeticsDataSource } from "../../../cosmetics-data-source";
+import type { QueryableManager } from "../../../shared/persistence/QueryableManager";
+import { repositoryOn } from "../../../shared/persistence/repositoryOn";
 import { Cosmetic } from "../domain/Cosmetic";
 import { CosmeticRepository } from "../domain/CosmeticRepository";
 import { CosmeticEntity } from "./CosmeticEntity";
@@ -26,12 +28,12 @@ export class CosmeticPostgresRepository implements CosmeticRepository {
 		);
 	}
 
-	async findById(id: string): Promise<Cosmetic | null> {
+	async findById(id: string, manager?: QueryableManager): Promise<Cosmetic | null> {
 		if (!UUID_PATTERN.test(id)) {
 			return null;
 		}
 
-		const repository = cosmeticsDataSource.getRepository(CosmeticEntity);
+		const repository = repositoryOn(manager, CosmeticEntity);
 		const entity = await repository.findOne({ where: { id } });
 
 		if (!entity) {

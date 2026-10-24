@@ -26,7 +26,7 @@ describe("GetShop", () => {
 	it("lists purchasable cosmetics with their price, marking the ones the user can already use", async () => {
 		const useCase = new GetShop(
 			{ findPurchasable: async () => items, findPurchasableById: async () => null },
-			{ canUse: async (_u: string, c: { id: string }) => c.id === "s-1" } as never,
+			{ accessFor: async () => ({ canUse: (c: { id: string }) => c.id === "s-1" }) } as never,
 		);
 
 		const result = await useCase.run("user-1");

@@ -52,19 +52,21 @@ class Fakes {
 		balanceOf: async () => this.balance,
 	};
 	readonly gatekeeper = { canUse: async (_u: string, c: { id: string }) => this.owned.has(c.id) };
+	readonly manager: QueryableManager = { query: async () => [] };
+	grantManagers: unknown[] = [];
 	readonly grant = {
-		runForUserId: async (input: {
-			userId: string;
-			cosmeticId: string;
-			source: EntitlementSource;
-		}) => {
+		runForUserId: async (
+			input: { userId: string; cosmeticId: string; source: EntitlementSource },
+			manager?: QueryableManager,
+		) => {
 			this.granted.push(input);
+			this.grantManagers.push(manager);
 			this.owned.add(input.cosmeticId);
 			return { created: true };
 		},
 	};
 	readonly transactions: TransactionRunner = {
-		run: async <T>(work: (m: QueryableManager) => Promise<T>) => work({ query: async () => [] }),
+		run: async <T>(work: (m: QueryableManager) => Promise<T>) => work(this.manager),
 	};
 
 	useCase() {
@@ -93,6 +95,7 @@ describe("PurchaseCosmetic", () => {
 			{ userId: "user-1", cosmeticId: "sleeve-1", source: EntitlementSource.PURCHASE },
 		]);
 		expect(fakes.events).toEqual(["lock:user-1", "append"]);
+		expect(fakes.grantManagers).toEqual([fakes.manager]);
 	});
 
 	it("rejects with 402 when the balance does not cover the price and writes nothing", async () => {

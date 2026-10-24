@@ -17,20 +17,21 @@ export type ShopItemView = {
 export class GetShop {
 	constructor(
 		private readonly shop: ShopCatalogRepository,
-		private readonly gatekeeper: Pick<EntitlementsGatekeeper, "canUse">,
+		private readonly gatekeeper: Pick<EntitlementsGatekeeper, "accessFor">,
 	) {}
 
 	async run(userId: string): Promise<ShopItemView[]> {
-		const items = await this.shop.findPurchasable();
-		return Promise.all(
-			items.map(async (item) => ({
-				id: item.id,
-				type: item.type,
-				tier: item.tier,
-				displayName: item.displayName,
-				price: item.essencePrice,
-				owned: await this.gatekeeper.canUse(userId, item),
-			})),
-		);
+		const [items, access] = await Promise.all([
+			this.shop.findPurchasable(),
+			this.gatekeeper.accessFor(userId),
+		]);
+		return items.map((item) => ({
+			id: item.id,
+			type: item.type,
+			tier: item.tier,
+			displayName: item.displayName,
+			price: item.essencePrice,
+			owned: access.canUse(item),
+		}));
 	}
 }
