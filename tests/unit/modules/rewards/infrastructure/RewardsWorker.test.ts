@@ -44,7 +44,7 @@ describe("RewardsWorker", () => {
 		expect(log.error).toHaveBeenCalledTimes(1);
 	});
 
-	it("start schedules an immediate tick and stop cancels the loop", async () => {
+	it("start runs the first tick immediately instead of waiting one interval", async () => {
 		const tick = { run: mock(async () => ({ locked: true, processed: {} })) };
 		const worker = new RewardsWorker(tick as unknown as ProcessRewardsTick, 100_000, logger());
 
@@ -53,5 +53,19 @@ describe("RewardsWorker", () => {
 		worker.stop();
 
 		expect(tick.run).toHaveBeenCalledTimes(1);
+	});
+
+	it("keeps ticking on the interval until stop, then never ticks again", async () => {
+		const tick = { run: mock(async () => ({ locked: true, processed: {} })) };
+		const worker = new RewardsWorker(tick as unknown as ProcessRewardsTick, 5, logger());
+
+		worker.start();
+		await new Promise((resolve) => setTimeout(resolve, 40));
+		worker.stop();
+		const callsAtStop = tick.run.mock.calls.length;
+		await new Promise((resolve) => setTimeout(resolve, 40));
+
+		expect(callsAtStop).toBeGreaterThan(1);
+		expect(tick.run).toHaveBeenCalledTimes(callsAtStop);
 	});
 });
