@@ -1,7 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from "bun:test";
 
 import { dataSource } from "../../../../../src/evolution-types/src/data-source";
-import { RankedMatchSource } from "../../../../../src/modules/rewards/infrastructure/RankedMatchSource";
+import {
+	RankedMatchSource,
+	toUtcTimestamp,
+} from "../../../../../src/modules/rewards/infrastructure/RankedMatchSource";
 
 describe("RankedMatchSource", () => {
 	let querySpy: ReturnType<typeof spyOn>;
@@ -92,11 +95,25 @@ describe("RankedMatchSource", () => {
 		expect(sql).toContain("anulled = false");
 		expect(sql).toContain("deleted_at IS NULL");
 		expect(sql).toContain("ORDER BY m.created_at ASC, m.id ASC");
-		expect(params).toEqual([
-			new Date("2026-10-23T10:00:05Z"),
-			"row-1",
+		expect(sql).toContain("$1::timestamp IS NULL");
+		expect(sql).toContain("m.created_at <= $3::timestamp");
+		expect(params).toEqual(["2026-10-23 10:00:05.000", "row-1", "2026-10-23 10:00:55.000", 50]);
+	});
+
+	it("reads timestamp-without-zone columns as UTC instants and passes a null cursor on the first run", async () => {
+		await new RankedMatchSource().fetchAfter(
+			{ lastCreatedAt: null, lastId: null },
+			10,
 			new Date("2026-10-23T10:00:55Z"),
-			50,
-		]);
+		);
+
+		const [sql, params] = querySpy.mock.calls[0] as [string, unknown[]];
+		expect(sql).toContain(`m.created_at AT TIME ZONE 'UTC' AS "createdAt"`);
+		expect(sql).toContain(`m.date AT TIME ZONE 'UTC' AS "date"`);
+		expect(params[0]).toBeNull();
+	});
+
+	it("toUtcTimestamp formats the UTC wall clock regardless of the host zone", () => {
+		expect(toUtcTimestamp(new Date("2026-10-25T23:59:59.250Z"))).toBe("2026-10-25 23:59:59.250");
 	});
 });

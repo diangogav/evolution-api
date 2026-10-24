@@ -18,14 +18,21 @@ type MatchRow = {
 // Both are written by the game server. Rows are drained in (created_at, id) order after
 // the cursor and no later than the lag bound, so a match whose duels are still landing
 // is read on a later tick.
-const FETCH_QUERY = `SELECT m.id, m.created_at AS "createdAt", m.game_id AS "gameId", m.user_id AS "userId",
-	m.winner, m.ban_list_name AS "banListName", m.date, m.opponent_ids AS "opponentIds",
+//
+// created_at and date are `timestamp without time zone` holding UTC wall-clock values.
+// node-postgres would read them as host-local time and write Date parameters with the
+// host offset, shifting every instant on a non-UTC host. Both sides are pinned instead:
+// columns are read through AT TIME ZONE 'UTC' (a real instant) and bounds are passed as
+// UTC wall-clock strings cast to `timestamp`.
+const FETCH_QUERY = `SELECT m.id, m.created_at AT TIME ZONE 'UTC' AS "createdAt", m.game_id AS "gameId",
+	m.user_id AS "userId", m.winner, m.ban_list_name AS "banListName",
+	m.date AT TIME ZONE 'UTC' AS "date", m.opponent_ids AS "opponentIds",
 	(SELECT json_agg(json_build_object('result', d.result, 'turns', d.turns) ORDER BY d.date ASC)
 	   FROM duels d WHERE d.match_id = m.id AND d.user_id = m.user_id AND d.deleted_at IS NULL) AS duels
 	FROM matches m
 	WHERE m.anulled = false AND m.deleted_at IS NULL
-	  AND ($1::timestamptz IS NULL OR (m.created_at, m.id) > ($1::timestamptz, $2::varchar))
-	  AND m.created_at <= $3
+	  AND ($1::timestamp IS NULL OR (m.created_at, m.id) > ($1::timestamp, $2::varchar))
+	  AND m.created_at <= $3::timestamp
 	ORDER BY m.created_at ASC, m.id ASC
 	LIMIT $4`;
 
@@ -37,7 +44,12 @@ export class RankedMatchSource implements MatchSource {
 		limit: number,
 		notAfter: Date,
 	): Promise<SourcedMatchFacts[]> {
-		const params = [cursor.lastCreatedAt, cursor.lastId ?? "", notAfter, limit];
+		const params = [
+			cursor.lastCreatedAt ? toUtcTimestamp(cursor.lastCreatedAt) : null,
+			cursor.lastId ?? "",
+			toUtcTimestamp(notAfter),
+			limit,
+		];
 		const rows = (await dataSource.query(FETCH_QUERY, params)) as MatchRow[];
 		return rows.map((row) => ({
 			sourceId: row.id,
@@ -59,4 +71,9 @@ export class RankedMatchSource implements MatchSource {
 function hasRegisteredOpponents(opponentIds: string | null): boolean {
 	if (!opponentIds) return false;
 	return opponentIds.split(",").every((id) => id.trim().length > 0);
+}
+
+// 2026-10-23T10:00:05.000Z -> "2026-10-23 10:00:05.000", independent of the host zone.
+export function toUtcTimestamp(date: Date): string {
+	return date.toISOString().replace("T", " ").replace("Z", "");
 }
