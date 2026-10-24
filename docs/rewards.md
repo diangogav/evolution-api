@@ -10,7 +10,7 @@ Essence is never stored as a number. It is the sum of a user's rows in `essence_
 | --- | --- | --- | --- |
 | `mission` | `<mission_code>:<period_key>` | the mission's reward amount | claim endpoint |
 | `daily_bonus` | `<day key>` | 30, once all three daily missions of a day are claimed | claim endpoint |
-| `achievement` | `user_achievements.id` | the achievement's `earned_points` × 2 | worker |
+| `achievement` | `user_achievements.id` | the achievement's `essence_reward` (catalog data, default 50, independent from its ranked points) | worker |
 | `purchase` | `cosmetics.id` | minus the cosmetic's `essence_price` | shop endpoint |
 | `adjustment` | free text | any | manual repairs |
 
@@ -54,7 +54,7 @@ The game server writes match results straight to the shared Postgres (`matches`,
 3. Each row becomes facts for one user and goes through the pure rules engine against that user's stored progress and state. Progress rows (`mission_progress`), per-user state (`user_reward_state`: last format, live ranked streak) and the cursor are written in the same transaction.
 4. Commit. If the process dies first, nothing moved and the next tick repeats the batch.
 
-Sources today: `matches` (ranked, one row per player per match) and `user_achievements` (each new row credits essence). Unranked matches are a planned third source once `unranked_matches` carries user ids.
+Sources today: `matches` (ranked, one row per player per match) and `user_achievements` (each new row credits the achievement's `essence_reward`; the shared `achievements` table must carry that column before the worker is enabled). Unranked matches are a planned third source once `unranked_matches` carries user ids.
 
 The cursor is stored as UTC text with microseconds. Postgres timestamps keep microseconds and a JS `Date` keeps milliseconds; a cursor that went through a `Date` would re-read the last processed row every tick.
 

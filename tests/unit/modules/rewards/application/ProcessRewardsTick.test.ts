@@ -294,13 +294,13 @@ describe("ProcessRewardsTick", () => {
 				sourceId: "ua-1",
 				createdAt: "2026-10-23 10:00:05.000001",
 				userId: "user-1",
-				earnedPoints: 15,
+				essenceReward: 150,
 			},
 			{
 				sourceId: "ua-2",
 				createdAt: "2026-10-23 10:00:06.000001",
 				userId: "user-2",
-				earnedPoints: 0,
+				essenceReward: 0,
 			},
 		];
 		const projection = new FakeProjection();
@@ -319,7 +319,7 @@ describe("ProcessRewardsTick", () => {
 
 		expect(result.processed).toEqual({ matches: 0, user_achievements: 2 });
 		expect(ledger.entries).toEqual([
-			{ userId: "user-1", kind: "achievement", referenceKey: "ua-1", delta: 30 },
+			{ userId: "user-1", kind: "achievement", referenceKey: "ua-1", delta: 150 },
 		]);
 		expect(projection.cursors.get("user_achievements")).toEqual({
 			lastCreatedAt: "2026-10-23 10:00:06.000001",

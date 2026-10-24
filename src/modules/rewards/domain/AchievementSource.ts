@@ -6,7 +6,7 @@ export type UnlockedAchievement = {
 	sourceId: string;
 	createdAt: string;
 	userId: string;
-	earnedPoints: number;
+	essenceReward: number;
 };
 
 // A table of unlocked achievements the worker drains in (unlocked_at, id) order, with

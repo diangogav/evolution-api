@@ -14,13 +14,13 @@ describe("UserAchievementSource", () => {
 		mock.restore();
 	});
 
-	it("maps unlocked achievements with their catalog points, keeping unlocked_at as microsecond UTC text", async () => {
+	it("maps unlocked achievements with their catalog essence reward, keeping unlocked_at as microsecond UTC text", async () => {
 		querySpy.mockResolvedValueOnce([
 			{
 				sourceId: "ua-1",
 				createdAt: "2026-10-23 10:00:05.123456",
 				userId: "user-1",
-				earnedPoints: 15,
+				essenceReward: 150,
 			},
 		]);
 
@@ -35,7 +35,7 @@ describe("UserAchievementSource", () => {
 				sourceId: "ua-1",
 				createdAt: "2026-10-23 10:00:05.123456",
 				userId: "user-1",
-				earnedPoints: 15,
+				essenceReward: 150,
 			},
 		]);
 	});

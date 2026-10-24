@@ -4,11 +4,11 @@ import { SourceCursor } from "../domain/MatchSource";
 import { toUtcTimestamp } from "./RankedMatchSource";
 
 // user_achievements is written by the game server when a player unlocks an achievement;
-// the points come from the achievements catalog (soft-deleted entries pay nothing).
+// the essence comes from the achievements catalog (soft-deleted entries pay nothing).
 // unlocked_at is `timestamp without time zone` in UTC and is read as microsecond text
 // for the same reasons as matches.created_at (see RankedMatchSource).
 const FETCH_QUERY = `SELECT ua.id AS "sourceId", to_char(ua.unlocked_at, 'YYYY-MM-DD HH24:MI:SS.US') AS "createdAt",
-	ua.user_id AS "userId", a.earned_points AS "earnedPoints"
+	ua.user_id AS "userId", a.essence_reward AS "essenceReward"
 	FROM user_achievements ua
 	JOIN achievements a ON a.id = ua.achievement_id AND a.deleted_at IS NULL
 	WHERE ($1::timestamp IS NULL OR (ua.unlocked_at, ua.id) > ($1::timestamp, $2::uuid))
@@ -30,7 +30,7 @@ export class UserAchievementSource implements AchievementSource {
 			sourceId: row.sourceId,
 			createdAt: row.createdAt,
 			userId: row.userId,
-			earnedPoints: row.earnedPoints,
+			essenceReward: row.essenceReward,
 		}));
 	}
 }
