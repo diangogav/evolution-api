@@ -110,6 +110,8 @@ same four names for the local Postgres container.
 | `REWARDS_WORKER_LAG_MS` | Optional | `5000` | Rows younger than this are left for a later tick, so a match whose duels are still being written is never read half-complete. |
 | `REWARDS_WORKER_BATCH_SIZE` | Optional | `200` | Maximum rows drained per source per tick. |
 
+How the worker works, and how to backfill or repair it, is in [rewards.md](rewards.md#the-worker).
+
 ## Database and migrations
 
 Both DataSources point at the same Postgres instance but track migrations
