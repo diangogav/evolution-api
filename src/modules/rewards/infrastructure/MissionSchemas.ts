@@ -19,4 +19,8 @@ export const MissionViewSchema = t.Object({
 export const ClaimResultSchema = t.Object({
 	balance: t.Integer({ description: "Essence balance after the claim" }),
 	reward: MissionRewardSchema,
+	dailyBonus: t.Integer({
+		description:
+			"Daily bonus essence credited by this claim (the third daily claim of the day); 0 otherwise",
+	}),
 });

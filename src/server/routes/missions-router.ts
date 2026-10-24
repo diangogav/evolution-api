@@ -108,6 +108,7 @@ export const missionsRouter = new Elysia({ prefix: "/me/missions" })
 							200: jsonOk(ClaimResultSchema, "Reward applied", {
 								balance: 120,
 								reward: { type: "essence", amount: 20 },
+								dailyBonus: 0,
 							}),
 							...errorResponses(401, 403, 404, 409),
 							422: {
