@@ -1,4 +1,6 @@
-import { QueryableManager } from "../domain/EssenceLedgerRepository";
+import { achievementCredit } from "../domain/achievementCredit";
+import { AchievementSource } from "../domain/AchievementSource";
+import { EssenceLedgerRepository, QueryableManager } from "../domain/EssenceLedgerRepository";
 import { evaluateMatch, RewardState } from "../domain/evaluateMatch";
 import { MatchSource, SourcedMatchFacts } from "../domain/MatchSource";
 import { Mission } from "../domain/Mission";
@@ -13,6 +15,12 @@ export type TickOptions = {
 	// Rows younger than this are left for the next tick: a match's duels rows may still
 	// be landing right after the match row.
 	lagMs: number;
+};
+
+// Achievement credit is optional wiring: without it the tick only projects missions.
+export type AchievementCrediting = {
+	sources: AchievementSource[];
+	ledger: EssenceLedgerRepository;
 };
 
 export type TickResult = {
@@ -31,6 +39,7 @@ export class ProcessRewardsTick {
 		private readonly catalog: MissionCatalogRepository,
 		private readonly unitOfWork: RewardsUnitOfWork,
 		private readonly options: TickOptions,
+		private readonly achievements: AchievementCrediting = { sources: [], ledger: NO_LEDGER },
 	) {}
 
 	async run(now: Date): Promise<TickResult> {
@@ -41,6 +50,9 @@ export class ProcessRewardsTick {
 			const counts: Record<string, number> = {};
 			for (const source of this.sources) {
 				counts[source.name] = await this.drain(source, missions, notAfter, manager);
+			}
+			for (const source of this.achievements.sources) {
+				counts[source.name] = await this.drainAchievements(source, notAfter, manager);
 			}
 			return counts;
 		});
@@ -60,6 +72,31 @@ export class ProcessRewardsTick {
 
 		for (const facts of batch) {
 			await this.apply(facts, missions, manager);
+		}
+
+		const last = batch[batch.length - 1];
+		await this.projection.advanceCursor(
+			source.name,
+			{ lastCreatedAt: last.createdAt, lastId: last.sourceId },
+			manager,
+		);
+		return batch.length;
+	}
+
+	// Each unlocked achievement is one idempotent ledger credit; the cursor moves with the
+	// batch so a row is read once and the ledger key guards the rest.
+	private async drainAchievements(
+		source: AchievementSource,
+		notAfter: Date,
+		manager: QueryableManager,
+	): Promise<number> {
+		const cursor = await this.projection.readCursor(source.name, manager);
+		const batch = await source.fetchAfter(cursor, this.options.batchSize, notAfter);
+		if (batch.length === 0) return 0;
+
+		for (const unlock of batch) {
+			const entry = achievementCredit(unlock);
+			if (entry) await this.achievements.ledger.append(entry, manager);
 		}
 
 		const last = batch[batch.length - 1];
@@ -117,3 +154,9 @@ export class ProcessRewardsTick {
 		);
 	}
 }
+
+const NO_LEDGER: EssenceLedgerRepository = {
+	lockUser: async () => undefined,
+	append: async () => "skipped",
+	balanceOf: async () => 0,
+};

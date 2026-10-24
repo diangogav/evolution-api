@@ -16,6 +16,12 @@ import {
 } from "../../../../../src/modules/rewards/domain/RewardsProjectionRepository";
 import { RewardsUnitOfWork } from "../../../../../src/modules/rewards/domain/RewardsUnitOfWork";
 import { toUtcTimestamp } from "../../../../../src/modules/rewards/infrastructure/RankedMatchSource";
+import {
+	AchievementSource,
+	UnlockedAchievement,
+} from "../../../../../src/modules/rewards/domain/AchievementSource";
+import { EssenceLedgerEntry } from "../../../../../src/modules/rewards/domain/EssenceLedgerEntry";
+import { EssenceLedgerRepository } from "../../../../../src/modules/rewards/domain/EssenceLedgerRepository";
 
 function mission(
 	code: string,
@@ -81,6 +87,43 @@ class FakeSource implements MatchSource {
 						(row.createdAt === cursor.lastCreatedAt && row.sourceId > (cursor.lastId ?? "")),
 			)
 			.slice(0, limit);
+	}
+}
+
+class FakeAchievementSource implements AchievementSource {
+	readonly name = "user_achievements";
+	constructor(private readonly rows: UnlockedAchievement[]) {}
+
+	async fetchAfter(
+		cursor: SourceCursor,
+		limit: number,
+		notAfter: Date,
+	): Promise<UnlockedAchievement[]> {
+		return this.rows
+			.filter((row) => row.createdAt <= toUtcTimestamp(notAfter))
+			.filter((row) =>
+				cursor.lastCreatedAt === null
+					? true
+					: row.createdAt > cursor.lastCreatedAt ||
+						(row.createdAt === cursor.lastCreatedAt && row.sourceId > (cursor.lastId ?? "")),
+			)
+			.slice(0, limit);
+	}
+}
+
+class FakeLedger implements EssenceLedgerRepository {
+	entries: EssenceLedgerEntry[] = [];
+	async lockUser(): Promise<void> {
+		return undefined;
+	}
+	async append(entry: EssenceLedgerEntry): Promise<"inserted" | "skipped"> {
+		if (this.entries.some((e) => e.kind === entry.kind && e.referenceKey === entry.referenceKey))
+			return "skipped";
+		this.entries.push(entry);
+		return "inserted";
+	}
+	async balanceOf(userId: string): Promise<number> {
+		return this.entries.filter((e) => e.userId === userId).reduce((s, e) => s + e.delta, 0);
 	}
 }
 
@@ -243,5 +286,46 @@ describe("ProcessRewardsTick", () => {
 
 		expect(result).toEqual({ locked: false, processed: {} });
 		expect(projection.cursors.size).toBe(0);
+	});
+
+	it("credits essence for newly unlocked achievements in the same tick and advances their own cursor", async () => {
+		const unlocks: UnlockedAchievement[] = [
+			{
+				sourceId: "ua-1",
+				createdAt: "2026-10-23 10:00:05.000001",
+				userId: "user-1",
+				earnedPoints: 15,
+			},
+			{
+				sourceId: "ua-2",
+				createdAt: "2026-10-23 10:00:06.000001",
+				userId: "user-2",
+				earnedPoints: 0,
+			},
+		];
+		const projection = new FakeProjection();
+		const ledger = new FakeLedger();
+		const useCase = new ProcessRewardsTick(
+			[new FakeSource([])],
+			projection,
+			catalogRepository,
+			new FakeUnitOfWork(),
+			{ batchSize: 100, lagMs: 5000 },
+			{ sources: [new FakeAchievementSource(unlocks)], ledger },
+		);
+
+		const result = await useCase.run(new Date("2026-10-23T10:01:00Z"));
+		const again = await useCase.run(new Date("2026-10-23T10:02:00Z"));
+
+		expect(result.processed).toEqual({ matches: 0, user_achievements: 2 });
+		expect(ledger.entries).toEqual([
+			{ userId: "user-1", kind: "achievement", referenceKey: "ua-1", delta: 30 },
+		]);
+		expect(projection.cursors.get("user_achievements")).toEqual({
+			lastCreatedAt: "2026-10-23 10:00:06.000001",
+			lastId: "ua-2",
+		});
+		expect(again.processed).toEqual({ matches: 0, user_achievements: 0 });
+		expect(ledger.entries).toHaveLength(1);
 	});
 });
