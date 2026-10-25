@@ -10,7 +10,7 @@ Essence is never stored as a number. It is the sum of a user's rows in `essence_
 | --- | --- | --- | --- |
 | `mission` | `<mission_code>:<period_key>` | the mission's reward amount | claim endpoint |
 | `daily_bonus` | `<day key>` | 30, once all three daily missions of a day are claimed | claim endpoint |
-| `achievement` | `user_achievements.id` | the achievement's `earned_points` × 2 | worker |
+| `achievement` | `user_achievements.id` | the achievement's `essence_reward` | worker |
 | `purchase` | `cosmetics.id` | minus the cosmetic's `essence_price` | shop endpoint |
 | `adjustment` | free text | any | manual repairs |
 
