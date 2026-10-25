@@ -14,13 +14,13 @@ describe("UserAchievementSource", () => {
 		mock.restore();
 	});
 
-	it("maps unlocked achievements with their catalog points, keeping unlocked_at as microsecond UTC text", async () => {
+	it("maps unlocked achievements with their catalog essence reward, keeping unlocked_at as microsecond UTC text", async () => {
 		querySpy.mockResolvedValueOnce([
 			{
 				sourceId: "ua-1",
 				createdAt: "2026-10-23 10:00:05.123456",
 				userId: "user-1",
-				earnedPoints: 15,
+				essenceReward: 50,
 			},
 		]);
 
@@ -35,7 +35,7 @@ describe("UserAchievementSource", () => {
 				sourceId: "ua-1",
 				createdAt: "2026-10-23 10:00:05.123456",
 				userId: "user-1",
-				earnedPoints: 15,
+				essenceReward: 50,
 			},
 		]);
 	});
@@ -52,6 +52,7 @@ describe("UserAchievementSource", () => {
 		expect(sql).toContain(
 			"JOIN achievements a ON a.id = ua.achievement_id AND a.deleted_at IS NULL",
 		);
+		expect(sql).toContain('a.essence_reward AS "essenceReward"');
 		expect(sql).toContain("to_char(ua.unlocked_at, 'YYYY-MM-DD HH24:MI:SS.US')");
 		expect(sql).toContain("(ua.unlocked_at, ua.id) > ($1::timestamp, $2::uuid)");
 		expect(sql).toContain("ua.unlocked_at <= $3::timestamp");

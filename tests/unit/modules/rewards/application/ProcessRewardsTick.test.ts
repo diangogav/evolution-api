@@ -294,13 +294,13 @@ describe("ProcessRewardsTick", () => {
 				sourceId: "ua-1",
 				createdAt: "2026-10-23 10:00:05.000001",
 				userId: "user-1",
-				earnedPoints: 15,
+				essenceReward: 30,
 			},
 			{
 				sourceId: "ua-2",
 				createdAt: "2026-10-23 10:00:06.000001",
 				userId: "user-2",
-				earnedPoints: 0,
+				essenceReward: 0,
 			},
 		];
 		const projection = new FakeProjection();
