@@ -2,6 +2,7 @@ import { bearer } from "@elysiajs/bearer";
 import { Elysia, t } from "elysia";
 
 import { config } from "../../config";
+import { createR2AssetUrlSigner } from "../../modules/assets/infrastructure/createR2AssetUrlSigner";
 import { CosmeticPostgresRepository } from "../../modules/catalog/infrastructure/CosmeticPostgresRepository";
 import { EntitlementsGatekeeper } from "../../modules/entitlements/application/EntitlementsGatekeeper";
 import { GrantCosmeticToUser } from "../../modules/entitlements/application/GrantCosmeticToUser";
@@ -33,7 +34,7 @@ const grantCosmetic = new GrantCosmeticToUser(
 );
 
 const getMyEssence = new GetMyEssence(ledger);
-const getShop = new GetShop(shopCatalog, gatekeeper);
+const getShop = new GetShop(shopCatalog, gatekeeper, createR2AssetUrlSigner());
 const purchaseCosmetic = new PurchaseCosmetic(
 	shopCatalog,
 	ledger,
@@ -68,6 +69,11 @@ const shopItemExample = {
 	displayName: "Golden sleeve",
 	price: 800,
 	owned: false,
+	assets: {
+		"render.jpg": "https://assets.evolutionygo.com/sleeves/golden/render.jpg?sig=...",
+		"preview.jpg": "https://assets.evolutionygo.com/sleeves/golden/preview.jpg?sig=...",
+	},
+	assetsExpiresAt: "2026-09-25T18:30:00.000Z",
 };
 
 export const shopRouter = new Elysia({ prefix: "/shop" }).use(bearer()).guard(banGuard, (app) =>
@@ -77,7 +83,7 @@ export const shopRouter = new Elysia({ prefix: "/shop" }).use(bearer()).guard(ba
 				tags: ["Rewards"],
 				summary: "List the shop",
 				description:
-					"Active cosmetics that can be bought with essence, with their price and whether the authenticated user can already use them. Assets are served by the cosmetics endpoints.",
+					"Active cosmetics that can be bought with essence, with their price and whether the authenticated user can already use them, and signed URLs of their files for previews.",
 				security: [{ bearerAuth: [] }],
 				responses: {
 					200: jsonOk(t.Array(ShopItemSchema), "Shop items", [shopItemExample]),
