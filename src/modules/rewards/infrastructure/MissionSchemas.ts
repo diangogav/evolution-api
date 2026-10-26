@@ -1,5 +1,7 @@
 import { t } from "elysia";
 
+import { MISSION_METRICS } from "../domain/Mission";
+
 export const MissionRewardSchema = t.Union([
 	t.Object({ type: t.Literal("essence"), amount: t.Integer() }),
 	t.Object({ type: t.Literal("cosmetic"), cosmeticId: t.String() }),
@@ -7,6 +9,9 @@ export const MissionRewardSchema = t.Union([
 
 export const MissionViewSchema = t.Object({
 	code: t.String(),
+	metric: t.UnionEnum([...MISSION_METRICS], {
+		description: "What the mission counts; clients pick the mission icon from it",
+	}),
 	name: t.String({ description: "Localized from Accept-Language (en or es)" }),
 	description: t.String(),
 	target: t.Integer(),

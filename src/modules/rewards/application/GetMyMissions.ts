@@ -1,5 +1,5 @@
 import { Locale, localize } from "../domain/LocalizedText";
-import { Mission, MissionPeriod, MissionReward } from "../domain/Mission";
+import { Mission, MissionMetric, MissionPeriod, MissionReward } from "../domain/Mission";
 import { MissionCatalogRepository } from "../domain/MissionCatalogRepository";
 import { MissionClaimRepository } from "../domain/MissionClaimRepository";
 import { RewardsProjectionRepository } from "../domain/RewardsProjectionRepository";
@@ -7,6 +7,7 @@ import { currentMissions } from "../domain/currentMissions";
 
 export type MissionView = {
 	code: string;
+	metric: MissionMetric;
 	name: string;
 	description: string;
 	target: number;
@@ -64,6 +65,7 @@ function toView(
 ): MissionView {
 	return {
 		code: mission.code,
+		metric: mission.rule.metric,
 		name: localize(mission.name, locale),
 		description: localize(mission.description, locale),
 		target: mission.rule.target,

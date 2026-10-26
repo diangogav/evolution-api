@@ -10,14 +10,18 @@ import {
 } from "../../../../../src/modules/rewards/domain/RewardsProjectionRepository";
 import { selectDailyMissions } from "../../../../../src/modules/rewards/domain/selectDailyMissions";
 
-function mission(code: string, period: Mission["period"] = "daily"): Mission {
+function mission(
+	code: string,
+	period: Mission["period"] = "daily",
+	metric: Mission["rule"]["metric"] = "duelsPlayed",
+): Mission {
 	return {
 		id: `id-${code}`,
 		code,
 		name: { en: `${code} en`, es: `${code} es` },
 		description: { en: `${code} desc en` },
 		period,
-		rule: { metric: "duelsPlayed", target: 3 },
+		rule: { metric, target: 3 },
 		reward: { type: "essence", amount: 20 },
 		active: true,
 		sortOrder: 0,
@@ -31,6 +35,7 @@ const catalog = [
 	mission("win_other_format"),
 	mission("win_fast"),
 	mission("weekly_play_20", "weekly"),
+	mission("weekly_ranked_streak_3", "weekly", "rankedWinStreak"),
 ];
 
 const now = new Date("2026-10-23T10:00:00Z");
@@ -59,6 +64,7 @@ describe("GetMyMissions", () => {
 		expect(result.map((m) => m.code)).toEqual(todays.map((m) => m.code));
 		expect(result[0]).toEqual({
 			code: first.code,
+			metric: "duelsPlayed",
 			name: `${first.code} es`,
 			description: `${first.code} desc en`,
 			target: 3,
@@ -75,6 +81,7 @@ describe("GetMyMissions", () => {
 
 		expect(result).toEqual([
 			expect.objectContaining({ code: "weekly_play_20", name: "weekly_play_20 en" }),
+			expect.objectContaining({ code: "weekly_ranked_streak_3", metric: "rankedWinStreak" }),
 		]);
 	});
 });
