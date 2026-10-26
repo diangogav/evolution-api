@@ -24,6 +24,8 @@ const sleeve: ShopCosmetic = {
 	tier: CosmeticTier.DONOR,
 	displayName: "Golden sleeve",
 	essencePrice: 800,
+	assetRef: "sleeves/golden/",
+	assetFiles: ["render.jpg"],
 };
 
 class Fakes {

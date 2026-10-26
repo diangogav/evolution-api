@@ -1,7 +1,8 @@
 import { cosmeticsDataSource } from "../../../cosmetics-data-source";
 import { ShopCatalogRepository, ShopCosmetic } from "../domain/ShopCatalogRepository";
 
-const COLUMNS = `id, type, tier, display_name AS "displayName", essence_price AS "essencePrice"`;
+const COLUMNS = `id, type, tier, display_name AS "displayName", essence_price AS "essencePrice",
+	asset_ref AS "assetRef", asset_files AS "assetFiles"`;
 
 const FIND_PURCHASABLE_QUERY = `SELECT ${COLUMNS} FROM cosmetics
 	WHERE active = true AND essence_price IS NOT NULL ORDER BY type ASC, display_name ASC`;

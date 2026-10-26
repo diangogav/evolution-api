@@ -9,6 +9,9 @@ export type ShopCosmetic = {
 	tier: CosmeticTier;
 	displayName: string;
 	essencePrice: number;
+	/** R2 prefix and published files, so the shop can sign previews of what it sells. */
+	assetRef: string;
+	assetFiles: string[] | null;
 };
 
 export interface ShopCatalogRepository {

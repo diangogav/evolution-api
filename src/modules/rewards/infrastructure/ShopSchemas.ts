@@ -14,4 +14,8 @@ export const ShopItemSchema = t.Object({
 	displayName: t.String(),
 	price: t.Integer({ description: "Price in essence" }),
 	owned: t.Boolean({ description: "True when the user can already use it (tier or grant)" }),
+	assets: t.Record(t.String(), t.String(), {
+		description: "Signed URLs of the cosmetic's files, keyed by file name, for shop previews",
+	}),
+	assetsExpiresAt: t.String({ description: "ISO 8601 expiry of the signed asset URLs" }),
 });

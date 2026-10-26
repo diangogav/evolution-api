@@ -87,7 +87,7 @@ Reprocessing recomputes `mission_progress` values from the stored state, so run 
 
 `cosmetics.essence_price` (nullable) is the price in essence; `null` means not for sale. The initial migration prices every DONOR cosmetic at 800 and leaves the rest unpriced: STANDARD is free, REGISTERED is already granted to every signed-in user by tier, and EXCLUSIVE stays hand-granted unless a price is set. Prices are per cosmetic and change with an `UPDATE`.
 
-`GET /shop` lists priced, active cosmetics and marks `owned` using the same gate that decides equipping (`EntitlementsGatekeeper`): a tier the user already holds counts as owned. `POST /shop/:cosmeticId/purchase` refuses what the user can already use (`409`), then, under a per-user lock in one transaction, checks the balance (`402 Insufficient essence`), debits the ledger and grants the cosmetic as a `PURCHASE` entitlement on the same connection, so debit and grant commit or roll back together.
+`GET /shop` lists priced, active cosmetics and marks `owned` using the same gate that decides equipping (`EntitlementsGatekeeper`): a tier the user already holds counts as owned. Each item also carries `assets` and `assetsExpiresAt`, signed URLs of its files for the shop preview: the cosmetics asset endpoints only sign what the user can already use, and an item for sale is one they cannot. `POST /shop/:cosmeticId/purchase` refuses what the user can already use (`409`), then, under a per-user lock in one transaction, checks the balance (`402 Insufficient essence`), debits the ledger and grants the cosmetic as a `PURCHASE` entitlement on the same connection, so debit and grant commit or roll back together.
 
 ## Tables (cosmetics DataSource)
 
