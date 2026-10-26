@@ -36,7 +36,7 @@ The catalog is data: table `mission_catalog`, seeded by migration and editable w
 
 **Wins against guests do not count.** Play metrics count any match. Win metrics count only when every opponent has a user id, so a player cannot farm wins against an anonymous second window.
 
-`GET /me/missions?period=daily|weekly` returns the current period's missions with progress and claim state, localized from `Accept-Language` (`es` or `en`, default `en`). `POST /me/missions/:code/claim` pays once per period and returns `{ balance, reward, dailyBonus }`; the third daily claim of a day also pays the daily bonus and reports it in `dailyBonus` (0 on every other claim), so clients never infer it from balance differences.
+`GET /me/missions?period=daily|weekly` returns the current period's missions with progress, claim state and the rule `metric` (clients pick the mission icon from it), localized from `Accept-Language` (`es` or `en`, default `en`). `POST /me/missions/:code/claim` pays once per period and returns `{ balance, reward, dailyBonus }`; the third daily claim of a day also pays the daily bonus and reports it in `dailyBonus` (0 on every other claim), so clients never infer it from balance differences.
 
 ### Adding a mission
 

@@ -45,6 +45,7 @@ const claimMission = new ClaimMission(
 
 const missionExample = {
 	code: "play_3",
+	metric: "duelsPlayed",
 	name: "Warm-up",
 	description: "Play 3 duels",
 	target: 3,
