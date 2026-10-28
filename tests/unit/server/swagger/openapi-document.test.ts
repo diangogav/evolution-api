@@ -126,6 +126,19 @@ describe("OpenAPI document", () => {
 		expect(operations.every(({ key }) => key.includes(" /api/v1/"))).toBe(true);
 	});
 
+	it("serves bot loadouts publicly with the same schema as a user's public loadout", () => {
+		const bot = operations.find(({ key }) => key === "GET /api/v1/bots/{botName}/loadout");
+		const user = operations.find(
+			({ key }) => key === "GET /api/v1/users/by-username/{username}/loadout",
+		);
+
+		expect(bot).toBeDefined();
+		expect(bot?.operation.security).toBeUndefined();
+		expect(bot?.operation.responses?.["200"]?.content?.["application/json"]?.schema).toEqual(
+			user?.operation.responses?.["200"]?.content?.["application/json"]?.schema,
+		);
+	});
+
 	it("describes the whole platform instead of only tournaments", () => {
 		expect(document.info.title).toBe("Evolution API");
 		expect(document.info.title).not.toMatch(/tournament/i);

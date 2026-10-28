@@ -72,6 +72,7 @@ Modules that exist today (`src/modules/*`):
 | `emoteBarRouter` | `/me/emote-bar` | `src/server/routes/emote-bar-router.ts` |
 | `loadoutRouter` | `/me/loadout` | `src/server/routes/loadout-router.ts` |
 | `publicLoadoutRouter` | `/users/by-username/:username/loadout` | `src/server/routes/public-loadout-router.ts` |
+| `botLoadoutRouter` | `/bots/:botName/loadout` | `src/server/routes/bot-loadout-router.ts` |
 | `publicEmoteBarRouter` | `/users/by-username/:username/emote-bar` | `src/server/routes/public-emote-bar-router.ts` |
 | `adminCosmeticsRouter` | `/admin/cosmetics` | `src/server/routes/admin-cosmetics-router.ts` |
 | `adminModerationRouter` | `/admin/matches` | `src/server/routes/admin-moderation-router.ts` |
@@ -86,7 +87,7 @@ Both `DataSource`s point at the same Postgres instance but track migrations inde
 | DataSource | File | Scope | Migrations table |
 | --- | --- | --- | --- |
 | Shared (evolution-types) | `src/evolution-types/src/data-source.ts` | Users, matches, tournaments, stats, bans, achievements, ratings, points ledger, lightning tournaments/ranking | `migrations` (owned and run by the game server) |
-| Cosmetics | `src/cosmetics-data-source.ts` | Cosmetics, entitlements, user loadouts and emote bars, rewards (essence ledger, missions, claims, projections) | `cosmetics_migrations`, migrations in `src/migrations/` |
+| Cosmetics | `src/cosmetics-data-source.ts` | Cosmetics, entitlements, user and bot loadouts, user emote bars, rewards (essence ledger, missions, claims, projections) | `cosmetics_migrations`, migrations in `src/migrations/` |
 
 `src/evolution-types/` is a vendored package owned by the game server. Do not edit its entities or migrations from this repository; it is shared infrastructure, not API-local code. The cosmetics `DataSource` declares its foreign key to `users(id)` in raw SQL inside its own migration, so it never manages the shared `users` table.
 
@@ -116,7 +117,7 @@ Throw one of these from a use case or controller instead of setting `set.status`
 | `banGuard` | `src/server/guards/bandGuard.ts` | `beforeHandle` that decodes the bearer token and throws `AuthenticationError` (401) if it is missing or invalid, or `ForbiddenError` (403) if the user has an active ban. |
 | `JwtAdminAuthorizer` | `src/server/auth/AdminAuthorizer.ts` | `requireAdmin(token)`: throws `AuthenticationError` if the token is missing or has no user id, `ForbiddenError` if the decoded role is not `ADMIN`. Used by `admin-cosmetics-router.ts` and `admin-moderation-router.ts`. |
 
-Which routers use `banGuard`: **`user-router.ts`** (its authenticated, non-admin endpoints), **`ticket-router.ts`**, **`me-cosmetics-router.ts`**, **`loadout-router.ts`**, **`emote-bar-router.ts`**, **`missions-router.ts`**, and **`shop-router.ts`** use it. **`cosmetics-router.ts`, `public-loadout-router.ts`, `public-emote-bar-router.ts`, `achievements-router.ts`, `admin-cosmetics-router.ts`, and `admin-moderation-router.ts` do not** — `cosmetics-router.ts`, `public-loadout-router.ts`, `public-emote-bar-router.ts`, and `achievements-router.ts` serve public, unauthenticated reads, so there is no bearer token to check a ban against. Admin endpoints inside `user-router.ts` (ban/unban a user) check the decoded `role` inline rather than through `JwtAdminAuthorizer`; `admin-cosmetics-router.ts` and `admin-moderation-router.ts` use `JwtAdminAuthorizer` consistently. Ban routes are intentionally outside `banGuard` (an admin must be able to act on a banned user); annulment routes use `JwtAdminAuthorizer`.
+Which routers use `banGuard`: **`user-router.ts`** (its authenticated, non-admin endpoints), **`ticket-router.ts`**, **`me-cosmetics-router.ts`**, **`loadout-router.ts`**, **`emote-bar-router.ts`**, **`missions-router.ts`**, and **`shop-router.ts`** use it. **`cosmetics-router.ts`, `public-loadout-router.ts`, `bot-loadout-router.ts`, `public-emote-bar-router.ts`, `achievements-router.ts`, `admin-cosmetics-router.ts`, and `admin-moderation-router.ts` do not** — `cosmetics-router.ts`, `public-loadout-router.ts`, `public-emote-bar-router.ts`, and `achievements-router.ts` serve public, unauthenticated reads, so there is no bearer token to check a ban against. Admin endpoints inside `user-router.ts` (ban/unban a user) check the decoded `role` inline rather than through `JwtAdminAuthorizer`; `admin-cosmetics-router.ts` and `admin-moderation-router.ts` use `JwtAdminAuthorizer` consistently. Ban routes are intentionally outside `banGuard` (an admin must be able to act on a banned user); annulment routes use `JwtAdminAuthorizer`.
 
 ## External services
 
