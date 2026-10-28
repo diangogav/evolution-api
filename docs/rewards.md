@@ -13,6 +13,7 @@ Essence is never stored as a number. It is the sum of a user's rows in `essence_
 | `achievement` | `user_achievements.id` | the achievement's `essence_reward` | worker |
 | `purchase` | `cosmetics.id` | minus the cosmetic's `essence_price` | shop endpoint |
 | `adjustment` | free text | any | manual repairs |
+| `event_run` | `event:<event_id>:tier:<waves>` | the event prize tier's essence, once per player and tier | event run apply (`/event-runs/me`, duel request, event run worker) |
 
 `GET /me/essence` returns the balance. Domain code: `src/modules/rewards/domain/EssenceLedgerEntry.ts`.
 
