@@ -18,6 +18,7 @@ import { cosmeticsRouter } from "./routes/cosmetics-router";
 import { leaderboardRouter } from "./routes/leaderboard-router";
 import { emoteBarRouter } from "./routes/emote-bar-router";
 import { botLoadoutRouter } from "./routes/bot-loadout-router";
+import { eventRunsRouter, eventsRouter } from "./routes/event-run-router";
 import { loadoutRouter } from "./routes/loadout-router";
 import { meCosmeticsRouter } from "./routes/me-cosmetics-router";
 import { missionsRouter } from "./routes/missions-router";
@@ -107,6 +108,8 @@ export function mountApiV1Routes(app: Elysia) {
 			.use(adminModerationRouter)
 			.use(missionsRouter)
 			.use(essenceRouter)
-			.use(shopRouter);
+			.use(shopRouter)
+			.use(eventsRouter)
+			.use(eventRunsRouter);
 	});
 }
