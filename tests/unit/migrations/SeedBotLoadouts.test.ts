@@ -3,8 +3,8 @@ import type { QueryRunner } from "typeorm";
 
 import {
 	BOT_LOADOUT_SEED,
-	SeedBotLoadouts1782000100000,
-} from "../../../src/migrations/1782000100000-seed-bot-loadouts";
+	SeedBotLoadouts1782100100000,
+} from "../../../src/migrations/1782100100000-seed-bot-loadouts";
 
 function recordingRunner(): { runner: QueryRunner; calls: { sql: string; params?: unknown[] }[] } {
 	const calls: { sql: string; params?: unknown[] }[] = [];
@@ -30,7 +30,7 @@ describe("SeedBotLoadouts", () => {
 	it("inserts only seed rows whose cosmetic exists, taking the slot from the cosmetic", async () => {
 		const { runner, calls } = recordingRunner();
 
-		await new SeedBotLoadouts1782000100000().up(runner);
+		await new SeedBotLoadouts1782100100000().up(runner);
 
 		expect(calls).toHaveLength(1);
 		const { sql, params } = calls[0];
@@ -50,7 +50,7 @@ describe("SeedBotLoadouts", () => {
 	it("removes only the rows it seeded on revert", async () => {
 		const { runner, calls } = recordingRunner();
 
-		await new SeedBotLoadouts1782000100000().down(runner);
+		await new SeedBotLoadouts1782100100000().down(runner);
 
 		expect(calls).toHaveLength(1);
 		expect(calls[0].sql).toContain('DELETE FROM "bot_loadouts"');

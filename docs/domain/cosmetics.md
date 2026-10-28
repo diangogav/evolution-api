@@ -134,7 +134,7 @@ DO UPDATE SET "cosmetic_id" = EXCLUDED."cosmetic_id", "updated_at" = now();
 
 A missing cosmetic inserts nothing. For a look that should ship with the code,
 add an entry to `BOT_LOADOUT_SEED` in a new seed migration modeled on
-`src/migrations/1782000100000-seed-bot-loadouts.ts` (it skips cosmetics the
+`src/migrations/1782100100000-seed-bot-loadouts.ts` (it skips cosmetics the
 catalog lacks and never overwrites an existing slot).
 
 ### Stale loadout references

@@ -5,8 +5,8 @@ import type { MigrationInterface, QueryRunner } from "typeorm";
  * name; bots are not users, so there is no foreign key to users(id). Deleting a cosmetic
  * drops it from any bot that wore it instead of blocking the catalog change.
  */
-export class CreateBotLoadouts1782000000000 implements MigrationInterface {
-	name = "CreateBotLoadouts1782000000000";
+export class CreateBotLoadouts1782100000000 implements MigrationInterface {
+	name = "CreateBotLoadouts1782100000000";
 
 	async up(queryRunner: QueryRunner): Promise<void> {
 		await queryRunner.query(

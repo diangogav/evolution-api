@@ -25,8 +25,8 @@ function seedParams(): [string[], string[]] {
 	return [BOT_LOADOUT_SEED.map((row) => row.botName), BOT_LOADOUT_SEED.map((row) => row.assetRef)];
 }
 
-export class SeedBotLoadouts1782000100000 implements MigrationInterface {
-	name = "SeedBotLoadouts1782000100000";
+export class SeedBotLoadouts1782100100000 implements MigrationInterface {
+	name = "SeedBotLoadouts1782100100000";
 
 	async up(queryRunner: QueryRunner): Promise<void> {
 		await queryRunner.query(INSERT_SEED, seedParams());
