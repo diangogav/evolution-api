@@ -106,6 +106,36 @@ replaces whatever was equipped there.
   username to a user id (404 if unknown, so a client can fall back to the
   default look) and delegates to `GetMyLoadout`. This route is public — no
   bearer token, no `banGuard`.
+- `GET /bots/:botName/loadout` → `GetBotLoadout.run`
+  (`src/modules/loadout/application/GetBotLoadout.ts`): the loadout of a
+  WindBot bot, addressed by its exact botlist name (`Lich`, `Gravekeepers`).
+  Same response shape and the same signing path as a user's loadout
+  (`GetMyLoadout.signSlots`). An unknown bot, or one with nothing equipped,
+  answers `200 []`, like a user with an empty loadout, so the client falls back
+  to the standard look. Public, no bearer token.
+
+### Bot loadouts
+
+Bots are not users, so their slots live in `bot_loadouts` (cosmetics
+DataSource): primary key `(bot_name, cosmetic_type)`, `cosmetic_id` references
+`cosmetics(id)` (`ON DELETE CASCADE`). `bot_name` must match the WindBot
+botlist name exactly, case included. Bots need no entitlement.
+
+To give a bot a cosmetic, add one row per slot, resolving the cosmetic by its
+`asset_ref` so the slot always matches the cosmetic's type:
+
+```sql
+INSERT INTO "bot_loadouts" ("bot_name", "cosmetic_type", "cosmetic_id")
+SELECT 'Lich', c."type", c."id" FROM "cosmetics" c
+WHERE c."asset_ref" = 'avatars/halloween-graveyard/'
+ON CONFLICT ("bot_name", "cosmetic_type")
+DO UPDATE SET "cosmetic_id" = EXCLUDED."cosmetic_id", "updated_at" = now();
+```
+
+A missing cosmetic inserts nothing. For a look that should ship with the code,
+add an entry to `BOT_LOADOUT_SEED` in a new seed migration modeled on
+`src/migrations/1782100100000-seed-bot-loadouts.ts` (it skips cosmetics the
+catalog lacks and never overwrites an existing slot).
 
 ### Stale loadout references
 

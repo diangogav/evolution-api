@@ -15,6 +15,7 @@ import { banListRouter } from "./routes/ban-list-router";
 import { cosmeticsRouter } from "./routes/cosmetics-router";
 import { leaderboardRouter } from "./routes/leaderboard-router";
 import { emoteBarRouter } from "./routes/emote-bar-router";
+import { botLoadoutRouter } from "./routes/bot-loadout-router";
 import { loadoutRouter } from "./routes/loadout-router";
 import { meCosmeticsRouter } from "./routes/me-cosmetics-router";
 import { missionsRouter } from "./routes/missions-router";
@@ -96,6 +97,7 @@ export function mountApiV1Routes(app: Elysia) {
 			.use(emoteBarRouter)
 			.use(loadoutRouter)
 			.use(publicLoadoutRouter)
+			.use(botLoadoutRouter)
 			.use(publicEmoteBarRouter)
 			.use(adminCosmeticsRouter)
 			.use(adminModerationRouter)
