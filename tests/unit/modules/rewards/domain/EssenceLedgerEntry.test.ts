@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 
 import {
+	ESSENCE_LEDGER_KINDS,
 	essenceLedgerEntry,
 	InvalidEssenceLedgerEntryError,
 } from "../../../../../src/modules/rewards/domain/EssenceLedgerEntry";
@@ -49,5 +50,18 @@ describe("essenceLedgerEntry", () => {
 		expect(() =>
 			essenceLedgerEntry({ userId: "user-1", kind: "adjustment", referenceKey: " ", delta: 5 }),
 		).toThrow(InvalidEssenceLedgerEntryError);
+	});
+});
+
+describe("ESSENCE_LEDGER_KINDS", () => {
+	it("keeps every existing kind, in order, and adds event_run for event prizes", () => {
+		expect([...ESSENCE_LEDGER_KINDS]).toEqual([
+			"mission",
+			"daily_bonus",
+			"achievement",
+			"purchase",
+			"adjustment",
+			"event_run",
+		]);
 	});
 });

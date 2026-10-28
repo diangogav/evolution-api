@@ -4,6 +4,7 @@ export const ESSENCE_LEDGER_KINDS = [
 	"achievement",
 	"purchase",
 	"adjustment",
+	"event_run",
 ] as const;
 
 export type EssenceLedgerKind = (typeof ESSENCE_LEDGER_KINDS)[number];
