@@ -141,7 +141,8 @@ Art made only for bots ships as **inactive** catalog rows (`active = false`): no
 player can see, own or equip it, while `GET /api/v1/bots/{botName}/loadout` still
 signs its assets. `1782200000000-add-halloween-bot-looks.ts` adds the Halloween
 horde looks this way: one avatar per bot, one sleeve and playmat per difficulty
-tier, and their own sleeve and playmat for the Lich and Gravekeepers bosses. Its
+tier, and their own sleeve and playmat for the Lich and Gravekeepers bosses;
+`1782300000000-add-halloween-bot-plates.ts` adds the matching zone plates (LANE). Its
 assets live in the `evolution-cosmetics` repository and must be pushed to the
 bucket before the migration runs.
 
