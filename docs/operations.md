@@ -112,6 +112,16 @@ same four names for the local Postgres container.
 
 How the worker works, and how to backfill or repair it, is in [rewards.md](rewards.md#the-worker).
 
+### Event run worker
+
+| Name | Required | Default | Purpose |
+| --- | --- | --- | --- |
+| `EVENT_RUN_WORKER_ENABLED` | Optional | `false` | Only the literal string `"true"` starts the in-process worker (`src/server/server.ts`) that applies event duel results players did not fetch, voids reserved duels the duel server left open for more than 2 hours (logged as an error), and expires idle event runs. `bun run src/worker.ts` always runs it. Safe on several instances: its own advisory lock lets one tick run at a time. |
+| `EVENT_RUN_WORKER_INTERVAL_MS` | Optional | `5000` | Pause between ticks. |
+| `EVENT_RUN_WORKER_BATCH_SIZE` | Optional | `100` | Maximum duel records applied per tick. |
+
+The rules it applies are in [design/halloween-event-runs.md](design/halloween-event-runs.md#api--event-run-module).
+
 ## Database and migrations
 
 Both DataSources point at the same Postgres instance but track migrations

@@ -50,6 +50,11 @@ export const config = {
 		lagMs: Number(process.env.REWARDS_WORKER_LAG_MS ?? 5000),
 		batchSize: Number(process.env.REWARDS_WORKER_BATCH_SIZE ?? 200),
 	},
+	eventRunWorker: {
+		enabled: process.env.EVENT_RUN_WORKER_ENABLED === "true",
+		intervalMs: Number(process.env.EVENT_RUN_WORKER_INTERVAL_MS ?? 5000),
+		batchSize: Number(process.env.EVENT_RUN_WORKER_BATCH_SIZE ?? 100),
+	},
 	annulment: { enabled: process.env.ANNULMENT_ENABLED === "true" },
 	passwordRecovery: {
 		defaultResetUrl: "https://evolutionygo.com/reset-account-password?token={token}",

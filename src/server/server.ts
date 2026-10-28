@@ -8,6 +8,8 @@ import { PaymentRequiredError } from "../shared/errors/PaymentRequiredError";
 import { UnprocessableError } from "../shared/errors/UnprocessableError";
 import { InvalidArgumentError } from "../shared/errors/InvalidArgumentError";
 import { NotFoundError } from "../shared/errors/NotFoundError";
+import { config } from "../config";
+import { buildEventRunWorker } from "../modules/event-run/infrastructure/buildEventRun";
 import { Logger } from "../shared/logger/domain/Logger";
 
 import { achievementsRouter, userAchievementsRouter } from "./routes/achievements-router";
@@ -74,6 +76,8 @@ export class Server {
 	}
 
 	start(): void {
+		// The event run worker applies duel results nobody fetched and voids stale duels.
+		if (config.eventRunWorker.enabled) buildEventRunWorker(this.logger).start();
 		this.app.listen(process.env.PORT ?? 3000, () => {
 			this.logger.info(`Server started on port ${process.env.PORT ?? 3000}!`);
 		});
