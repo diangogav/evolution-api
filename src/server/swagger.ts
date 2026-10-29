@@ -49,6 +49,10 @@ const TAGS = [
 		name: "Activity Stats",
 		description: "Daily, weekly and monthly server activity for the backoffice (admin only)",
 	},
+	{
+		name: "Event Stats",
+		description: "Event catalog and per event run, wave, deck and duel stats (admin only)",
+	},
 ];
 
 const TAG_GROUPS = [
@@ -59,7 +63,7 @@ const TAG_GROUPS = [
 	{ name: "Rewards", tags: ["Rewards"] },
 	{
 		name: "Administration",
-		tags: ["User Bans", "Match Moderation", "Cosmetics Admin", "Activity Stats"],
+		tags: ["User Bans", "Match Moderation", "Cosmetics Admin", "Activity Stats", "Event Stats"],
 	},
 ];
 

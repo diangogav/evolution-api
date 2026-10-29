@@ -79,6 +79,7 @@ Modules that exist today (`src/modules/*`):
 | `adminCosmeticsRouter` | `/admin/cosmetics` | `src/server/routes/admin-cosmetics-router.ts` |
 | `adminModerationRouter` | `/admin/matches` | `src/server/routes/admin-moderation-router.ts` |
 | `adminStatsRouter` | `/admin/stats` | `src/server/routes/admin-stats-router.ts` |
+| `adminEventsRouter` | `/admin/events` | `src/server/routes/admin-events-router.ts` |
 | `missionsRouter` | `/me/missions` | `src/server/routes/missions-router.ts` |
 | `essenceRouter` | `/me/essence` | `src/server/routes/shop-router.ts` |
 | `shopRouter` | `/shop` | `src/server/routes/shop-router.ts` |
@@ -95,7 +96,7 @@ Both `DataSource`s point at the same Postgres instance but track migrations inde
 
 `src/evolution-types/` is a vendored package owned by the game server. Do not edit its entities or migrations from this repository; it is shared infrastructure, not API-local code. The cosmetics `DataSource` declares its foreign key to `users(id)` in raw SQL inside its own migration, so it never manages the shared `users` table.
 
-Module-to-DataSource mapping: `catalog`, `loadout`, `emote-bar`, `entitlements`, `community-decks`, and `rewards` use the cosmetics `DataSource` (`rewards` also reads matches and achievements from the shared schema through its `*Source` adapters). Every other module that touches Postgres (`activity-stats`, `user`, `achievements`, `match`, `match-annulment`, `points-ledger`, `rating`, `stats`, `tiers`, `ban-list`) uses the shared `evolution-types` `DataSource`. `ticket` uses Redis, not Postgres. Both `DataSource`s are initialized at startup in `src/index.ts`.
+Module-to-DataSource mapping: `catalog`, `loadout`, `emote-bar`, `entitlements`, `community-decks`, `event-run`, `event-stats`, and `rewards` use the cosmetics `DataSource` (`rewards` also reads matches and achievements from the shared schema through its `*Source` adapters). Every other module that touches Postgres (`activity-stats`, `user`, `achievements`, `match`, `match-annulment`, `points-ledger`, `rating`, `stats`, `tiers`, `ban-list`) uses the shared `evolution-types` `DataSource`. `ticket` uses Redis, not Postgres. Both `DataSource`s are initialized at startup in `src/index.ts`.
 
 ## Errors
 
