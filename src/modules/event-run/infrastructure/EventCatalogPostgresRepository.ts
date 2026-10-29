@@ -1,10 +1,14 @@
 import type { QueryableManager } from "../../../shared/persistence/QueryableManager";
-import { EventCatalogRepository } from "../domain/EventCatalogRepository";
+import { EventCatalogListing, EventCatalogRepository } from "../domain/EventCatalogRepository";
 import { EventDefinition } from "../domain/EventDefinition";
 import { runQuery } from "./runQuery";
 
-const FIND_QUERY = `SELECT id, name, description, format, starts_at, ends_at, attempts_per_day,
-	waves, decks, prize_tiers FROM event_catalog WHERE id = $1`;
+const COLUMNS = `id, name, description, format, starts_at, ends_at, attempts_per_day,
+	waves, decks, prize_tiers`;
+
+const FIND_QUERY = `SELECT ${COLUMNS} FROM event_catalog WHERE id = $1`;
+
+const LIST_QUERY = `SELECT ${COLUMNS} FROM event_catalog ORDER BY starts_at DESC`;
 
 type Row = {
 	id: string;
@@ -19,21 +23,28 @@ type Row = {
 	prize_tiers: EventDefinition["prizeTiers"];
 };
 
-export class EventCatalogPostgresRepository implements EventCatalogRepository {
+export class EventCatalogPostgresRepository implements EventCatalogRepository, EventCatalogListing {
 	async findById(eventId: string, manager?: QueryableManager): Promise<EventDefinition | null> {
 		const [row] = await runQuery<Row>(FIND_QUERY, [eventId], manager);
-		if (!row) return null;
-		return {
-			id: row.id,
-			name: row.name,
-			description: row.description,
-			format: row.format,
-			startsAt: new Date(row.starts_at),
-			endsAt: new Date(row.ends_at),
-			attemptsPerDay: Number(row.attempts_per_day),
-			waves: row.waves,
-			decks: row.decks,
-			prizeTiers: row.prize_tiers,
-		};
+		return row ? toDefinition(row) : null;
 	}
+
+	async list(): Promise<EventDefinition[]> {
+		return (await runQuery<Row>(LIST_QUERY, [])).map(toDefinition);
+	}
+}
+
+function toDefinition(row: Row): EventDefinition {
+	return {
+		id: row.id,
+		name: row.name,
+		description: row.description,
+		format: row.format,
+		startsAt: new Date(row.starts_at),
+		endsAt: new Date(row.ends_at),
+		attemptsPerDay: Number(row.attempts_per_day),
+		waves: row.waves,
+		decks: row.decks,
+		prizeTiers: row.prize_tiers,
+	};
 }

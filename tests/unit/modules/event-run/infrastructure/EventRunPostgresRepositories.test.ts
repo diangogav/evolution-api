@@ -248,4 +248,35 @@ describe("EventCatalogPostgresRepository", () => {
 		});
 		expect(await repository.findById("nope")).toBeNull();
 	});
+
+	it("lists every catalog event, newest start first", async () => {
+		const row = (id: string, startsAt: string) => ({
+			id,
+			name: { en: id },
+			description: { en: "Survive" },
+			format: "edison",
+			starts_at: new Date(startsAt),
+			ends_at: new Date("2026-12-01T00:00:00Z"),
+			attempts_per_day: "3",
+			waves: [],
+			decks: [],
+			prize_tiers: [],
+		});
+		querySpy.mockResolvedValueOnce([
+			row("new", "2026-11-01T00:00:00Z"),
+			row("old", "2026-01-01T00:00:00Z"),
+		]);
+		const repository = new EventCatalogPostgresRepository();
+
+		const events = await repository.list();
+
+		expect(events.map((event) => event.id)).toEqual(["new", "old"]);
+		expect(events[1]).toMatchObject({
+			startsAt: new Date("2026-01-01T00:00:00Z"),
+			attemptsPerDay: 3,
+		});
+		const [sql, params] = querySpy.mock.calls[0];
+		expect(compact(sql)).toContain("FROM event_catalog ORDER BY starts_at DESC");
+		expect(params).toEqual([]);
+	});
 });
