@@ -2,6 +2,8 @@ import { bearer } from "@elysiajs/bearer";
 import { Elysia, t } from "elysia";
 
 import { config } from "../../config";
+import { createR2AssetUrlSigner } from "../../modules/assets/infrastructure/createR2AssetUrlSigner";
+import { CosmeticPostgresRepository } from "../../modules/catalog/infrastructure/CosmeticPostgresRepository";
 import { GetEvent } from "../../modules/event-run/application/GetEvent";
 import { GetMyEventRun } from "../../modules/event-run/application/GetMyEventRun";
 import { RequestEventDuel } from "../../modules/event-run/application/RequestEventDuel";
@@ -34,7 +36,13 @@ const reservations = new BunRedisReservationStore(redisClient);
 const applyDuel = buildApplyReservedDuel();
 const transactions = new CosmeticsTransactionRunner();
 
-const getEvent = new GetEvent(catalog, runs, attempts);
+const getEvent = new GetEvent(
+	catalog,
+	runs,
+	attempts,
+	new CosmeticPostgresRepository(),
+	createR2AssetUrlSigner(),
+);
 const startEventRun = new StartEventRun(
 	catalog,
 	runs,
@@ -91,7 +99,7 @@ export const eventsRouter = new Elysia({ prefix: "/events" }).use(bearer()).guar
 					tags: ["Rewards"],
 					summary: "Get an event",
 					description:
-						"Returns an event gauntlet: its window, waves, decks and prize tiers, with the authenticated player's attempts left today (UTC) and best mark. Texts are localized from Accept-Language (en or es, default en).",
+						"Returns an event gauntlet: its window, waves, decks and prize tiers (each prize cosmetic with its type, name and signed asset URLs), with the authenticated player's attempts left today (UTC) and best mark. Texts are localized from Accept-Language (en or es, default en).",
 					security: [{ bearerAuth: [] }],
 					responses: {
 						200: jsonOk(EventViewSchema, "The event as the player sees it"),

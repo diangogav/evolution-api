@@ -1,12 +1,29 @@
 import { t } from "elysia";
 
+import { CosmeticType } from "../../catalog/domain/CosmeticType";
 import { WAVE_TIERS } from "../domain/EventDefinition";
 import { EVENT_RUN_STATUSES } from "../domain/EventRun";
+
+export const PrizeCosmeticSchema = t.Object({
+	id: t.String(),
+	type: t.Enum(CosmeticType),
+	name: t.String({ description: "Catalog display name" }),
+	assets: t.Record(t.String(), t.String(), {
+		description: "Signed URLs keyed by file name (render.jpg, background.webp, ...)",
+	}),
+	assetsExpiresAt: t.Optional(
+		t.String({ description: "ISO 8601 expiry of the signed asset URLs" }),
+	),
+});
 
 export const PrizeTierSchema = t.Object({
 	wavesCleared: t.Integer({ description: "Waves cleared in one run that unlock this tier" }),
 	essence: t.Integer({ description: "Essence credited the first time the tier is reached" }),
 	cosmeticIds: t.Array(t.String(), { description: "Cosmetics granted with the tier" }),
+	cosmetics: t.Array(PrizeCosmeticSchema, {
+		description:
+			"The tier's cosmetics as the catalog describes them, in cosmeticIds order; an id the catalog does not know is left out",
+	}),
 });
 
 export const EventViewSchema = t.Object({

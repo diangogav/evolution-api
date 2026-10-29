@@ -1,10 +1,13 @@
 import { NotFoundError } from "../../../shared/errors/NotFoundError";
+import { AssetUrlSigner } from "../../assets/domain/AssetUrlSigner";
+import { CosmeticRepository } from "../../catalog/domain/CosmeticRepository";
 import { Locale, localize } from "../../rewards/domain/LocalizedText";
 import { periodKey } from "../../rewards/domain/MissionPeriod";
 import { EventAttemptRepository } from "../domain/EventAttemptRepository";
 import { EventCatalogRepository } from "../domain/EventCatalogRepository";
-import { isEventOpen, PrizeTier, WaveTier } from "../domain/EventDefinition";
+import { isEventOpen, WaveTier } from "../domain/EventDefinition";
 import { EventRunRepository } from "../domain/EventRunRepository";
+import { PrizeTierView, toPrizeTierViews } from "./PrizeTierView";
 
 export type GetEventInput = { userId: string; eventId: string; locale: Locale; now: Date };
 
@@ -22,7 +25,7 @@ export type EventView = {
 	/** Each wave's difficulty and the bots its rival is drawn from. */
 	waves: Array<{ wave: number; tier: WaveTier; pool: string[] }>;
 	decks: Array<{ id: string; name: string }>;
-	prizeTiers: PrizeTier[];
+	prizeTiers: PrizeTierView[];
 };
 
 export class GetEvent {
@@ -30,15 +33,18 @@ export class GetEvent {
 		private readonly catalog: EventCatalogRepository,
 		private readonly runs: EventRunRepository,
 		private readonly attempts: EventAttemptRepository,
+		private readonly cosmetics: Pick<CosmeticRepository, "findById">,
+		private readonly signer: Pick<AssetUrlSigner, "signManifest">,
 	) {}
 
 	async run(input: GetEventInput): Promise<EventView> {
 		const event = await this.catalog.findById(input.eventId);
 		if (!event) throw new NotFoundError(`Event "${input.eventId}" not found`);
 
-		const [used, bestMark] = await Promise.all([
+		const [used, bestMark, prizeTiers] = await Promise.all([
 			this.attempts.used(input.userId, event.id, periodKey("daily", input.now)),
 			this.runs.bestMark(input.userId, event.id),
+			toPrizeTierViews(event.prizeTiers, this.cosmetics, this.signer),
 		]);
 
 		return {
@@ -57,7 +63,7 @@ export class GetEvent {
 				pool: [...wave.pool],
 			})),
 			decks: event.decks.map((deck) => ({ id: deck.id, name: localize(deck.name, input.locale) })),
-			prizeTiers: event.prizeTiers,
+			prizeTiers,
 		};
 	}
 }
