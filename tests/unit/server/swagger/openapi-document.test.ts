@@ -59,6 +59,7 @@ const PROTECTED_OPERATIONS = [
 	"POST /api/v1/admin/cosmetics/{id}/grants",
 	"POST /api/v1/admin/matches/annulments",
 	"POST /api/v1/admin/matches/annulments/reversals",
+	"GET /api/v1/admin/stats/activity",
 ];
 
 // Operations whose success has no body; they declare it with `emptyOk`.

@@ -13,6 +13,7 @@ const adminActions: { name: string; method: string; path: string; body?: unknown
 	{ name: "unban a user", method: "POST", path: "/users/user-2/unban" },
 	{ name: "view an active ban", method: "GET", path: "/users/user-2/ban/active" },
 	{ name: "view ban history", method: "GET", path: "/users/user-2/ban/history" },
+	{ name: "view activity stats", method: "GET", path: "/admin/stats/activity?period=day" },
 ];
 
 function buildApp() {
