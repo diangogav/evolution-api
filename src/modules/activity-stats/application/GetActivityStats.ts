@@ -20,7 +20,6 @@ export interface GetActivityStatsResult {
 		unrankedMatches: number;
 		evoduelRankedMatches: number;
 		evoduelUnrankedMatches: number;
-		botMatchesExcluded: number;
 	}[];
 	byBanList: {
 		start: string;

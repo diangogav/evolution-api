@@ -13,13 +13,11 @@ export interface RankedBanListCount {
 	readonly evoduelMatches: number;
 }
 
-/** `matches` and `evoduelMatches` already exclude bot games; `botMatches` counts them. */
 export interface UnrankedBanListCount {
 	readonly start: Date;
 	readonly banListName: string;
 	readonly matches: number;
 	readonly evoduelMatches: number;
-	readonly botMatches: number;
 }
 
 /** Sparse per-bucket counts: buckets without activity are simply missing. */
@@ -42,7 +40,6 @@ export interface ActivityBucket {
 	unrankedMatches: number;
 	evoduelRankedMatches: number;
 	evoduelUnrankedMatches: number;
-	botMatchesExcluded: number;
 }
 
 export interface BanListActivity {
@@ -68,7 +65,6 @@ export function buildActivityReport(range: ActivityRange, counts: ActivityCounts
 			unrankedMatches: 0,
 			evoduelRankedMatches: 0,
 			evoduelUnrankedMatches: 0,
-			botMatchesExcluded: 0,
 		});
 	}
 	const banLists = new Map<string, BanListActivity>();
@@ -102,7 +98,6 @@ export function buildActivityReport(range: ActivityRange, counts: ActivityCounts
 		if (!bucket) continue;
 		bucket.unrankedMatches += row.matches;
 		bucket.evoduelUnrankedMatches += row.evoduelMatches;
-		bucket.botMatchesExcluded += row.botMatches;
 		if (row.matches > 0) banListEntry(bucket.start, row.banListName).unrankedMatches += row.matches;
 	}
 

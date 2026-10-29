@@ -34,9 +34,7 @@ describe("GetActivityStats", () => {
 			newUsers: [{ start: today, count: 12 }],
 			activePlayers: [{ start: today, count: 140 }],
 			rankedMatches: [{ start: today, banListName: "Edison", matches: 50, evoduelMatches: 30 }],
-			unrankedMatches: [
-				{ start: today, banListName: "Edison", matches: 20, evoduelMatches: 5, botMatches: 40 },
-			],
+			unrankedMatches: [{ start: today, banListName: "Edison", matches: 20, evoduelMatches: 5 }],
 		});
 
 		const result = await new GetActivityStats(repository).run({ period: "day", now: NOW });
@@ -55,7 +53,6 @@ describe("GetActivityStats", () => {
 			unrankedMatches: 0,
 			evoduelRankedMatches: 0,
 			evoduelUnrankedMatches: 0,
-			botMatchesExcluded: 0,
 		});
 		expect(result.buckets[result.buckets.length - 1]).toEqual({
 			start: "2026-10-29T00:00:00.000Z",
@@ -65,7 +62,6 @@ describe("GetActivityStats", () => {
 			unrankedMatches: 20,
 			evoduelRankedMatches: 30,
 			evoduelUnrankedMatches: 5,
-			botMatchesExcluded: 40,
 		});
 		expect(result.byBanList).toEqual([
 			{

@@ -48,7 +48,7 @@ export function createAdminStatsRouter(deps: AdminStatsRouterDependencies) {
 				tags: ["Activity Stats"],
 				summary: "Server activity per day, week or month",
 				description:
-					"New users, active players, ranked and unranked matches (DW bot games excluded), EvoDuel ranked and unranked matches and a per ban list breakdown, in UTC buckets. EvoDuel counts only cover matches recorded since the game server started storing each player's client.",
+					"New users, active players, ranked and unranked matches, EvoDuel ranked and unranked matches and a per ban list breakdown, in UTC buckets. EvoDuel counts only cover matches recorded since the game server started storing each player's client.",
 				security: [{ bearerAuth: [] }],
 				responses: {
 					200: jsonOk(ActivityStatsSchema, "Zero-filled activity buckets, oldest first", {
@@ -64,7 +64,6 @@ export function createAdminStatsRouter(deps: AdminStatsRouterDependencies) {
 								unrankedMatches: 0,
 								evoduelRankedMatches: 0,
 								evoduelUnrankedMatches: 0,
-								botMatchesExcluded: 0,
 							},
 							{
 								start: "2026-10-29T00:00:00.000Z",
@@ -74,7 +73,6 @@ export function createAdminStatsRouter(deps: AdminStatsRouterDependencies) {
 								unrankedMatches: 380,
 								evoduelRankedMatches: 30,
 								evoduelUnrankedMatches: 95,
-								botMatchesExcluded: 40,
 							},
 						],
 						byBanList: [

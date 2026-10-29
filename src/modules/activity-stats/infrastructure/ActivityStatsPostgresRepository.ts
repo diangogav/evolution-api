@@ -38,16 +38,14 @@ const RANKED_MATCHES_SQL = `
 	) games
 	GROUP BY 1, 2`;
 
-// simple-array columns are comma-separated text. A bot game has a "DW " player on
-// either side; an EvoDuel game has a player whose handshake client was "evoduel".
+// simple-array columns are comma-separated text; an EvoDuel game has a player
+// whose handshake client was "evoduel".
 const UNRANKED_MATCHES_SQL = `
 	SELECT start, ban_list_name,
-		COUNT(*) FILTER (WHERE NOT is_bot)::int AS matches,
-		COUNT(*) FILTER (WHERE NOT is_bot AND is_evoduel)::int AS evoduel_matches,
-		COUNT(*) FILTER (WHERE is_bot)::int AS bot_matches
+		COUNT(*)::int AS matches,
+		COUNT(*) FILTER (WHERE is_evoduel)::int AS evoduel_matches
 	FROM (
 		SELECT ${BUCKET} AS start, ban_list_name,
-			(COALESCE(player_names, '') || ',' || COALESCE(opponent_names, '')) ~ '(^|,)DW ' AS is_bot,
 			(COALESCE(player_clients, '') || ',' || COALESCE(opponent_clients, '')) ~ '(^|,)evoduel(,|$)' AS is_evoduel
 		FROM unranked_matches
 		WHERE ${IN_RANGE}
@@ -85,10 +83,6 @@ interface RankedRow {
 	evoduel_matches: number;
 }
 
-interface UnrankedRow extends RankedRow {
-	bot_matches: number;
-}
-
 export class ActivityStatsPostgresRepository implements ActivityStatsRepository {
 	async countActivity(range: ActivityRange): Promise<ActivityCounts> {
 		const params = [range.from.toISOString(), range.to.toISOString(), range.period];
@@ -96,7 +90,7 @@ export class ActivityStatsPostgresRepository implements ActivityStatsRepository 
 			dataSource.query(NEW_USERS_SQL, params) as Promise<CountRow[]>,
 			dataSource.query(ACTIVE_PLAYERS_SQL, params) as Promise<CountRow[]>,
 			dataSource.query(RANKED_MATCHES_SQL, params) as Promise<RankedRow[]>,
-			dataSource.query(UNRANKED_MATCHES_SQL, params) as Promise<UnrankedRow[]>,
+			dataSource.query(UNRANKED_MATCHES_SQL, params) as Promise<RankedRow[]>,
 		]);
 
 		return {
@@ -116,7 +110,6 @@ export class ActivityStatsPostgresRepository implements ActivityStatsRepository 
 					banListName: row.ban_list_name,
 					matches: row.matches,
 					evoduelMatches: row.evoduel_matches,
-					botMatches: row.bot_matches,
 				}),
 			),
 		};

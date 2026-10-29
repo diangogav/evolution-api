@@ -25,7 +25,6 @@ const ZERO = {
 	unrankedMatches: 0,
 	evoduelRankedMatches: 0,
 	evoduelUnrankedMatches: 0,
-	botMatchesExcluded: 0,
 };
 
 describe("buildActivityReport", () => {
@@ -52,8 +51,8 @@ describe("buildActivityReport", () => {
 				{ start: DAY_1, banListName: "TCG", matches: 2, evoduelMatches: 1 },
 			],
 			unrankedMatches: [
-				{ start: DAY_1, banListName: "Edison", matches: 3, evoduelMatches: 1, botMatches: 4 },
-				{ start: DAY_3, banListName: "TCG", matches: 6, evoduelMatches: 6, botMatches: 0 },
+				{ start: DAY_1, banListName: "Edison", matches: 3, evoduelMatches: 1 },
+				{ start: DAY_3, banListName: "TCG", matches: 6, evoduelMatches: 6 },
 			],
 		});
 
@@ -66,7 +65,6 @@ describe("buildActivityReport", () => {
 				unrankedMatches: 3,
 				evoduelRankedMatches: 3,
 				evoduelUnrankedMatches: 1,
-				botMatchesExcluded: 4,
 			},
 			{ start: DAY_2, ...ZERO },
 			{ ...ZERO, start: DAY_3, activePlayers: 7, unrankedMatches: 6, evoduelUnrankedMatches: 6 },
@@ -81,8 +79,8 @@ describe("buildActivityReport", () => {
 				{ start: DAY_1, banListName: "Edison", matches: 5, evoduelMatches: 0 },
 			],
 			unrankedMatches: [
-				{ start: DAY_1, banListName: "Edison", matches: 2, evoduelMatches: 0, botMatches: 0 },
-				{ start: DAY_1, banListName: "Genesys", matches: 9, evoduelMatches: 0, botMatches: 0 },
+				{ start: DAY_1, banListName: "Edison", matches: 2, evoduelMatches: 0 },
+				{ start: DAY_1, banListName: "Genesys", matches: 9, evoduelMatches: 0 },
 			],
 		});
 
@@ -91,18 +89,6 @@ describe("buildActivityReport", () => {
 			{ start: DAY_1, banListName: "Edison", rankedMatches: 5, unrankedMatches: 2 },
 			{ start: DAY_3, banListName: "TCG", rankedMatches: 1, unrankedMatches: 0 },
 		]);
-	});
-
-	it("leaves out ban lists that only had bot games", () => {
-		const report = buildActivityReport(RANGE, {
-			...NO_COUNTS,
-			unrankedMatches: [
-				{ start: DAY_2, banListName: "Edison", matches: 0, evoduelMatches: 0, botMatches: 3 },
-			],
-		});
-
-		expect(report.byBanList).toEqual([]);
-		expect(report.buckets[1]?.botMatchesExcluded).toBe(3);
 	});
 
 	it("ignores rows outside the range", () => {

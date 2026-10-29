@@ -24,7 +24,6 @@ const RESULT: GetActivityStatsResult = {
 			unrankedMatches: 4,
 			evoduelRankedMatches: 1,
 			evoduelUnrankedMatches: 2,
-			botMatchesExcluded: 0,
 		},
 	],
 	byBanList: [],
