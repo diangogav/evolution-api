@@ -30,6 +30,7 @@ const TAGS = [
 	{ name: "Achievements", description: "Gameplay achievement catalog and per-player records" },
 	{ name: "Statistics", description: "Global and historical duel statistics" },
 	{ name: "Ban Lists", description: "Ban lists played during each season" },
+	{ name: "Community Decks", description: "Legal community decklists synced from YGOPRODeck" },
 	{ name: "Cosmetics", description: "Cosmetics catalog, entitlements and player loadouts" },
 	{
 		name: "Rewards",
@@ -49,6 +50,7 @@ const TAGS = [
 const TAG_GROUPS = [
 	{ name: "Account", tags: ["Authentication", "User Management"] },
 	{ name: "Ranked", tags: ["Leaderboard", "Ranked", "Statistics", "Ban Lists", "Achievements"] },
+	{ name: "Decks", tags: ["Community Decks"] },
 	{ name: "Cosmetics", tags: ["Cosmetics"] },
 	{ name: "Rewards", tags: ["Rewards"] },
 	{ name: "Administration", tags: ["User Bans", "Match Moderation", "Cosmetics Admin"] },

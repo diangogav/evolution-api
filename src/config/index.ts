@@ -55,6 +55,12 @@ export const config = {
 		intervalMs: Number(process.env.EVENT_RUN_WORKER_INTERVAL_MS ?? 5000),
 		batchSize: Number(process.env.EVENT_RUN_WORKER_BATCH_SIZE ?? 100),
 	},
+	communityDecksWorker: {
+		enabled: process.env.COMMUNITY_DECKS_WORKER_ENABLED === "true",
+		intervalMs: Number(process.env.COMMUNITY_DECKS_WORKER_INTERVAL_MS ?? 86_400_000),
+		maxPages: Number(process.env.COMMUNITY_DECKS_MAX_PAGES ?? 10),
+		edisonMinViews: Number(process.env.COMMUNITY_DECKS_EDISON_MIN_VIEWS ?? 100),
+	},
 	annulment: { enabled: process.env.ANNULMENT_ENABLED === "true" },
 	passwordRecovery: {
 		defaultResetUrl: "https://evolutionygo.com/reset-account-password?token={token}",

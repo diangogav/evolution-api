@@ -122,6 +122,17 @@ How the worker works, and how to backfill or repair it, is in [rewards.md](rewar
 
 The rules it applies are in [design/halloween-event-runs.md](design/halloween-event-runs.md#api--event-run-module).
 
+### Community decks worker
+
+| Name | Required | Default | Purpose |
+| --- | --- | --- | --- |
+| `COMMUNITY_DECKS_WORKER_ENABLED` | Optional | `false` | Only the literal string `"true"` starts the worker (`src/server/server.ts`, and `src/worker.ts` only when set) that syncs legal decks from YGOPRODeck into `community_decks`. Safe on several instances: a session advisory lock lets one sync run at a time. Tell YGOPRODeck before enabling it in production. |
+| `COMMUNITY_DECKS_WORKER_INTERVAL_MS` | Optional | `86400000` (24 h) | Minimum time between two syncs, measured from the last stored sync; the worker checks every hour (or every interval, if shorter), so restarts do not trigger extra syncs. |
+| `COMMUNITY_DECKS_MAX_PAGES` | Optional | `10` | Pages of 20 decks read per YGOPRODeck category per sync. |
+| `COMMUNITY_DECKS_EDISON_MIN_VIEWS` | Optional | `100` | Views an Edison upload needs to be stored; tournament categories have no minimum. |
+
+How decks are validated and stored is in [design/community-decks.md](design/community-decks.md).
+
 ## Database and migrations
 
 Both DataSources point at the same Postgres instance but track migrations
