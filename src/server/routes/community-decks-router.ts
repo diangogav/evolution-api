@@ -37,7 +37,7 @@ export const createCommunityDecksRouter = ({ listDecks, listFormats }: Dependenc
 	new Elysia({ prefix: "/community-decks" })
 		.get("/", ({ query }) => listDecks.run(query), {
 			detail: {
-				tags: ["Ban Lists"],
+				tags: ["Community Decks"],
 				summary: "List community decks",
 				description:
 					"Pages through legal decks synced from YGOPRODeck, most viewed first. Every deck already passed its format's ban list, copy limits and deck sizes; Edison decks carry our pre-errata card ids. Filter by format label (see /community-decks/formats) and search name or author with q (case-insensitive). Public: no credentials required.",
@@ -67,7 +67,7 @@ export const createCommunityDecksRouter = ({ listDecks, listFormats }: Dependenc
 		})
 		.get("/formats", () => listFormats.run(), {
 			detail: {
-				tags: ["Ban Lists"],
+				tags: ["Community Decks"],
 				summary: "List community deck formats",
 				description:
 					"Lists the format labels that have community decks, with how many decks each one has, most decks first. Public: no credentials required.",
