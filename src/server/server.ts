@@ -30,6 +30,7 @@ import { publicLoadoutRouter } from "./routes/public-loadout-router";
 import { rankedTiersRouter } from "./routes/ranked-tiers-router";
 import { adminCosmeticsRouter } from "./routes/admin-cosmetics-router";
 import { adminModerationRouter } from "./routes/admin-moderation-router";
+import { adminStatsRouter } from "./routes/admin-stats-router";
 import { statsRouter } from "./routes/stats-router";
 import { ticketRouter } from "./routes/ticket-router";
 import { userRouter } from "./routes/user-router";
@@ -110,6 +111,7 @@ export function mountApiV1Routes(app: Elysia) {
 			.use(publicEmoteBarRouter)
 			.use(adminCosmeticsRouter)
 			.use(adminModerationRouter)
+			.use(adminStatsRouter)
 			.use(missionsRouter)
 			.use(essenceRouter)
 			.use(shopRouter)

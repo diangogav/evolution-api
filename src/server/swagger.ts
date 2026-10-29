@@ -45,6 +45,10 @@ const TAGS = [
 		name: "Cosmetics Admin",
 		description: "Cosmetic publishing and grants for the backoffice (admin only)",
 	},
+	{
+		name: "Activity Stats",
+		description: "Daily, weekly and monthly server activity for the backoffice (admin only)",
+	},
 ];
 
 const TAG_GROUPS = [
@@ -53,7 +57,10 @@ const TAG_GROUPS = [
 	{ name: "Decks", tags: ["Community Decks"] },
 	{ name: "Cosmetics", tags: ["Cosmetics"] },
 	{ name: "Rewards", tags: ["Rewards"] },
-	{ name: "Administration", tags: ["User Bans", "Match Moderation", "Cosmetics Admin"] },
+	{
+		name: "Administration",
+		tags: ["User Bans", "Match Moderation", "Cosmetics Admin", "Activity Stats"],
+	},
 ];
 
 type SwaggerDocumentation = NonNullable<Parameters<typeof swagger>[0]>["documentation"];
