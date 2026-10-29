@@ -130,6 +130,15 @@ describe("OpenAPI document", () => {
 		expect(operations.every(({ key }) => key.includes(" /api/v1/"))).toBe(true);
 	});
 
+	it("serves community decks and their formats publicly", () => {
+		for (const key of ["GET /api/v1/community-decks/", "GET /api/v1/community-decks/formats"]) {
+			const found = operations.find((operation) => operation.key === key);
+
+			expect(found).toBeDefined();
+			expect(found?.operation.security).toBeUndefined();
+		}
+	});
+
 	it("serves bot loadouts publicly with the same schema as a user's public loadout", () => {
 		const bot = operations.find(({ key }) => key === "GET /api/v1/bots/{botName}/loadout");
 		const user = operations.find(

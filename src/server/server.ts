@@ -9,11 +9,13 @@ import { UnprocessableError } from "../shared/errors/UnprocessableError";
 import { InvalidArgumentError } from "../shared/errors/InvalidArgumentError";
 import { NotFoundError } from "../shared/errors/NotFoundError";
 import { config } from "../config";
+import { buildCommunityDecksWorker } from "../modules/community-decks/infrastructure/buildCommunityDecks";
 import { buildEventRunWorker } from "../modules/event-run/infrastructure/buildEventRun";
 import { Logger } from "../shared/logger/domain/Logger";
 
 import { achievementsRouter, userAchievementsRouter } from "./routes/achievements-router";
 import { banListRouter } from "./routes/ban-list-router";
+import { communityDecksRouter } from "./routes/community-decks-router";
 import { cosmeticsRouter } from "./routes/cosmetics-router";
 import { leaderboardRouter } from "./routes/leaderboard-router";
 import { emoteBarRouter } from "./routes/emote-bar-router";
@@ -79,6 +81,8 @@ export class Server {
 	start(): void {
 		// The event run worker applies duel results nobody fetched and voids stale duels.
 		if (config.eventRunWorker.enabled) buildEventRunWorker(this.logger).start();
+		// The community decks worker syncs YGOPRODeck decks once per interval.
+		if (config.communityDecksWorker.enabled) buildCommunityDecksWorker(this.logger).start();
 		this.app.listen(process.env.PORT ?? 3000, () => {
 			this.logger.info(`Server started on port ${process.env.PORT ?? 3000}!`);
 		});
@@ -110,6 +114,7 @@ export function mountApiV1Routes(app: Elysia) {
 			.use(essenceRouter)
 			.use(shopRouter)
 			.use(eventsRouter)
-			.use(eventRunsRouter);
+			.use(eventRunsRouter)
+			.use(communityDecksRouter);
 	});
 }
