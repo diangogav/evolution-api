@@ -142,7 +142,12 @@ player can see, own or equip it, while `GET /api/v1/bots/{botName}/loadout` stil
 signs its assets. `1782200000000-add-halloween-bot-looks.ts` adds the Halloween
 horde looks this way: one avatar per bot, one sleeve and playmat per difficulty
 tier, and their own sleeve and playmat for the Lich and Gravekeepers bosses;
-`1782300000000-add-halloween-bot-plates.ts` adds the matching zone plates (LANE). Its
+`1782300000000-add-halloween-bot-plates.ts` adds the matching zone plates (LANE).
+A bot look can later become a prize: `1782400000000-halloween-2026-lantern-prizes.ts`
+activates the Veil Cemetery and Candle Crypt sleeves and playmats as `EXCLUSIVE`
+(only their owners can see and equip them; the bots keep wearing them) and grants
+them, with the new Lantern Road playmat and ambience, through the Halloween prize
+tiers, including to players who crossed a tier before the change. Its
 assets live in the `evolution-cosmetics` repository and must be pushed to the
 bucket before the migration runs.
 
