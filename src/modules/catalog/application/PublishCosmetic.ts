@@ -1,6 +1,7 @@
 import type { CosmeticAssetStorage } from "../../assets/domain/CosmeticAssetStorage";
 import { ConflictError } from "../../../shared/errors/ConflictError";
 import { InvalidArgumentError } from "../../../shared/errors/InvalidArgumentError";
+import type { CatalogChangeNotifier } from "../domain/CatalogChangeNotifier";
 import { Cosmetic } from "../domain/Cosmetic";
 import type { CosmeticRepository } from "../domain/CosmeticRepository";
 import { CosmeticTier } from "../domain/CosmeticTier";
@@ -114,6 +115,7 @@ export class PublishCosmetic {
 	constructor(
 		private readonly cosmetics: CosmeticRepository,
 		private readonly storage: CosmeticAssetStorage,
+		private readonly catalogChange?: CatalogChangeNotifier,
 	) {}
 
 	async run(input: PublishCosmeticInput): Promise<PublishedCosmeticDto> {
@@ -186,6 +188,8 @@ export class PublishCosmetic {
 			await Promise.allSettled(uploaded.map((key) => this.storage.delete(key)));
 			throw error;
 		}
+
+		await this.catalogChange?.catalogChanged();
 
 		return {
 			id: cosmetic.id,

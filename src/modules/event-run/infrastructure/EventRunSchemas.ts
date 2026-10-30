@@ -12,7 +12,10 @@ export const PrizeCosmeticSchema = t.Object({
 		description: "Signed URLs keyed by file name (render.jpg, background.webp, ...)",
 	}),
 	assetsExpiresAt: t.Optional(
-		t.String({ description: "ISO 8601 expiry of the signed asset URLs" }),
+		t.Union([t.String(), t.Null()], {
+			description:
+				"ISO 8601 expiry of the signed asset URLs, or null when they are public and never expire",
+		}),
 	),
 });
 

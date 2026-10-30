@@ -5,7 +5,7 @@ import { CosmeticRepository } from "../domain/CosmeticRepository";
 
 export interface CosmeticAssets {
 	assets: Record<string, string>;
-	assetsExpiresAt: string;
+	assetsExpiresAt: string | null;
 }
 
 /** Refreshes one cosmetic manifest without re-signing the whole catalog. */

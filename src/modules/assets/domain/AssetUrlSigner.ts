@@ -1,6 +1,7 @@
 export interface SignedAssetManifest {
 	assets: Record<string, string>;
-	expiresAt: string;
+	/** ISO 8601 expiry of the URLs, or null when they are public and never expire. */
+	expiresAt: string | null;
 }
 
 export interface AssetUrlSigner {

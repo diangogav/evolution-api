@@ -399,3 +399,50 @@ describe("PublishCosmetic", () => {
 		});
 	});
 });
+
+describe("PublishCosmetic catalog change notification", () => {
+	function notifyingSetup(failSave: boolean) {
+		const notified: number[] = [];
+		const storage: CosmeticAssetStorage = {
+			put: async () => undefined,
+			delete: async () => undefined,
+		};
+		const repository: CosmeticRepository = {
+			findAll: async () => [],
+			findById: async () => null,
+			save: async () => {
+				if (failSave) throw new Error("database unavailable");
+			},
+		};
+		const publish = new PublishCosmetic(repository, storage, {
+			catalogChanged: async () => {
+				notified.push(1);
+			},
+		});
+		return { publish, notified };
+	}
+
+	const input = {
+		type: CosmeticType.AVATAR,
+		tier: CosmeticTier.STANDARD,
+		assetRef: "avatars/ember-face/",
+		displayName: "Ember Face",
+		files: [{ name: "render.jpg", bytes: new Uint8Array([1]) }],
+	};
+
+	it("notifies the catalog change after a successful publish", async () => {
+		const { publish, notified } = notifyingSetup(false);
+
+		await publish.run(input);
+
+		expect(notified).toHaveLength(1);
+	});
+
+	it("does not notify when the publish fails", async () => {
+		const { publish, notified } = notifyingSetup(true);
+
+		await expect(publish.run(input)).rejects.toThrow("database unavailable");
+
+		expect(notified).toHaveLength(0);
+	});
+});

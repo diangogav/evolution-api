@@ -12,7 +12,7 @@ export interface AdminCosmeticDto {
 	readonly active: boolean;
 	readonly assetFiles: readonly string[];
 	readonly assets: Readonly<Record<string, string>>;
-	readonly assetsExpiresAt: string;
+	readonly assetsExpiresAt: string | null;
 }
 
 export class GetAdminCosmetics {

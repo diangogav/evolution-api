@@ -11,7 +11,10 @@ export const LoadoutSlotSchema = t.Object({
 	cosmeticId: t.String(),
 	assets: t.Record(t.String(), t.String()),
 	assetsExpiresAt: t.Optional(
-		t.String({ description: "ISO 8601 expiry of the signed asset URLs" }),
+		t.Union([t.String(), t.Null()], {
+			description:
+				"ISO 8601 expiry of the signed asset URLs, or null when they are public and never expire",
+		}),
 	),
 });
 

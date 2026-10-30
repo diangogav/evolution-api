@@ -17,5 +17,8 @@ export const ShopItemSchema = t.Object({
 	assets: t.Record(t.String(), t.String(), {
 		description: "Signed URLs of the cosmetic's files, keyed by file name, for shop previews",
 	}),
-	assetsExpiresAt: t.String({ description: "ISO 8601 expiry of the signed asset URLs" }),
+	assetsExpiresAt: t.Union([t.String(), t.Null()], {
+		description:
+			"ISO 8601 expiry of the signed asset URLs, or null when they are public and never expire",
+	}),
 });

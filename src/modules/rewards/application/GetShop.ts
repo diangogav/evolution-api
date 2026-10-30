@@ -12,7 +12,7 @@ export type ShopItemView = {
 	price: number;
 	owned: boolean;
 	assets: Record<string, string>;
-	assetsExpiresAt: string;
+	assetsExpiresAt: string | null;
 };
 
 // "owned" is decided by the gatekeeper, the same gate that decides equipping: a tier

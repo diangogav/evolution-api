@@ -172,3 +172,28 @@ describe("PublishedCosmeticSchema", () => {
 		expect(Value.Check(PublishedCosmeticSchema, published)).toBe(true);
 	});
 });
+
+describe("public asset URLs never expire", () => {
+	const publicAssets = { "render.jpg": "https://cdn.example.com/cosmetics/sleeves/a/render.jpg" };
+
+	it("accepts a null assetsExpiresAt in every catalog schema", () => {
+		const entry = {
+			id: "c1",
+			type: CosmeticType.SLEEVE,
+			tier: CosmeticTier.STANDARD,
+			displayName: "A",
+			assets: publicAssets,
+			assetsExpiresAt: null,
+		};
+
+		expect(Value.Check(CosmeticCatalogSchema, [entry])).toBe(true);
+		expect(Value.Check(CosmeticAssetsSchema, { assets: publicAssets, assetsExpiresAt: null })).toBe(
+			true,
+		);
+		expect(
+			Value.Check(AdminCosmeticCatalogSchema, [
+				{ ...entry, assetRef: "sleeves/a/", active: true, assetFiles: ["render.jpg"] },
+			]),
+		).toBe(true);
+	});
+});

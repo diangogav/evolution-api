@@ -101,3 +101,18 @@ describe("LoadoutSchema", () => {
 		expect(Value.Check(LoadoutSchema, result)).toBe(true);
 	});
 });
+
+describe("LoadoutSchema with public asset URLs", () => {
+	it("accepts a slot whose assets never expire", () => {
+		expect(
+			Value.Check(LoadoutSchema, [
+				{
+					cosmeticType: CosmeticType.SLEEVE,
+					cosmeticId: "cosmetic-1",
+					assets: { "render.jpg": "https://cdn.example.com/cosmetics/sleeves/a/render.jpg" },
+					assetsExpiresAt: null,
+				},
+			]),
+		).toBe(true);
+	});
+});

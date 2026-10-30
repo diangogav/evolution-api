@@ -10,7 +10,7 @@ export interface CatalogCosmetic {
 	tier: CosmeticTier;
 	displayName: string;
 	assets: Record<string, string>;
-	assetsExpiresAt: string;
+	assetsExpiresAt: string | null;
 }
 
 export interface CatalogFilters {

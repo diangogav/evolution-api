@@ -162,3 +162,35 @@ describe("SeedStandardCosmetics", () => {
 		});
 	});
 });
+
+describe("SeedStandardCosmetics catalog change notification", () => {
+	it("notifies the catalog change when it created cosmetics", async () => {
+		const { repository } = fakeRepository([]);
+		let notified = 0;
+
+		await new SeedStandardCosmetics(repository, {
+			catalogChanged: async () => {
+				notified++;
+			},
+		}).run();
+
+		expect(notified).toBe(1);
+	});
+
+	it("does not notify when every standard cosmetic already exists", async () => {
+		const existing = STANDARD_COSMETICS.map((item, index) =>
+			Cosmetic.create({ id: `existing-${index}`, ...item }),
+		);
+		const { repository } = fakeRepository(existing);
+		let notified = 0;
+
+		const result = await new SeedStandardCosmetics(repository, {
+			catalogChanged: async () => {
+				notified++;
+			},
+		}).run();
+
+		expect(result.created).toBe(0);
+		expect(notified).toBe(0);
+	});
+});

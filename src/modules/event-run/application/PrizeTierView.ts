@@ -8,7 +8,7 @@ export type PrizeCosmeticView = {
 	type: CosmeticType;
 	name: string;
 	assets: Record<string, string>;
-	assetsExpiresAt?: string;
+	assetsExpiresAt?: string | null;
 };
 
 export type PrizeTierView = PrizeTier & { cosmetics: PrizeCosmeticView[] };

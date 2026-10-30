@@ -8,7 +8,7 @@ export interface MyLoadoutSlot {
 	cosmeticType: CosmeticType;
 	cosmeticId: string;
 	assets: Record<string, string>;
-	assetsExpiresAt?: string;
+	assetsExpiresAt?: string | null;
 }
 
 export class GetMyLoadout {

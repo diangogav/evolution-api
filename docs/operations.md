@@ -88,6 +88,22 @@ same four names for the local Postgres container.
 | `R2_BUCKET` | Required | — | Bucket holding cosmetic asset files. |
 | `R2_ENDPOINT` | Required | — | R2 S3-compatible endpoint. |
 | `R2_SIGNED_URL_TTL` | Optional | `600` | Seconds a signed asset URL stays valid. |
+| `COSMETICS_PUBLIC_BASE_URL` | Optional | unset | Base URL of the CDN route that serves active cosmetics publicly (for example `https://<cdn-host>/cosmetics`). Must be `http(s)`; a trailing slash is stripped. Unset keeps every asset behind signed URLs, exactly as before. |
+
+**Public cosmetic URLs.** When `COSMETICS_PUBLIC_BASE_URL` is set, active cosmetics are
+returned as fixed URLs `<COSMETICS_PUBLIC_BASE_URL>/<assetRef><file>` with
+`assetsExpiresAt: null`, so browsers and the client's service worker can cache them for
+good (an `assetRef` is never reused, so published files never change). Inactive or
+unknown cosmetics keep signed URLs. Ownership and equip checks are unchanged.
+
+The CDN serves only the refs listed in the public index, R2 key
+`_public/cosmetics-index.json`, body `{"version":1,"assetRefs":["<assetRef>", ...]}`
+(sorted, active cosmetics only), outside every prefix `evolution-cosmetics` syncs. The
+API rebuilds that index, together with its in-memory set of active refs, at boot (not
+awaited: until it lands, everything stays signed), after every successful admin
+publish, and after `seed-cosmetics.ts` creates rows. A failed rebuild is logged and keeps
+the previous state. With several API instances, only the one that handled a publish
+knows the new ref until the others restart; the others keep signing it, which is safe.
 
 ### Season
 

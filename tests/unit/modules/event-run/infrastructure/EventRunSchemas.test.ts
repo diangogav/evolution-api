@@ -36,3 +36,26 @@ describe("PrizeTierSchema", () => {
 		expect(Value.Check(PrizeTierSchema, tier)).toBe(false);
 	});
 });
+
+describe("PrizeTierSchema with public asset URLs", () => {
+	it("accepts a prize cosmetic whose assets never expire", () => {
+		expect(
+			Value.Check(PrizeTierSchema, {
+				wavesCleared: 8,
+				essence: 400,
+				cosmeticIds: ["playmat-8"],
+				cosmetics: [
+					{
+						id: "playmat-8",
+						type: "PLAYMAT",
+						name: "Graveyard",
+						assets: {
+							"background.webp": "https://cdn.example.com/cosmetics/playmats/g/background.webp",
+						},
+						assetsExpiresAt: null,
+					},
+				],
+			}),
+		).toBe(true);
+	});
+});

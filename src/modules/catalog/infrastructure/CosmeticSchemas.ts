@@ -3,9 +3,15 @@ import { t } from "elysia";
 import { CosmeticTier } from "../domain/CosmeticTier";
 import { CosmeticType } from "../domain/CosmeticType";
 
-/** Signed asset manifest attached to a cosmetic: relative file name to a short-lived URL. */
+/**
+ * Asset manifest attached to a cosmetic: relative file name to its URL. Active cosmetics
+ * get fixed public URLs; the rest get short-lived signed ones.
+ */
 const signedAssets = t.Record(t.String(), t.String());
-const assetsExpiresAt = t.String({ description: "ISO 8601 expiry of the signed asset URLs" });
+const assetsExpiresAt = t.Union([t.String(), t.Null()], {
+	description:
+		"ISO 8601 expiry of the signed asset URLs, or null when they are public and never expire",
+});
 
 /** Entry of `GetCosmeticsCatalog`, returned by the public and personal catalog endpoints. */
 export const CatalogCosmeticSchema = t.Object({

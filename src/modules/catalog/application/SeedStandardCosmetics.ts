@@ -1,3 +1,4 @@
+import type { CatalogChangeNotifier } from "../domain/CatalogChangeNotifier";
 import { Cosmetic } from "../domain/Cosmetic";
 import { CosmeticRepository } from "../domain/CosmeticRepository";
 import { STANDARD_COSMETICS } from "./standardCosmetics";
@@ -6,7 +7,10 @@ import { STANDARD_COSMETICS } from "./standardCosmetics";
 // their asset_ref (one prefix == one cosmetic), so re-running only inserts what is
 // missing.
 export class SeedStandardCosmetics {
-	constructor(private readonly repository: CosmeticRepository) {}
+	constructor(
+		private readonly repository: CosmeticRepository,
+		private readonly catalogChange?: CatalogChangeNotifier,
+	) {}
 
 	async run(): Promise<{ created: number; skipped: number }> {
 		const existing = await this.repository.findAll();
@@ -31,6 +35,10 @@ export class SeedStandardCosmetics {
 				}),
 			);
 			created++;
+		}
+
+		if (created > 0) {
+			await this.catalogChange?.catalogChanged();
 		}
 
 		return { created, skipped };

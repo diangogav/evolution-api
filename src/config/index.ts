@@ -18,6 +18,29 @@ function jwtExpiration(value = "24h"): jwt.SignOptions["expiresIn"] {
 	return value as jwt.SignOptions["expiresIn"];
 }
 
+/**
+ * Base URL the CDN serves active cosmetics from (e.g. https://cdn.example.com/cosmetics).
+ * Unset keeps every cosmetic asset behind signed URLs.
+ */
+export function parseCosmeticsPublicBaseUrl(value: string | undefined): string | undefined {
+	const trimmed = value?.trim();
+	if (!trimmed) {
+		return undefined;
+	}
+
+	let url: URL | undefined;
+	try {
+		url = new URL(trimmed);
+	} catch {
+		url = undefined;
+	}
+	if (!url || (url.protocol !== "http:" && url.protocol !== "https:")) {
+		throw new Error("Environment variable COSMETICS_PUBLIC_BASE_URL must be an http(s) URL");
+	}
+
+	return trimmed.replace(/\/+$/, "");
+}
+
 const isProduction = process.env.NODE_ENV === "production";
 
 export const config = {
@@ -43,6 +66,7 @@ export const config = {
 		endpoint: ensureEnvVariable(process.env.R2_ENDPOINT as string, "R2_ENDPOINT"),
 		signedUrlTtlSeconds: Number(process.env.R2_SIGNED_URL_TTL ?? "600"),
 	},
+	cosmeticsPublicBaseUrl: parseCosmeticsPublicBaseUrl(process.env.COSMETICS_PUBLIC_BASE_URL),
 	season: Number(ensureEnvVariable(process.env.SEASON as string, "SEASON")),
 	rewardsWorker: {
 		enabled: process.env.REWARDS_WORKER_ENABLED === "true",
