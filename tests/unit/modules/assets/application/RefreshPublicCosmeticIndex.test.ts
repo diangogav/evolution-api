@@ -42,8 +42,25 @@ function setup({ catalog = [] as Cosmetic[], failFind = false, failWrite = false
 			return catalog;
 		},
 	};
-	const refresh = new RefreshPublicCosmeticIndex(cosmetics, activeRefs, store, logger);
-	return { refresh, activeRefs, written, errors };
+	// Waits resolve at once unless a test holds them to look inside the window.
+	const waits: number[] = [];
+	let hold: Promise<void> | null = null;
+	const wait = (ms: number) => {
+		waits.push(ms);
+		return hold ?? Promise.resolve();
+	};
+	const refresh = new RefreshPublicCosmeticIndex(cosmetics, activeRefs, store, logger, { wait });
+	const holdWaits = () => {
+		let release: () => void = () => undefined;
+		hold = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		return () => {
+			hold = null;
+			release();
+		};
+	};
+	return { refresh, activeRefs, written, errors, waits, holdWaits };
 }
 
 describe("RefreshPublicCosmeticIndex", () => {
@@ -87,16 +104,49 @@ describe("RefreshPublicCosmeticIndex", () => {
 		expect(activeRefs.has("sleeves/kept/")).toBe(true);
 	});
 
-	it("logs an index write failure and never throws", async () => {
+	it("logs an index write failure, keeps the previous set and never throws", async () => {
 		const { refresh, activeRefs, errors } = setup({
 			catalog: [cosmetic("sleeves/a/", true)],
 			failWrite: true,
 		});
+		activeRefs.replace(["sleeves/kept/"]);
 
 		await expect(refresh.run()).resolves.toBeUndefined();
 
 		expect(errors).toHaveLength(1);
+		expect(activeRefs.has("sleeves/a/")).toBe(false);
+		expect(activeRefs.has("sleeves/kept/")).toBe(true);
+	});
+
+	it("makes a newly active ref public only after the index is written and the CDN has had time to read it", async () => {
+		const { refresh, activeRefs, written, waits, holdWaits } = setup({
+			catalog: [cosmetic("sleeves/new/", true)],
+		});
+		const release = holdWaits();
+
+		const running = refresh.run();
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(written).toEqual([["sleeves/new/"]]);
+		expect(activeRefs.has("sleeves/new/")).toBe(false);
+
+		release();
+		await running;
+		expect(activeRefs.has("sleeves/new/")).toBe(true);
+		expect(waits).toEqual([65_000]);
+	});
+
+	it("stops serving a deactivated ref publicly right away, before the wait", async () => {
+		const { refresh, activeRefs, holdWaits } = setup({ catalog: [cosmetic("sleeves/a/", true)] });
+		activeRefs.replace(["sleeves/a/", "sleeves/gone/"]);
+		const release = holdWaits();
+
+		const running = refresh.run();
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(activeRefs.has("sleeves/gone/")).toBe(false);
 		expect(activeRefs.has("sleeves/a/")).toBe(true);
+
+		release();
+		await running;
 	});
 
 	it("runs overlapping refreshes one after another", async () => {

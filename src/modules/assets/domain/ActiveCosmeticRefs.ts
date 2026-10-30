@@ -10,6 +10,10 @@ export class ActiveCosmeticRefs {
 		return this.refs.has(assetRef);
 	}
 
+	list(): string[] {
+		return [...this.refs];
+	}
+
 	replace(assetRefs: Iterable<string>): void {
 		this.refs = new Set(assetRefs);
 	}
