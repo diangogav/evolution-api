@@ -6,7 +6,9 @@ export const MAX_CARD_FRAME_FILES = 200;
 
 const MAX_PATH_SEGMENTS = 3;
 const FOLDER_SEGMENT = /^[a-z0-9][a-z0-9-]*$/;
-const FILE_SEGMENT = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
+// A kit's digit glyphs are named after the character they draw, sign and
+// unknown value included (`-.png`, `?.png`); a name may not start with a dot.
+const FILE_SEGMENT = /^[A-Za-z0-9?-][A-Za-z0-9._?-]*$/;
 const LAYER_FILE = /\.png$/;
 
 export interface CardFrameArtWindow {

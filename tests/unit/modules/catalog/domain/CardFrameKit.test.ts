@@ -84,6 +84,24 @@ describe("isSafeKitPath", () => {
 		}
 	});
 
+	it("accepts the digit glyphs a kit draws ATK and DEF with, sign and unknown included", () => {
+		for (const path of [
+			"digits/-.png",
+			"digits/?.png",
+			"digits/0.png",
+			"digits/LINK-.png",
+			"digits/MAX.png",
+		]) {
+			expect(isSafeKitPath(path)).toBe(true);
+		}
+	});
+
+	it("still rejects dot names and keeps folders plain", () => {
+		for (const path of ["digits/..png", "digits/.png", "?x/a.png", "-x/a.png"]) {
+			expect(isSafeKitPath(path)).toBe(false);
+		}
+	});
+
 	it("rejects traversal, absolute, backslash, empty segments and deep paths", () => {
 		for (const path of [
 			"../layout.json",
