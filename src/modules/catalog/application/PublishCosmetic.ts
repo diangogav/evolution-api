@@ -7,12 +7,18 @@ import type { CosmeticRepository } from "../domain/CosmeticRepository";
 import { CosmeticTier } from "../domain/CosmeticTier";
 import { CosmeticType } from "../domain/CosmeticType";
 import { AMBIENCE_MANIFEST, parseAmbience } from "../domain/Ambience";
+import {
+	assertCardFrameKitFiles,
+	isSafeKitPath,
+	MAX_CARD_FRAME_FILES,
+} from "../domain/CardFrameKit";
 import { assertEmotePackFiles, MAX_EMOTE_PACK_FILES } from "../domain/EmotePack";
 import { parseZonePlate, ZONE_PLATE_MANIFEST } from "../domain/ZonePlate";
 
 const MAX_FILES = 8;
 const MAX_FILES_BY_TYPE: Partial<Record<CosmeticType, number>> = {
 	[CosmeticType.EMOTE_PACK]: MAX_EMOTE_PACK_FILES,
+	[CosmeticType.CARD_FRAME]: MAX_CARD_FRAME_FILES,
 };
 const MAX_TOTAL_BYTES = 25 * 1024 * 1024;
 const SAFE_FILE_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
@@ -26,6 +32,7 @@ const PREFIX_BY_TYPE: Partial<Record<CosmeticType, string>> = {
 	[CosmeticType.LANE]: "lanes",
 	[CosmeticType.AMBIENCE]: "ambience",
 	[CosmeticType.EMOTE_PACK]: "emote-packs",
+	[CosmeticType.CARD_FRAME]: "frames",
 };
 
 export interface PublishCosmeticFile {
@@ -80,6 +87,12 @@ function assertAssetRef(type: CosmeticType, assetRef: string): void {
 	}
 }
 
+// Only a card frame kit is a folder tree; every other type stays a flat list
+// of files so its keys keep the shape the client already fetches.
+function isSafeAssetName(type: CosmeticType, name: string): boolean {
+	return type === CosmeticType.CARD_FRAME ? isSafeKitPath(name) : SAFE_FILE_NAME.test(name);
+}
+
 function slugOf(assetRef: string): string {
 	return assetRef.split("/")[1] ?? "";
 }
@@ -129,7 +142,7 @@ export class PublishCosmetic {
 		const names = new Set<string>();
 		let totalBytes = 0;
 		for (const file of input.files) {
-			if (!SAFE_FILE_NAME.test(file.name)) {
+			if (!isSafeAssetName(input.type, file.name)) {
 				throw new InvalidArgumentError(`Unsafe asset filename "${file.name}"`);
 			}
 			if (names.has(file.name)) {
@@ -148,6 +161,9 @@ export class PublishCosmetic {
 		assertRequiredFiles(input.type, names);
 		if (input.type === CosmeticType.EMOTE_PACK) {
 			assertEmotePackFiles(slugOf(input.assetRef), input.files);
+		}
+		if (input.type === CosmeticType.CARD_FRAME) {
+			assertCardFrameKitFiles(input.files);
 		}
 		if (input.type === CosmeticType.LANE) {
 			parseZonePlate(input.files[0].bytes);

@@ -102,11 +102,13 @@ export function createAdminCosmeticsRouter(deps: AdminCosmeticsRouterDependencie
 					tier: t.Enum(CosmeticTier),
 					assetRef: t.String({ minLength: 1, maxLength: 180 }),
 					displayName: t.String({ minLength: 1, maxLength: 80 }),
-					files: t.Files({ minItems: 1, maxItems: 13, maxSize: "12m" }),
+					files: t.Files({ minItems: 1, maxItems: 200, maxSize: "12m" }),
 				}),
 				detail: {
 					tags: ["Cosmetics Admin"],
 					summary: "Upload and publish a cosmetic atomically",
+					description:
+						"Each file is stored under the assetRef by its multipart file name. Per-type rules apply: most types take up to 8 flat file names (13 for EMOTE_PACK). A CARD_FRAME kit takes up to 200 files: layout.json, preview.webp and .png layers, whose file names may carry the kit-relative path with up to two lowercase folders (frame/normal.png, digits/1.png). All files together stay under 25 MB.",
 					security: [{ bearerAuth: [] }],
 					responses: {
 						200: jsonOk(PublishedCosmeticSchema, "Cosmetic published successfully", {

@@ -12,6 +12,8 @@ export enum CosmeticType {
 	AMBIENCE = "AMBIENCE",
 	/** A set of Lottie emotes a player can place on the emote bar. */
 	EMOTE_PACK = "EMOTE_PACK",
+	/** A layered card frame kit the client composes cards from. */
+	CARD_FRAME = "CARD_FRAME",
 }
 
 /** Types worn through the one-item-per-type loadout; an EMOTE_PACK is picked emote by emote. */

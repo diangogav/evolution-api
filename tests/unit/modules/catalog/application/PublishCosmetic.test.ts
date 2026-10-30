@@ -9,6 +9,7 @@ import { Cosmetic } from "../../../../../src/modules/catalog/domain/Cosmetic";
 import type { CosmeticRepository } from "../../../../../src/modules/catalog/domain/CosmeticRepository";
 import { CosmeticTier } from "../../../../../src/modules/catalog/domain/CosmeticTier";
 import { CosmeticType } from "../../../../../src/modules/catalog/domain/CosmeticType";
+import { InvalidArgumentError } from "../../../../../src/shared/errors/InvalidArgumentError";
 
 function setup({ failSave = false, existing = [] as Cosmetic[] } = {}) {
 	const uploads: CosmeticAssetUpload[] = [];
@@ -444,5 +445,150 @@ describe("PublishCosmetic catalog change notification", () => {
 		await expect(publish.run(input)).rejects.toThrow("database unavailable");
 
 		expect(notified).toHaveLength(0);
+	});
+});
+
+describe("PublishCosmetic CARD_FRAME", () => {
+	const encoder = new TextEncoder();
+	const png = new Uint8Array([137, 80, 78, 71]);
+	const layoutJson = encoder.encode(
+		JSON.stringify({ canvas: [813, 1185], artWindow: { x: 98, y: 214, w: 617, h: 617 } }),
+	);
+	const kit = (extra: { name: string; bytes: Uint8Array }[] = []) => [
+		{ name: "layout.json", bytes: layoutJson },
+		{ name: "preview.webp", bytes: png },
+		{ name: "frame/normal.png", bytes: png },
+		{ name: "digits/atk/1.png", bytes: png },
+		...extra,
+	];
+	const frame = (files: { name: string; bytes: Uint8Array }[], assetRef = "frames/anime/") => ({
+		type: CosmeticType.CARD_FRAME,
+		tier: CosmeticTier.STANDARD,
+		assetRef,
+		displayName: "Anime",
+		files,
+	});
+
+	it("publishes a kit with nested paths under frames/<slug>/", async () => {
+		const { publish, uploads, saved } = setup();
+
+		const result = await publish.run(frame(kit()));
+
+		expect(uploads.map((upload) => [upload.key, upload.contentType])).toEqual([
+			["frames/anime/layout.json", "application/json"],
+			["frames/anime/preview.webp", "image/webp"],
+			["frames/anime/frame/normal.png", "image/png"],
+			["frames/anime/digits/atk/1.png", "image/png"],
+		]);
+		expect(result.type).toBe(CosmeticType.CARD_FRAME);
+		expect(result.assetFiles).toEqual([
+			"layout.json",
+			"preview.webp",
+			"frame/normal.png",
+			"digits/atk/1.png",
+		]);
+		expect(saved[0]?.assetFiles).toEqual(result.assetFiles);
+	});
+
+	it("accepts 200 files", async () => {
+		const { publish, uploads } = setup();
+		const layers = Array.from({ length: 196 }, (_, index) => ({
+			name: `layers/${index}.png`,
+			bytes: png,
+		}));
+
+		await publish.run(frame(kit(layers)));
+
+		expect(uploads).toHaveLength(200);
+	});
+
+	it("rejects more than 200 files", async () => {
+		const { publish, uploads } = setup();
+		const layers = Array.from({ length: 197 }, (_, index) => ({
+			name: `layers/${index}.png`,
+			bytes: png,
+		}));
+
+		await expect(publish.run(frame(kit(layers)))).rejects.toThrow(
+			"A cosmetic requires between 1 and 200 files",
+		);
+		expect(uploads).toHaveLength(0);
+	});
+
+	it("rejects a kit without layout.json", async () => {
+		const { publish, uploads } = setup();
+
+		await expect(publish.run(frame(kit().slice(1)))).rejects.toThrow(
+			"CARD_FRAME requires layout.json",
+		);
+		expect(uploads).toHaveLength(0);
+	});
+
+	it("rejects a kit without preview.webp", async () => {
+		const { publish } = setup();
+		const files = kit().filter((file) => file.name !== "preview.webp");
+
+		await expect(publish.run(frame(files))).rejects.toThrow("CARD_FRAME requires preview.webp");
+	});
+
+	it("rejects a layout.json that is not a valid layout, before touching storage", async () => {
+		const { publish, uploads, saved } = setup();
+		const files = kit();
+		files[0] = { name: "layout.json", bytes: encoder.encode(JSON.stringify({ canvas: [1, 1] })) };
+
+		await expect(publish.run(frame(files))).rejects.toThrow(InvalidArgumentError);
+		expect(uploads).toHaveLength(0);
+		expect(saved).toHaveLength(0);
+	});
+
+	it("rejects an extra file that is not a .png", async () => {
+		const { publish } = setup();
+
+		await expect(
+			publish.run(frame(kit([{ name: "frame/notes.txt", bytes: png }]))),
+		).rejects.toThrow('CARD_FRAME file "frame/notes.txt" must be a .png layer');
+	});
+
+	for (const name of [
+		"../layout.png",
+		"frame/../x.png",
+		"/frame.png",
+		"frame\\normal.png",
+		"frame//normal.png",
+		"a/b/c/d.png",
+	]) {
+		it(`rejects the unsafe kit path ${JSON.stringify(name)}`, async () => {
+			const { publish, uploads } = setup();
+
+			await expect(publish.run(frame(kit([{ name, bytes: png }])))).rejects.toThrow(
+				`Unsafe asset filename "${name}"`,
+			);
+			expect(uploads).toHaveLength(0);
+		});
+	}
+
+	it("rejects an assetRef outside frames/<slug>/", async () => {
+		const { publish } = setup();
+
+		await expect(publish.run(frame(kit(), "lanes/anime/"))).rejects.toThrow(
+			"assetRef for CARD_FRAME must match frames/kebab-case-slug/",
+		);
+	});
+
+	it("keeps flat names for other types", async () => {
+		const { publish } = setup();
+
+		await expect(
+			publish.run({
+				type: CosmeticType.SLEEVE,
+				tier: CosmeticTier.STANDARD,
+				assetRef: "sleeves/dragon/",
+				displayName: "Dragon",
+				files: [
+					{ name: "render.jpg", bytes: png },
+					{ name: "extra/back.png", bytes: png },
+				],
+			}),
+		).rejects.toThrow('Unsafe asset filename "extra/back.png"');
 	});
 });

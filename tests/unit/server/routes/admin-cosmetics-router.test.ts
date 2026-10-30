@@ -112,6 +112,39 @@ describe("admin cosmetics routes", () => {
 		});
 	});
 
+	it("accepts a 200-file card frame kit with nested paths in the file names", async () => {
+		const saved: Cosmetic[] = [];
+		const form = new FormData();
+		form.set("type", "CARD_FRAME");
+		form.set("tier", "STANDARD");
+		form.set("assetRef", "frames/anime/");
+		form.set("displayName", "Anime");
+		const layout = JSON.stringify({
+			canvas: [813, 1185],
+			artWindow: { x: 98, y: 214, w: 617, h: 617 },
+		});
+		form.append("files", new File([layout], "layout.json"));
+		form.append("files", new File([new Uint8Array([1])], "preview.webp"));
+		for (let index = 0; index < 198; index++) {
+			form.append("files", new File([new Uint8Array([1])], `digits/${index}.png`));
+		}
+
+		const response = await buildApp(null, (cosmetic) => saved.push(cosmetic)).handle(
+			new Request("http://localhost/admin/cosmetics/", {
+				method: "POST",
+				headers: { Authorization: "Bearer admin-token" },
+				body: form,
+			}),
+		);
+
+		expect(response.status).toBe(200);
+		const body = (await response.json()) as { type: string; assetFiles: string[] };
+		expect(body.type).toBe("CARD_FRAME");
+		expect(body.assetFiles).toHaveLength(200);
+		expect(body.assetFiles).toContain("digits/197.png");
+		expect(saved).toHaveLength(1);
+	});
+
 	it("no longer exposes the companion animation and model endpoints", async () => {
 		const playmat = Cosmetic.create({
 			id: "11111111-1111-4111-8111-111111111111",

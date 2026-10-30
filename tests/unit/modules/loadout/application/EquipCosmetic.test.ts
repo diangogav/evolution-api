@@ -135,6 +135,28 @@ describe("EquipCosmetic", () => {
 		expect(saved).toHaveLength(0);
 	});
 
+	it("equips a CARD_FRAME in its own slot", async () => {
+		const { equip, saved } = build({
+			found: Cosmetic.from({
+				id: "frame-1",
+				type: CosmeticType.CARD_FRAME,
+				tier: CosmeticTier.STANDARD,
+				assetRef: "frames/anime/",
+				displayName: "Anime",
+				active: true,
+			}),
+		});
+
+		await equip.run({
+			userId: "user-1",
+			cosmeticType: CosmeticType.CARD_FRAME,
+			cosmeticId: "frame-1",
+		});
+
+		expect(saved).toHaveLength(1);
+		expect(saved[0].equippedCosmeticId(CosmeticType.CARD_FRAME)).toBe("frame-1");
+	});
+
 	it("equips an AVATAR the user is entitled to", async () => {
 		const { equip, saved } = build({ found: avatar() });
 
