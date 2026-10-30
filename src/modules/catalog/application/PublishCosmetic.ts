@@ -58,6 +58,9 @@ export interface PublishedCosmeticDto {
 	readonly assetFiles: readonly string[];
 }
 
+/** A card frame kit carries up to 200 files: upload several at once so a publish answers in seconds. */
+const UPLOAD_CONCURRENCY = 8;
+
 function contentTypeFor(fileName: string): string {
 	const extension = fileName.split(".").pop()?.toLowerCase();
 	switch (extension) {
@@ -131,6 +134,36 @@ export class PublishCosmetic {
 		private readonly catalogChange?: CatalogChangeNotifier,
 	) {}
 
+	/**
+	 * Uploads every file, a few at a time, recording each stored key in
+	 * `uploaded` so a failure can delete them. After the first failure no new
+	 * upload starts; the ones in flight finish before the error is rethrown.
+	 */
+	private async uploadAll(input: PublishCosmeticInput, uploaded: string[]): Promise<void> {
+		let next = 0;
+		let failure: unknown;
+		const worker = async (): Promise<void> => {
+			while (failure === undefined && next < input.files.length) {
+				const file = input.files[next++];
+				const key = `${input.assetRef}${file.name}`;
+				try {
+					await this.storage.put({
+						key,
+						bytes: file.bytes,
+						contentType: contentTypeFor(file.name),
+					});
+					uploaded.push(key);
+				} catch (error) {
+					failure ??= error;
+				}
+			}
+		};
+		await Promise.all(
+			Array.from({ length: Math.min(UPLOAD_CONCURRENCY, input.files.length) }, worker),
+		);
+		if (failure !== undefined) throw failure;
+	}
+
 	async run(input: PublishCosmeticInput): Promise<PublishedCosmeticDto> {
 		assertAssetRef(input.type, input.assetRef);
 
@@ -190,22 +223,17 @@ export class PublishCosmetic {
 
 		const uploaded: string[] = [];
 		try {
-			for (const file of input.files) {
-				const key = `${input.assetRef}${file.name}`;
-				await this.storage.put({
-					key,
-					bytes: file.bytes,
-					contentType: contentTypeFor(file.name),
-				});
-				uploaded.push(key);
-			}
+			await this.uploadAll(input, uploaded);
 			await this.cosmetics.save(cosmetic);
 		} catch (error) {
 			await Promise.allSettled(uploaded.map((key) => this.storage.delete(key)));
 			throw error;
 		}
 
-		await this.catalogChange?.catalogChanged();
+		// The public index refresh waits for the CDN to pick it up before new
+		// URLs go public; the admin request does not wait for that, and the
+		// refresh logs its own failures.
+		void this.catalogChange?.catalogChanged().catch(() => undefined);
 
 		return {
 			id: cosmetic.id,

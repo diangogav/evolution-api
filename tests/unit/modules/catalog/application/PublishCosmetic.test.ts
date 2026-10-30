@@ -439,6 +439,68 @@ describe("PublishCosmetic catalog change notification", () => {
 		expect(notified).toHaveLength(1);
 	});
 
+	it("answers without waiting for the catalog change to finish", async () => {
+		const notified: number[] = [];
+		const publish = new PublishCosmetic(
+			{ findAll: async () => [], findById: async () => null, save: async () => undefined },
+			{ put: async () => undefined, delete: async () => undefined },
+			{
+				catalogChanged: () => {
+					notified.push(1);
+					return new Promise<void>(() => undefined);
+				},
+			},
+		);
+
+		const answered = await Promise.race([
+			publish.run(input).then(() => "answered"),
+			new Promise((resolve) => setTimeout(() => resolve("still waiting"), 50)),
+		]);
+
+		expect(answered).toBe("answered");
+		expect(notified).toHaveLength(1);
+	});
+
+	it("uploads a kit's files several at a time, never all at once", async () => {
+		let inFlight = 0;
+		let peak = 0;
+		const publish = new PublishCosmetic(
+			{ findAll: async () => [], findById: async () => null, save: async () => undefined },
+			{
+				put: async () => {
+					inFlight += 1;
+					peak = Math.max(peak, inFlight);
+					await new Promise((resolve) => setTimeout(resolve, 2));
+					inFlight -= 1;
+				},
+				delete: async () => undefined,
+			},
+		);
+		const layout = JSON.stringify({
+			canvas: [813, 1185],
+			artWindow: { x: 20, y: 20, w: 773, h: 845 },
+		});
+		const files = [
+			{ name: "layout.json", bytes: new TextEncoder().encode(layout) },
+			{ name: "preview.webp", bytes: new Uint8Array([1]) },
+			...Array.from({ length: 40 }, (_, index) => ({
+				name: `digits/${index}.png`,
+				bytes: new Uint8Array([1]),
+			})),
+		];
+
+		await publish.run({
+			type: CosmeticType.CARD_FRAME,
+			tier: CosmeticTier.STANDARD,
+			assetRef: "frames/fast/",
+			displayName: "Fast",
+			files,
+		});
+
+		expect(peak).toBeGreaterThan(1);
+		expect(peak).toBeLessThanOrEqual(8);
+	});
+
 	it("does not notify when the publish fails", async () => {
 		const { publish, notified } = notifyingSetup(true);
 
