@@ -1,6 +1,7 @@
 import { join } from "path";
 import { DataSource, DataSourceOptions } from "typeorm";
 
+import { PlayerReportSafeLogger } from "./modules/player-reports/infrastructure/PlayerReportSafeLogger";
 import { config } from "./evolution-types/src/config";
 import { CosmeticEntity } from "./modules/catalog/infrastructure/CosmeticEntity";
 import { EntitlementEntity } from "./modules/entitlements/infrastructure/EntitlementEntity";
@@ -22,6 +23,7 @@ const options: DataSourceOptions = {
 	database: config.postgres.database,
 	synchronize: false,
 	logging: true,
+	logger: new PlayerReportSafeLogger(true),
 	entities: [CosmeticEntity, UserLoadoutEntity, EntitlementEntity, UserEmoteBarEntity],
 	subscribers: [],
 	migrations: [join(__dirname, "/migrations/*.ts")],

@@ -46,6 +46,7 @@ Modules that exist today (`src/modules/*`):
 | `entitlements` | What cosmetics a user has access to, and granting them. |
 | `loadout` | A player's equipped cosmetics — own view and public view. |
 | `match` | Match history retrieval. |
+| `player-reports` | Private opponent reports with server match evidence, rolling quota and audited admin reviews. See [player reports](player-reports.md). |
 | `match-annulment` | Batch annulment and reinstatement of ranked matches. |
 | `points-ledger` | Per-match points entries that feed the ranked tiers. |
 | `rating` | Elo rating compensation when a match is annulled or reinstated. |
@@ -77,6 +78,8 @@ Modules that exist today (`src/modules/*`):
 | `botLoadoutRouter` | `/bots/:botName/loadout` | `src/server/routes/bot-loadout-router.ts` |
 | `publicEmoteBarRouter` | `/users/by-username/:username/emote-bar` | `src/server/routes/public-emote-bar-router.ts` |
 | `adminCosmeticsRouter` | `/admin/cosmetics` | `src/server/routes/admin-cosmetics-router.ts` |
+| `playerReportsRouter` | `/me/player-reports` | `src/server/routes/player-reports-router.ts` |
+| `adminPlayerReportsRouter` | `/admin/player-reports` | `src/server/routes/player-reports-router.ts` |
 | `adminModerationRouter` | `/admin/matches` | `src/server/routes/admin-moderation-router.ts` |
 | `adminStatsRouter` | `/admin/stats` | `src/server/routes/admin-stats-router.ts` |
 | `adminEventsRouter` | `/admin/events` | `src/server/routes/admin-events-router.ts` |
@@ -96,7 +99,7 @@ Both `DataSource`s point at the same Postgres instance but track migrations inde
 
 `src/evolution-types/` is a vendored package owned by the game server. Do not edit its entities or migrations from this repository; it is shared infrastructure, not API-local code. The cosmetics `DataSource` declares its foreign key to `users(id)` in raw SQL inside its own migration, so it never manages the shared `users` table.
 
-Module-to-DataSource mapping: `catalog`, `loadout`, `emote-bar`, `entitlements`, `community-decks`, `event-run`, `event-stats`, and `rewards` use the cosmetics `DataSource` (`rewards` also reads matches and achievements from the shared schema through its `*Source` adapters). Every other module that touches Postgres (`activity-stats`, `user`, `achievements`, `match`, `match-annulment`, `points-ledger`, `rating`, `stats`, `tiers`, `ban-list`) uses the shared `evolution-types` `DataSource`. `ticket` uses Redis, not Postgres. Both `DataSource`s are initialized at startup in `src/index.ts`.
+Module-to-DataSource mapping: `catalog`, `loadout`, `emote-bar`, `entitlements`, `community-decks`, `event-run`, `event-stats`, `player-reports`, and `rewards` use the cosmetics `DataSource` (`rewards` also reads matches and achievements from the shared schema through its `*Source` adapters). Every other module that touches Postgres (`activity-stats`, `user`, `achievements`, `match`, `match-annulment`, `points-ledger`, `rating`, `stats`, `tiers`, `ban-list`) uses the shared `evolution-types` `DataSource`. `ticket` uses Redis, not Postgres. Both `DataSource`s are initialized at startup in `src/index.ts`.
 
 ## Errors
 
