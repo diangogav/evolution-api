@@ -1,23 +1,16 @@
+import { reviewNote } from "../domain/PlayerReportText";
+import type { PlayerReportRepository } from "../domain/PlayerReportRepository";
 import { ConflictError } from "../../../shared/errors/ConflictError";
 import { InvalidArgumentError } from "../../../shared/errors/InvalidArgumentError";
 import { NotFoundError } from "../../../shared/errors/NotFoundError";
-import {
-	REPORT_STATUSES,
-	type PlayerReportRepository,
-	type ReviewReportInput,
-} from "../domain/PlayerReport";
+import { REPORT_STATUSES, type ReviewReportInput } from "../domain/PlayerReport";
 export class ReviewPlayerReport {
 	constructor(private readonly repository: PlayerReportRepository) {}
 	async run(input: ReviewReportInput) {
-		const note = input.note.trim();
+		const note = reviewNote(input.note);
 		if (
 			!input.adminUserId ||
 			!REPORT_STATUSES.includes(input.status) ||
-			note.length < 3 ||
-			note.length > 2000 ||
-			[...note].some(
-				(c) => (c.charCodeAt(0) < 32 && !"\t\n\r".includes(c)) || c.charCodeAt(0) === 127,
-			) ||
 			!Number.isInteger(input.expectedRevision) ||
 			input.expectedRevision < 1
 		)

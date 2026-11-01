@@ -1,9 +1,6 @@
+import type { PlayerReportRepository } from "../domain/PlayerReportRepository";
 import { InvalidArgumentError } from "../../../shared/errors/InvalidArgumentError";
-import {
-	REPORT_STATUSES,
-	type PlayerReportRepository,
-	type ReportStatus,
-} from "../domain/PlayerReport";
+import { REPORT_STATUSES, type ReportStatus } from "../domain/PlayerReport";
 export class ListPlayerReports {
 	constructor(private readonly repository: PlayerReportRepository) {}
 	run(input: { page: number; limit: number; status?: ReportStatus }) {

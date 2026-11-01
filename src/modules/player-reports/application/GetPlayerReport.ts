@@ -1,5 +1,5 @@
 import { NotFoundError } from "../../../shared/errors/NotFoundError";
-import type { PlayerReportRepository } from "../domain/PlayerReport";
+import type { PlayerReportRepository } from "../domain/PlayerReportRepository";
 export class GetPlayerReport {
 	constructor(private readonly repository: PlayerReportRepository) {}
 	async run(id: string) {

@@ -1,12 +1,10 @@
+import type { PlayerReportRepository } from "../../../../../src/modules/player-reports/domain/PlayerReportRepository";
 import { describe, expect, it } from "bun:test";
 import { SubmitPlayerReport } from "../../../../../src/modules/player-reports/application/SubmitPlayerReport";
 import { ReviewPlayerReport } from "../../../../../src/modules/player-reports/application/ReviewPlayerReport";
 import { ListReportableMatches } from "../../../../../src/modules/player-reports/application/ListReportableMatches";
 import { GetPlayerReport } from "../../../../../src/modules/player-reports/application/GetPlayerReport";
-import type {
-	PlayerReportRepository,
-	SubmitReportInput,
-} from "../../../../../src/modules/player-reports/domain/PlayerReport";
+import type { SubmitReportInput } from "../../../../../src/modules/player-reports/domain/PlayerReport";
 import { ConflictError } from "../../../../../src/shared/errors/ConflictError";
 import { InvalidArgumentError } from "../../../../../src/shared/errors/InvalidArgumentError";
 import { NotFoundError } from "../../../../../src/shared/errors/NotFoundError";
@@ -66,6 +64,8 @@ describe("Player report use cases", () => {
 			{ reason: "ban" },
 			{ details: "          " },
 			{ details: "x".repeat(2001) },
+			{ details: "😀".repeat(5) },
+			{ details: "😀".repeat(2001) },
 			{ gameId: "" },
 			{ gameId: "not-a-uuid" },
 			{ gameId: "{a0000000-0000-4000-8000-000000000001}" },
@@ -75,6 +75,20 @@ describe("Player report use cases", () => {
 				InvalidArgumentError,
 			);
 		expect(calls).toBe(0);
+	});
+	it("stores the full code-point allowance without UTF-16 truncation", async () => {
+		let received: SubmitReportInput | undefined;
+		const submit = new SubmitPlayerReport(
+			repository({
+				submit: async (value) => {
+					received = value;
+					return { outcome: "accepted", receipt };
+				},
+			}),
+		);
+		const details = "😀".repeat(2000);
+		expect(await submit.run({ ...input, details })).toEqual(receipt);
+		expect(received?.details).toBe(details);
 	});
 	it("maps missing match and quota failures without inventing a successful receipt", async () => {
 		await expect(
@@ -105,6 +119,11 @@ describe("Player report use cases", () => {
 			now,
 		};
 		await expect(review.run({ ...value, note: "  " })).rejects.toThrow(InvalidArgumentError);
+		await expect(review.run({ ...value, note: "😀😀" })).rejects.toThrow(InvalidArgumentError);
+		await expect(review.run({ ...value, note: "😀".repeat(2001) })).rejects.toThrow(
+			InvalidArgumentError,
+		);
+		await expect(review.run({ ...value, note: "😀😀😀" })).rejects.toThrow(ConflictError);
 		await expect(review.run(value)).rejects.toThrow(ConflictError);
 	});
 });

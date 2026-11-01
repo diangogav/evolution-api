@@ -1,3 +1,4 @@
+import type { PlayerReportRepository } from "../domain/PlayerReportRepository";
 import { cosmeticsDataSource } from "../../../cosmetics-data-source";
 import type { QueryableManager } from "../../../shared/persistence/QueryableManager";
 import {
@@ -5,7 +6,6 @@ import {
 	REPORT_WINDOW_DAYS,
 	type MatchEvidence,
 	type PlayerReport,
-	type PlayerReportRepository,
 	type ReportDetail,
 	type ReportReceipt,
 	type ReportReview,
@@ -36,7 +36,10 @@ const receipt = (row: StoredReport): ReportReceipt => ({
 });
 const cutoff = (now: Date) => new Date(now.getTime() - REPORT_WINDOW_DAYS * 86400000);
 const ids = (value: string | null) => (value ?? "").split(",").filter(Boolean);
-const eligibility = `m.user_id=$1 AND m.deleted_at IS NULL AND m.date >= $2 AND m.date <= $3
+// matches.date is a UTC wall-clock timestamp without a time zone. Explicit UTC
+// strings and timestamptz reads prevent node-postgres from applying the host offset.
+const utcTimestamp = (date: Date) => date.toISOString().replace("T", " ").replace("Z", "");
+const eligibility = `m.user_id=$1 AND m.deleted_at IS NULL AND m.date >= $2::timestamp AND m.date <= $3::timestamp
  AND $1=ANY(string_to_array(m.player_ids, ','))`;
 const opponentJoin = `JOIN LATERAL (
  SELECT jsonb_agg(jsonb_build_object('userId',u.id,'username',u.username) ORDER BY u.id) AS opponents
@@ -52,11 +55,17 @@ export class PlayerReportPostgresRepository implements PlayerReportRepository {
 		now: Date;
 	}): Promise<ReportableMatch[]> {
 		const rows = (await this.db.query(
-			`SELECT m.game_id AS "gameId", m.date, m.ban_list_name AS "banListName",
+			`SELECT m.game_id AS "gameId", m.date AT TIME ZONE 'UTC' AS date, m.ban_list_name AS "banListName",
    m.player_score AS "playerScore", m.opponent_score AS "opponentScore", o.opponents
    FROM matches m ${opponentJoin} WHERE ${eligibility}
    ORDER BY m.date DESC,m.id DESC LIMIT $4 OFFSET $5`,
-			[input.reporterId, cutoff(input.now), input.now, input.limit, (input.page - 1) * input.limit],
+			[
+				input.reporterId,
+				utcTimestamp(cutoff(input.now)),
+				utcTimestamp(input.now),
+				input.limit,
+				(input.page - 1) * input.limit,
+			],
 		)) as (Omit<ReportableMatch, "date"> & { date: Date })[];
 		return rows.map((row) => ({ ...row, date: row.date.toISOString() }));
 	}
@@ -89,12 +98,21 @@ export class PlayerReportPostgresRepository implements PlayerReportRepository {
 				reported_username: string;
 			};
 			const matches = (await tx.query(
-				`SELECT m.*, reporter.username AS reporter_username, target.username AS reported_username
+				`SELECT m.id, m.game_id, m.date AT TIME ZONE 'UTC' AS date,
+    m.ban_list_name, m.best_of, m.player_score, m.opponent_score,
+    m.player_ids, m.opponent_ids, m.player_names, m.opponent_names,
+    reporter.username AS reporter_username, target.username AS reported_username
     FROM matches m JOIN users reporter ON reporter.id=$1 AND reporter.deleted_at IS NULL
     JOIN users target ON target.id=$5 AND target.deleted_at IS NULL
     WHERE ${eligibility} AND m.game_id=$4 AND $5=ANY(string_to_array(m.opponent_ids, ',')) AND $1<>$5
     ORDER BY m.date DESC,m.id DESC LIMIT 1`,
-				[input.reporterId, cutoff(input.now), input.now, input.gameId, input.reportedUserId],
+				[
+					input.reporterId,
+					utcTimestamp(cutoff(input.now)),
+					utcTimestamp(input.now),
+					input.gameId,
+					input.reportedUserId,
+				],
 			)) as MatchRow[];
 			const match = matches[0];
 			if (!match) return { outcome: "ineligible" };
@@ -113,6 +131,9 @@ export class PlayerReportPostgresRepository implements PlayerReportRepository {
 				opponentScore: match.opponent_score,
 				playerIds: ids(match.player_ids),
 				opponentIds: ids(match.opponent_ids),
+				// Shared simple-array columns cannot distinguish a comma in one name
+				// from the separator between names. These are display fragments;
+				// IDs and the ID-addressed account usernames remain authoritative.
 				playerNames: ids(match.player_names),
 				opponentNames: ids(match.opponent_names),
 				reporterUsername: match.reporter_username,

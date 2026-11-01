@@ -1,5 +1,5 @@
 import { InvalidArgumentError } from "../../../shared/errors/InvalidArgumentError";
-import type { PlayerReportRepository } from "../domain/PlayerReport";
+import type { PlayerReportRepository } from "../domain/PlayerReportRepository";
 export class ListReportableMatches {
 	constructor(private readonly repository: PlayerReportRepository) {}
 	run(input: { reporterId: string; page: number; limit: number; now: Date }) {

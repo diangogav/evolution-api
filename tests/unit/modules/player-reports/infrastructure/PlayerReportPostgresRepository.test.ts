@@ -35,16 +35,21 @@ class Database implements ReportDatabase {
 	rows: Row[] = [];
 	reviews: unknown[][] = [];
 	queries: string[] = [];
+	matchBounds: unknown[][] = [];
 	eligible = true;
 	failAudit = false;
 	private locks = new Map<string, Promise<void>>();
 	async query(sql: string, args: unknown[] = []): Promise<unknown> {
 		this.queries.push(sql);
 		if (sql.includes("FROM matches")) {
+			this.matchBounds.push(args.slice(1, 3));
 			expect(sql).toContain("m.user_id=$1");
 			expect(sql).toContain("m.deleted_at IS NULL");
 			expect(sql).toContain("$1=ANY(string_to_array(m.player_ids");
-			expect(sql).toContain("m.date >= $2 AND m.date <= $3");
+			expect(sql).toContain("m.date >= $2::timestamp AND m.date <= $3::timestamp");
+			expect(sql).toContain("m.date AT TIME ZONE 'UTC' AS date");
+			expect(typeof args[1]).toBe("string");
+			expect(typeof args[2]).toBe("string");
 			if (!this.eligible) return [];
 			if (sql.includes("JOIN LATERAL"))
 				return [
@@ -152,6 +157,18 @@ class Database implements ReportDatabase {
 	}
 }
 describe("PlayerReportPostgresRepository", () => {
+	it("uses UTC wall-clock bounds for both listing and immutable evidence", async () => {
+		const db = new Database();
+		const repository = new PlayerReportPostgresRepository(db);
+		const offsetNow = new Date("2026-11-01T00:30:00+05:30");
+		await repository.listMatches({ reporterId: "a", page: 1, limit: 20, now: offsetNow });
+		await repository.submit({ ...input(), now: offsetNow });
+		expect(db.matchBounds).toEqual([
+			["2026-10-01 19:00:00.000", "2026-10-31 19:00:00.000"],
+			["2026-10-01 19:00:00.000", "2026-10-31 19:00:00.000"],
+		]);
+		expect(db.rows[0].context).toMatchObject({ date: now.toISOString() });
+	});
 	it("serializes simultaneous reports under the actual per-reporter lock path", async () => {
 		const db = new Database();
 		const repository = new PlayerReportPostgresRepository(db);

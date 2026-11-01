@@ -192,6 +192,44 @@ describe("Player report routes", () => {
 		expect(f.submissions).toHaveLength(0);
 		expect(f.lists).toBe(0);
 	});
+	it("validates Unicode code-point bounds for allegations and review notes", async () => {
+		const f = fixture();
+		for (const [count, status] of [
+			[5, 422],
+			[10, 200],
+			[2000, 200],
+			[2001, 422],
+		]) {
+			expect(
+				(
+					await f.request("/me/player-reports/", "user", {
+						gameId: report.gameId,
+						reportedUserId: "opponent",
+						reason: "other",
+						details: "😀".repeat(count),
+					})
+				).status,
+			).toBe(status);
+		}
+		for (const [count, status] of [
+			[2, 422],
+			[3, 200],
+			[2000, 200],
+			[2001, 422],
+		]) {
+			expect(
+				(
+					await f.request("/admin/player-reports/" + id + "/reviews", "admin", {
+						status: "investigating",
+						expectedRevision: 1,
+						note: "😀".repeat(count),
+					})
+				).status,
+			).toBe(status);
+		}
+		expect(f.submissions).toHaveLength(2);
+		expect(f.reviews).toHaveLength(2);
+	});
 	it("uses the authenticated administrator and requires a review revision", async () => {
 		const f = fixture();
 		const path = "/admin/player-reports/" + id + "/reviews";
