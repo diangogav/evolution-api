@@ -88,11 +88,11 @@ There is no DI container and, for most modules, no controller class. A
 `src/server/routes/<feature>-router.ts` file:
 
 1. `new`s up repositories and use cases at module top level.
-2. Exports `new Elysia({ prefix: "/..." })` with `.use(bearer())` and, for authenticated
-   player routes, `.guard(banGuard, (app) => ...)`. Admin routes use
-   `JwtAdminAuthorizer` instead of `banGuard`.
-3. Keeps handlers inline and thin: decode the JWT, call `useCase.run(...)`, return the
-   result.
+2. Exports `new Elysia({ prefix: "/..." })`. Authenticated player routes sit in
+   `.guard({}, (app) => app.use(requireUser)...)` and read `userId` from the handler
+   context; admin routes call `adminAuthorizer.requireAdmin(bearer)` instead. Never
+   decode the JWT in a handler.
+3. Keeps handlers inline and thin: call `useCase.run(...)` and return the result.
 4. Declares `params`/`query`/`body` with `t.*` and a `detail` with `tags`, `summary`,
    `description`, `security`, and `responses` built from `jsonOk` / `emptyOk` /
    `errorResponses` (`src/server/openapi/responses.ts`).

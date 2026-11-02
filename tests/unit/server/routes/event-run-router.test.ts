@@ -4,7 +4,7 @@ import { Elysia } from "elysia";
 import { eventRunsRouter, eventsRouter } from "../../../../src/server/routes/event-run-router";
 import { mapDomainErrorStatus } from "../../../../src/server/server";
 
-// Transport contract: every operation requires a bearer token (banGuard answers 401
+// Transport contract: every operation requires a bearer token (requireUser answers 401
 // before any handler or database access).
 const app = new Elysia().onError(mapDomainErrorStatus).use(eventsRouter).use(eventRunsRouter);
 

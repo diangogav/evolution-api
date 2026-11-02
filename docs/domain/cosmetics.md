@@ -105,7 +105,7 @@ replaces whatever was equipped there.
   (`src/modules/loadout/application/GetPublicLoadout.ts`): resolves the
   username to a user id (404 if unknown, so a client can fall back to the
   default look) and delegates to `GetMyLoadout`. This route is public — no
-  bearer token, no `banGuard`.
+  bearer token, no `requireUser`.
 - `GET /bots/:botName/loadout` → `GetBotLoadout.run`
   (`src/modules/loadout/application/GetBotLoadout.ts`): the loadout of a
   WindBot bot, addressed by its exact botlist name (`Lich`, `Gravekeepers`).

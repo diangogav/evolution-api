@@ -52,6 +52,9 @@ Before finishing a change, run the focused tests, then `bun test` and `bun run l
   exceptions and only lets them shrink. See `docs/architecture.md`.
 - **Composition root:** `src/server/routes/*-router.ts` `new` up dependencies by hand (no
   DI container). Routers are mounted under `/api/v1` in `src/server/server.ts`.
+- **Auth:** player routes mount `requireUser` (`src/server/auth/requireUser.ts`) and read
+  `userId` from the handler context; admin routes call `adminAuthorizer.requireAdmin`.
+  Never decode the JWT in a handler.
 - **Errors:** throw the classes in `src/shared/errors/`; `mapDomainErrorStatus` in
   `src/server/server.ts` maps them to status codes. Do not set status codes by hand. A
   plain `Error` answers 500.

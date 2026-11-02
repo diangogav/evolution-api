@@ -49,8 +49,7 @@ import {
 	BanActionSchema,
 	BanHistorySchema,
 } from "../../modules/user/infrastructure/UserBanSchemas";
-import { ForbiddenError } from "../../shared/errors/ForbiddenError";
-import { UserProfileRole } from "src/evolution-types/src/types/UserProfileRole";
+import { adminAuthorizer } from "../auth/AdminAuthorizer";
 import { requireUser } from "../auth/requireUser";
 
 const logger = new Pino();
@@ -485,14 +484,11 @@ export const userRouter = new Elysia({ prefix: "/users" })
 			),
 	)
 
-	// Admin Endpoints (NOT protected by banGuard)
+	// Admin Endpoints: outside requireUser so an admin can act on a banned user
 	.post(
 		"/:userId/ban",
 		async ({ params, body, bearer }) => {
-			const { id: adminId, role } = jwt.decode(bearer as string) as { id: string; role: string };
-			if (role !== UserProfileRole.ADMIN) {
-				throw new ForbiddenError("You do not have permission to ban users");
-			}
+			const { userId: adminId } = adminAuthorizer.requireAdmin(bearer);
 			await new UserBanUser(userBanRepository).execute({
 				userId: params.userId,
 				reason: body.reason,
@@ -523,10 +519,7 @@ export const userRouter = new Elysia({ prefix: "/users" })
 	.post(
 		"/:userId/unban",
 		async ({ params, bearer }) => {
-			const { role } = jwt.decode(bearer as string) as { id: string; role: string };
-			if (role !== UserProfileRole.ADMIN) {
-				throw new ForbiddenError("You do not have permissions to unban users");
-			}
+			adminAuthorizer.requireAdmin(bearer);
 			await new UserUnbanUser(userBanRepository).execute(params.userId);
 			return { success: true };
 		},
@@ -549,10 +542,7 @@ export const userRouter = new Elysia({ prefix: "/users" })
 	.get(
 		"/:userId/ban/active",
 		async ({ params, bearer }) => {
-			const { role } = jwt.decode(bearer as string) as { id: string; role: string };
-			if (role !== UserProfileRole.ADMIN) {
-				throw new ForbiddenError("You do not have permission to view bans");
-			}
+			adminAuthorizer.requireAdmin(bearer);
 			const ban = await new UserGetActiveBan(userBanRepository).execute(params.userId);
 			return { activeBan: ban };
 		},
@@ -585,10 +575,7 @@ export const userRouter = new Elysia({ prefix: "/users" })
 	.get(
 		"/:userId/ban/history",
 		async ({ params, bearer }) => {
-			const { role } = jwt.decode(bearer as string) as { id: string; role: string };
-			if (role !== UserProfileRole.ADMIN) {
-				throw new ForbiddenError("You do not have permission to view ban history");
-			}
+			adminAuthorizer.requireAdmin(bearer);
 			const bans = await new UserGetBanHistory(userBanRepository).execute(params.userId);
 			return { history: bans };
 		},
