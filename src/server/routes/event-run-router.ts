@@ -1,7 +1,6 @@
-import { bearer } from "@elysiajs/bearer";
 import { Elysia, t } from "elysia";
 
-import { config } from "../../config";
+import { requireUser } from "../auth/requireUser";
 import { createR2AssetUrlSigner } from "../../modules/assets/infrastructure/createR2AssetUrlSigner";
 import { CosmeticPostgresRepository } from "../../modules/catalog/infrastructure/CosmeticPostgresRepository";
 import { GetEvent } from "../../modules/event-run/application/GetEvent";
@@ -22,12 +21,9 @@ import {
 } from "../../modules/event-run/infrastructure/EventRunSchemas";
 import { resolveLocale } from "../../modules/rewards/domain/LocalizedText";
 import { CosmeticsTransactionRunner } from "../../modules/rewards/infrastructure/CosmeticsTransactionRunner";
-import { JWT } from "../../shared/JWT";
 import { redisClient } from "../../shared/redis/redisClient";
-import { banGuard } from "../guards/bandGuard";
 import { ErrorSchema, errorResponses, jsonOk } from "../openapi/responses";
 
-const jwt = new JWT(config.jwt);
 const catalog = new EventCatalogPostgresRepository();
 const runs = new EventRunPostgresRepository();
 const attempts = new EventAttemptPostgresRepository();
@@ -61,8 +57,6 @@ const requestEventDuel = new RequestEventDuel(
 );
 const getMyEventRun = new GetMyEventRun(catalog, runs, reservations, applyDuel, transactions);
 
-const userIdOf = (token: unknown) => (jwt.decode(token as string) as { id: string }).id;
-
 const runExample = {
 	id: "8f14e45f-ceea-467a-9f0e-6b9e1c6a1a2b",
 	eventId: "halloween-2026",
@@ -82,13 +76,14 @@ const conflict = (description: string) => ({
 	409: { description, content: { "text/plain": { schema: ErrorSchema } } },
 });
 
-export const eventsRouter = new Elysia({ prefix: "/events" }).use(bearer()).guard(banGuard, (app) =>
+export const eventsRouter = new Elysia({ prefix: "/events" }).guard({}, (app) =>
 	app
+		.use(requireUser)
 		.get(
 			"/:eventId",
-			({ bearer, params, request }) =>
+			({ userId, params, request }) =>
 				getEvent.run({
-					userId: userIdOf(bearer),
+					userId,
 					eventId: params.eventId,
 					locale: resolveLocale(request.headers.get("accept-language") ?? undefined),
 					now: new Date(),
@@ -110,9 +105,9 @@ export const eventsRouter = new Elysia({ prefix: "/events" }).use(bearer()).guar
 		)
 		.post(
 			"/:eventId/runs",
-			({ bearer, params, body }) =>
+			({ userId, params, body }) =>
 				startEventRun.run({
-					userId: userIdOf(bearer),
+					userId,
 					eventId: params.eventId,
 					deckId: body.deckId,
 					now: new Date(),
@@ -146,60 +141,58 @@ export const eventsRouter = new Elysia({ prefix: "/events" }).use(bearer()).guar
 		),
 );
 
-export const eventRunsRouter = new Elysia({ prefix: "/event-runs" })
-	.use(bearer())
-	.guard(banGuard, (app) =>
-		app
-			.get(
-				"/me",
-				({ bearer, query }) =>
-					getMyEventRun.run({ userId: userIdOf(bearer), eventId: query.eventId, now: new Date() }),
-				{
-					query: t.Object({ eventId: t.String() }),
-					detail: {
-						tags: ["Rewards"],
-						summary: "Get my event run",
-						description:
-							"Returns the player's current or last run of the event, after applying the result of its latest duel. `run` is null when the player never started one.",
-						security: [{ bearerAuth: [] }],
-						responses: {
-							200: jsonOk(MyEventRunSchema, "The current or last run", { run: runExample }),
-							...errorResponses(401, 403, 404, 422),
-						},
+export const eventRunsRouter = new Elysia({ prefix: "/event-runs" }).guard({}, (app) =>
+	app
+		.use(requireUser)
+		.get(
+			"/me",
+			({ userId, query }) => getMyEventRun.run({ userId, eventId: query.eventId, now: new Date() }),
+			{
+				query: t.Object({ eventId: t.String() }),
+				detail: {
+					tags: ["Rewards"],
+					summary: "Get my event run",
+					description:
+						"Returns the player's current or last run of the event, after applying the result of its latest duel. `run` is null when the player never started one.",
+					security: [{ bearerAuth: [] }],
+					responses: {
+						200: jsonOk(MyEventRunSchema, "The current or last run", { run: runExample }),
+						...errorResponses(401, 403, 404, 422),
 					},
 				},
-			)
-			.post(
-				"/:runId/duel",
-				({ bearer, params }) =>
-					requestEventDuel.run({ userId: userIdOf(bearer), runId: params.runId, now: new Date() }),
-				{
-					params: t.Object({ runId: t.String() }),
-					detail: {
-						tags: ["Rewards"],
-						summary: "Request the next event duel",
-						description:
-							"Reserves the duel of the run's current wave and returns the room password and the deck the server requires. The previous duel's result is applied first; when it ended the run, `duel` is null and `run` shows the final state.",
-						security: [{ bearerAuth: [] }],
-						responses: {
-							200: jsonOk(
-								RequestEventDuelResultSchema,
-								"The reserved duel, or the run's final state",
-								{
-									run: runExample,
-									duel: {
-										reservationId: "Xy3kP9aQ2mNb7RtL",
-										password: "rv#Xy3kP9aQ2mNb7RtL",
-										wave: 2,
-										botName: "Skeletons",
-										deck: { main: [17259470], extra: [6021033], side: [] },
-									},
+			},
+		)
+		.post(
+			"/:runId/duel",
+			({ userId, params }) =>
+				requestEventDuel.run({ userId, runId: params.runId, now: new Date() }),
+			{
+				params: t.Object({ runId: t.String() }),
+				detail: {
+					tags: ["Rewards"],
+					summary: "Request the next event duel",
+					description:
+						"Reserves the duel of the run's current wave and returns the room password and the deck the server requires. The previous duel's result is applied first; when it ended the run, `duel` is null and `run` shows the final state.",
+					security: [{ bearerAuth: [] }],
+					responses: {
+						200: jsonOk(
+							RequestEventDuelResultSchema,
+							"The reserved duel, or the run's final state",
+							{
+								run: runExample,
+								duel: {
+									reservationId: "Xy3kP9aQ2mNb7RtL",
+									password: "rv#Xy3kP9aQ2mNb7RtL",
+									wave: 2,
+									botName: "Skeletons",
+									deck: { main: [17259470], extra: [6021033], side: [] },
 								},
-							),
-							...errorResponses(401, 403, 404),
-							...conflict("A duel of this run is in progress"),
-						},
+							},
+						),
+						...errorResponses(401, 403, 404),
+						...conflict("A duel of this run is in progress"),
 					},
 				},
-			),
-	);
+			},
+		),
+);

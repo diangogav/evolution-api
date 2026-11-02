@@ -1,7 +1,6 @@
 import { bearer } from "@elysiajs/bearer";
 import { Elysia, t } from "elysia";
 
-import { config } from "../../config";
 import { EventCatalogPostgresRepository } from "../../modules/event-run/infrastructure/EventCatalogPostgresRepository";
 import { GetEventStats } from "../../modules/event-stats/application/GetEventStats";
 import { ListAdminEvents } from "../../modules/event-stats/application/ListAdminEvents";
@@ -10,9 +9,7 @@ import {
 	AdminEventListSchema,
 	EventStatsSchema,
 } from "../../modules/event-stats/infrastructure/EventStatsSchemas";
-import { JWT } from "../../shared/JWT";
-import type { AdminAuthorizer } from "../auth/AdminAuthorizer";
-import { JwtAdminAuthorizer } from "../auth/AdminAuthorizer";
+import { type AdminAuthorizer, adminAuthorizer } from "../auth/AdminAuthorizer";
 import { errorResponses, jsonOk } from "../openapi/responses";
 
 export interface AdminEventsRouterDependencies {
@@ -123,7 +120,7 @@ export function createAdminEventsRouter(deps: AdminEventsRouterDependencies) {
 const eventCatalog = new EventCatalogPostgresRepository();
 
 export const adminEventsRouter = createAdminEventsRouter({
-	authorizer: new JwtAdminAuthorizer(new JWT(config.jwt)),
+	authorizer: adminAuthorizer,
 	listAdminEvents: new ListAdminEvents(eventCatalog),
 	getEventStats: new GetEventStats(eventCatalog, new EventStatsPostgresRepository()),
 	clock: () => new Date(),

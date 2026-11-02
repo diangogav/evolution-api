@@ -1,6 +1,5 @@
 import { bearer } from "@elysiajs/bearer";
 import { Elysia, t } from "elysia";
-import { config } from "../../config";
 import { GetPlayerReport } from "../../modules/player-reports/application/GetPlayerReport";
 import { ListPlayerReports } from "../../modules/player-reports/application/ListPlayerReports";
 import { ListReportableMatches } from "../../modules/player-reports/application/ListReportableMatches";
@@ -17,31 +16,27 @@ import {
 	ReviewReportSchema,
 	SubmitReportSchema,
 } from "../../modules/player-reports/infrastructure/PlayerReportSchemas";
-import { AuthenticationError } from "../../shared/errors/AuthenticationError";
-import { JWT } from "../../shared/JWT";
-import { type AdminAuthorizer, JwtAdminAuthorizer } from "../auth/AdminAuthorizer";
-import { banGuard } from "../guards/bandGuard";
+import { type AdminAuthorizer, adminAuthorizer } from "../auth/AdminAuthorizer";
+import { requireUser } from "../auth/requireUser";
 import { errorResponses, jsonOk } from "../openapi/responses";
 
 type PlayerDependencies = {
 	listMatches: Pick<ListReportableMatches, "run">;
 	submit: Pick<SubmitPlayerReport, "run">;
-	decodeUser: (token: string | undefined) => string;
-	guard?: typeof banGuard;
+	requireUser?: typeof requireUser;
 };
 const security = [{ bearerAuth: [] }];
 export const createPlayerReportsRouter = ({
 	listMatches,
 	submit,
-	decodeUser,
-	guard = banGuard,
+	requireUser: authenticate = requireUser,
 }: PlayerDependencies) =>
-	new Elysia({ prefix: "/me/player-reports" }).use(bearer()).guard(guard, (app) =>
+	new Elysia({ prefix: "/me/player-reports" }).guard({}, (app) =>
 		app
+			.use(authenticate)
 			.get(
 				"/matches",
-				({ bearer, query }) =>
-					listMatches.run({ ...query, reporterId: decodeUser(bearer), now: new Date() }),
+				({ userId, query }) => listMatches.run({ ...query, reporterId: userId, now: new Date() }),
 				{
 					query: ReportPageQuery,
 					response: { 200: ReportableMatchesSchema },
@@ -60,8 +55,7 @@ export const createPlayerReportsRouter = ({
 			)
 			.post(
 				"/",
-				({ bearer, body }) =>
-					submit.run({ ...body, reporterId: decodeUser(bearer), now: new Date() }),
+				({ userId, body }) => submit.run({ ...body, reporterId: userId, now: new Date() }),
 				{
 					body: SubmitReportSchema,
 					response: { 200: ReportReceiptSchema },
@@ -164,19 +158,12 @@ export const createAdminPlayerReportsRouter = ({
 		);
 
 const repository = new PlayerReportPostgresRepository();
-const jwt = new JWT(config.jwt);
 export const playerReportsRouter = createPlayerReportsRouter({
 	listMatches: new ListReportableMatches(repository),
 	submit: new SubmitPlayerReport(repository),
-	decodeUser: (token) => {
-		if (!token) throw new AuthenticationError("Bearer token is required");
-		const decoded = jwt.decode(token) as { id?: string };
-		if (!decoded.id) throw new AuthenticationError("Token has no user id");
-		return decoded.id;
-	},
 });
 export const adminPlayerReportsRouter = createAdminPlayerReportsRouter({
-	authorizer: new JwtAdminAuthorizer(jwt),
+	authorizer: adminAuthorizer,
 	list: new ListPlayerReports(repository),
 	get: new GetPlayerReport(repository),
 	review: new ReviewPlayerReport(repository),

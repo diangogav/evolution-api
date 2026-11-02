@@ -36,7 +36,7 @@ import {
 import { ResendEmailSender } from "../../shared/email/infrastructure/ResendEmailSender";
 import { AuthenticationError } from "../../shared/errors/AuthenticationError";
 import { Hash } from "../../shared/Hash";
-import { JWT } from "../../shared/JWT";
+import { apiJwt } from "../auth/apiJwt";
 import { Pino } from "../../shared/logger/infrastructure/Pino";
 import { emptyOk, errorResponses, jsonOk } from "../openapi/responses";
 import { UserBanPostgresRepository } from "../../modules/user/infrastructure/UserBanPostgresRepository";
@@ -51,7 +51,7 @@ import {
 } from "../../modules/user/infrastructure/UserBanSchemas";
 import { ForbiddenError } from "../../shared/errors/ForbiddenError";
 import { UserProfileRole } from "src/evolution-types/src/types/UserProfileRole";
-import { banGuard } from "../guards/bandGuard";
+import { requireUser } from "../auth/requireUser";
 
 const logger = new Pino();
 const emailSender = new ResendEmailSender();
@@ -60,7 +60,7 @@ const userStatsRepository = new UserStatsPostgresRepository();
 const tierResolver = new TierResolver(new TiersPostgresRepository());
 const matchRepository = new MatchPostgresRepository();
 const hash = new Hash();
-const jwt = new JWT(config.jwt);
+const jwt = apiJwt;
 const userBanRepository = new UserBanPostgresRepository();
 const resetPasswordLinkBuilder = new ResetPasswordLinkBuilder(
 	config.passwordRecovery.frontends,
@@ -373,14 +373,14 @@ export const userRouter = new Elysia({ prefix: "/users" })
 		},
 	)
 
-	// Authenticated Endpoints protected by banGuard
+	// Authenticated Endpoints: requireUser verifies the token and rejects banned users
 	.use(bearer())
-	.guard(banGuard, (app) =>
+	.guard({}, (app) =>
 		app
+			.use(requireUser)
 			.post(
 				"/change-username",
-				async ({ body, bearer }) => {
-					const { id } = jwt.decode(bearer as string) as { id: string };
+				async ({ body, userId: id }) => {
 					return new UserUsernameUpdater(userRepository).updateUsername({
 						...(body as { username: string }),
 						id,
@@ -404,9 +404,8 @@ export const userRouter = new Elysia({ prefix: "/users" })
 			)
 			.post(
 				"/game-password",
-				async ({ bearer }) => {
-					const { id } = jwt.decode(bearer as string) as { id: string };
-					return new UserGamePasswordGenerator(userRepository, hash).generate({ userId: id });
+				async ({ userId }) => {
+					return new UserGamePasswordGenerator(userRepository, hash).generate({ userId });
 				},
 				{
 					detail: {
@@ -426,8 +425,7 @@ export const userRouter = new Elysia({ prefix: "/users" })
 			)
 			.post(
 				"/upgrade-password",
-				async ({ body, bearer }) => {
-					const { id } = jwt.decode(bearer as string) as { id: string };
+				async ({ body, userId: id }) => {
 					return new UserUpgradePassword(userRepository, hash, jwt).upgrade({
 						...(body as { password: string }),
 						userId: id,
@@ -456,8 +454,7 @@ export const userRouter = new Elysia({ prefix: "/users" })
 			)
 			.post(
 				"/change-account-password",
-				async ({ body, bearer }) => {
-					const { id } = jwt.decode(bearer as string) as { id: string };
+				async ({ body, userId: id }) => {
 					return new UserAccountPasswordUpdater(
 						userRepository,
 						hash,
