@@ -1,9 +1,7 @@
 import { NotFoundError } from "../../../shared/errors/NotFoundError";
 import type { QueryableManager } from "../../../shared/persistence/QueryableManager";
-import { GrantCosmeticToUser } from "../../entitlements/application/GrantCosmeticToUser";
-import { EntitlementSource } from "../../entitlements/domain/EntitlementSource";
-import { essenceLedgerEntry } from "../../rewards/domain/EssenceLedgerEntry";
-import { EssenceLedgerRepository } from "../../rewards/domain/EssenceLedgerRepository";
+import { GrantCosmeticToUser, EntitlementSource } from "../../entitlements";
+import { essenceLedgerEntry, EssenceLedgerRepository } from "../../rewards";
 import { EventCatalogRepository } from "../domain/EventCatalogRepository";
 import { EventDefinition, PrizeTier } from "../domain/EventDefinition";
 import { EventDuelRepository } from "../domain/EventDuelRepository";

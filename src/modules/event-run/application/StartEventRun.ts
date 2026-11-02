@@ -1,7 +1,6 @@
 import { NotFoundError } from "../../../shared/errors/NotFoundError";
 import { UnprocessableError } from "../../../shared/errors/UnprocessableError";
-import { periodKey } from "../../rewards/domain/MissionPeriod";
-import { TransactionRunner } from "../../rewards/domain/TransactionRunner";
+import { periodKey, TransactionRunner } from "../../rewards";
 import { EventAttemptRepository } from "../domain/EventAttemptRepository";
 import { EventCatalogRepository } from "../domain/EventCatalogRepository";
 import { findEventDeck, isEventOpen } from "../domain/EventDefinition";

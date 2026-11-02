@@ -1,6 +1,4 @@
-import { Cosmetic } from "../../catalog/domain/Cosmetic";
-import { CosmeticType } from "../../catalog/domain/CosmeticType";
-import { EMOTE_PACK_MANIFEST } from "../../catalog/domain/EmotePack";
+import { Cosmetic, CosmeticType, EMOTE_PACK_MANIFEST } from "../../catalog";
 
 const PACK_PREFIX = "emote-packs/";
 

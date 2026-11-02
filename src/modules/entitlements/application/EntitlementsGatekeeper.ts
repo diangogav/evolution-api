@@ -1,4 +1,4 @@
-import { CosmeticTier } from "../../catalog/domain/CosmeticTier";
+import { CosmeticTier } from "../../catalog";
 import { CosmeticAccess } from "../domain/CosmeticAccess";
 import { EntitlementRepository } from "../domain/EntitlementRepository";
 import { GrantType } from "../domain/GrantType";

@@ -1,4 +1,4 @@
-import { CosmeticTier } from "../../catalog/domain/CosmeticTier";
+import { CosmeticTier } from "../../catalog";
 
 // Ordinal ranking of access tiers. Access is gated "ordinal-first" (RFC §12):
 // a user tier grants every cosmetic tier at or below it.

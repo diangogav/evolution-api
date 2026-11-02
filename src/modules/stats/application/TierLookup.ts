@@ -1,4 +1,4 @@
-import type { TierView } from "../../tiers/application/dtos/TierView";
+import type { TierView } from "../../tiers";
 
 /**
  * What the stats read paths need from the tiers module. Satisfied

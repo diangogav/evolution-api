@@ -1,8 +1,7 @@
 import { ConflictError } from "../../../shared/errors/ConflictError";
 import { NotFoundError } from "../../../shared/errors/NotFoundError";
 import { UnprocessableError } from "../../../shared/errors/UnprocessableError";
-import { EntitlementSource } from "../../entitlements/domain/EntitlementSource";
-import { GrantCosmeticToUser } from "../../entitlements/application/GrantCosmeticToUser";
+import { EntitlementSource, GrantCosmeticToUser } from "../../entitlements";
 import { essenceLedgerEntry } from "../domain/EssenceLedgerEntry";
 import { EssenceLedgerRepository, QueryableManager } from "../domain/EssenceLedgerRepository";
 import { Mission, MissionReward } from "../domain/Mission";

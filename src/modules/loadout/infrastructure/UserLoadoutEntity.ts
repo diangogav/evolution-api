@@ -1,6 +1,6 @@
 import { Column, Entity, PrimaryColumn, UpdateDateColumn } from "typeorm";
 
-import { CosmeticType } from "../../catalog/domain/CosmeticType";
+import { CosmeticType } from "../../catalog";
 
 // One row per equipped slot (user_id, cosmetic_type). The cosmetic_type is part of
 // the primary key so a user has at most one cosmetic equipped per slot.

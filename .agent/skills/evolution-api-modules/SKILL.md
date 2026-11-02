@@ -27,6 +27,10 @@ src/modules/<feature>/
   `points-ledger` have no `application/`). Do not create empty folders.
 - A use case may depend on another module's port or use case (`ClaimMission` uses
   `GrantCosmeticToUser`); import the narrowest shape (`Pick<GrantCosmeticToUser, "runForUserId">`).
+- Import another module only through its `index.ts` (`from "../../entitlements"`), never
+  from its folders. If the symbol is missing, add an explicit `export` of a domain or
+  application file to that `index.ts`; never export infrastructure. The ratchet in
+  `tests/unit/architecture/module-boundaries.test.ts` fails on new leaks and cycles.
 
 ## Domain
 

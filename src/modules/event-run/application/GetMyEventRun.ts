@@ -1,5 +1,5 @@
 import { NotFoundError } from "../../../shared/errors/NotFoundError";
-import { TransactionRunner } from "../../rewards/domain/TransactionRunner";
+import { TransactionRunner } from "../../rewards";
 import { EventCatalogRepository } from "../domain/EventCatalogRepository";
 import { isRunIdle } from "../domain/EventRun";
 import { EventRunRepository } from "../domain/EventRunRepository";

@@ -1,6 +1,5 @@
-import type { Cosmetic } from "../../catalog/domain/Cosmetic";
-import type { CosmeticRepository } from "../../catalog/domain/CosmeticRepository";
-import type { UserDirectory } from "../../loadout/domain/UserDirectory";
+import type { Cosmetic, CosmeticRepository } from "../../catalog";
+import type { UserDirectory } from "../../loadout";
 import { NotFoundError } from "../../../shared/errors/NotFoundError";
 import type { QueryableManager } from "../../../shared/persistence/QueryableManager";
 import { Entitlement } from "../domain/Entitlement";

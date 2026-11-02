@@ -1,7 +1,6 @@
 import { t } from "elysia";
 
-import { CosmeticTier } from "../../catalog/domain/CosmeticTier";
-import { CosmeticType } from "../../catalog/domain/CosmeticType";
+import { CosmeticTier, CosmeticType } from "../../catalog";
 
 export const EssenceBalanceSchema = t.Object({
 	balance: t.Integer({ description: "Current essence balance (sum of the user's ledger)" }),

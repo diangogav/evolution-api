@@ -1,4 +1,4 @@
-import { LocalizedText } from "../../rewards/domain/LocalizedText";
+import { LocalizedText } from "../../rewards";
 
 export type EventDeck = {
 	id: string;

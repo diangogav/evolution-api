@@ -1,9 +1,8 @@
 import { ForbiddenError } from "../../../shared/errors/ForbiddenError";
 import { InvalidArgumentError } from "../../../shared/errors/InvalidArgumentError";
 import { NotFoundError } from "../../../shared/errors/NotFoundError";
-import { CosmeticRepository } from "../../catalog/domain/CosmeticRepository";
-import { CosmeticType, isEquippableType } from "../../catalog/domain/CosmeticType";
-import { EntitlementsGatekeeper } from "../../entitlements/application/EntitlementsGatekeeper";
+import { CosmeticRepository, CosmeticType, isEquippableType } from "../../catalog";
+import { EntitlementsGatekeeper } from "../../entitlements";
 import { LoadoutRepository } from "../domain/LoadoutRepository";
 
 export class EquipCosmetic {

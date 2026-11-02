@@ -11,9 +11,9 @@ Versions come from `package.json`.
 | Layer | Choice | Notes |
 | --- | --- | --- |
 | Runtime | Bun | All scripts (`bun run dev`, `bun test`, `bun run build`) run through Bun, not Node. |
-| HTTP framework | ElysiaJS `^1.4.29` | Routers, guards, and request validation. |
-| ORM | TypeORM `^0.3.28` | Two separate `DataSource`s (see below). |
-| Validation | TypeBox (`@sinclair/typebox` `0.34.48`, an Elysia peer dependency) | Elysia schemas (`t.Object`, `t.String`, ...) compile to TypeBox and back the OpenAPI schemas. |
+| HTTP framework | ElysiaJS `^1.4.30` | Routers, guards, and request validation. |
+| ORM | TypeORM `^0.3.31` | Two separate `DataSource`s (see below). |
+| Validation | TypeBox (`@sinclair/typebox` `0.34.48`, Elysia's peer, declared as a dev dependency for the schema tests) | Elysia schemas (`t.Object`, `t.String`, ...) compile to TypeBox and back the OpenAPI schemas. |
 | Test runner | `bun:test` | No separate test framework; tests import `describe`/`it`/`expect` from `bun:test`. |
 | Lint/format | Biome `2.5.0` | `bun run lint` (check) / `bun run lint:fix`; enforced on commit via husky + lint-staged. |
 | Types/build | TypeScript `6.0.3` | `bun run build` runs `tsc` for type-checking and emit. |
@@ -26,10 +26,11 @@ Each feature lives under `src/modules/<feature>/`, split into three layers:
 src/modules/<feature>/
   domain/          # entities, value objects, repository interfaces (ports)
   application/     # use cases / orchestration
-  infrastructure/  # TypeORM repositories, controllers, schemas (adapters)
+  infrastructure/  # Postgres repositories, TypeBox schemas, workers, wiring (adapters)
+  index.ts         # public surface for other modules (only when another module uses it)
 ```
 
-Dependency rule: `infrastructure → application → domain`. Domain depends on nothing else in the module. Controllers never expose TypeORM or domain entities directly — they map through DTOs and TypeBox schemas.
+Dependency rule: `infrastructure → application → domain`. Domain depends on nothing else in the module. Routers never expose TypeORM or domain entities directly — they return use case results typed by TypeBox schemas.
 
 Modules that exist today (`src/modules/*`):
 
@@ -44,6 +45,8 @@ Modules that exist today (`src/modules/*`):
 | `emote-bar` | A player's equipped emote bar — own view and public view. |
 | `community-decks` | Legal decks synced from YGOPRODeck and the public endpoints that list them (see `design/community-decks.md`). |
 | `entitlements` | What cosmetics a user has access to, and granting them. |
+| `event-run` | Seasonal event gauntlets: the event catalog, runs, event duels and their worker. |
+| `event-stats` | Per-event run, wave, deck and player stats for the backoffice. |
 | `loadout` | A player's equipped cosmetics — own view and public view. |
 | `match` | Match history retrieval. |
 | `player-reports` | Private opponent reports with server match evidence, rolling quota and audited admin reviews. See [player reports](player-reports.md). |
@@ -55,6 +58,20 @@ Modules that exist today (`src/modules/*`):
 | `ticket` | Ranked game tickets, backed by Redis. |
 | `tiers` | Ranked tier resolution and the tier catalog (see `ranked-tiers.md`). |
 | `user` | Registration, profile, password management, username, bans. |
+
+## Module boundaries
+
+A module reaches another module only through that module's `index.ts`, which re-exports explicit domain and application symbols (`export { X } from "./domain/X"`; never `export *`, never infrastructure). A module gets an `index.ts` once another module needs something from it.
+
+`tests/unit/architecture/module-boundaries.test.ts` enforces this as a ratchet:
+
+- A cross-module import that skips the target's `index.ts` fails, unless it is in `KNOWN_LEAKS`.
+- A dependency cycle between modules fails, unless it is in `KNOWN_CYCLES`.
+- An `index.ts` that re-exports with `export *` or from outside `domain/` and `application/` fails.
+
+Both lists only shrink: fixing a leak or a cycle means deleting its entry, and the test also fails while a fixed entry is still listed. Today they hold `event-run`'s wiring (`buildEventRun.ts`) reaching into four modules' Postgres repositories, `event-stats` borrowing `event-run`'s `runQuery`, `stats` reusing the `tiers` TypeBox schema, and the `assets` ↔ `catalog` ↔ `entitlements` ↔ `loadout` loop.
+
+Routers (`src/server/routes/`) are the composition root and may import any layer of any module.
 
 ## Composition root: routers
 
@@ -86,6 +103,8 @@ Modules that exist today (`src/modules/*`):
 | `missionsRouter` | `/me/missions` | `src/server/routes/missions-router.ts` |
 | `essenceRouter` | `/me/essence` | `src/server/routes/shop-router.ts` |
 | `shopRouter` | `/shop` | `src/server/routes/shop-router.ts` |
+| `eventsRouter` | `/events` | `src/server/routes/event-run-router.ts` |
+| `eventRunsRouter` | `/event-runs` | `src/server/routes/event-run-router.ts` |
 | `communityDecksRouter` | `/community-decks` | `src/server/routes/community-decks-router.ts` |
 
 ## Data
@@ -99,7 +118,7 @@ Both `DataSource`s point at the same Postgres instance but track migrations inde
 
 `src/evolution-types/` is a vendored package owned by the game server. Do not edit its entities or migrations from this repository; it is shared infrastructure, not API-local code. The cosmetics `DataSource` declares its foreign key to `users(id)` in raw SQL inside its own migration, so it never manages the shared `users` table.
 
-Module-to-DataSource mapping: `catalog`, `loadout`, `emote-bar`, `entitlements`, `community-decks`, `event-run`, `event-stats`, `player-reports`, and `rewards` use the cosmetics `DataSource` (`rewards` also reads matches and achievements from the shared schema through its `*Source` adapters). Every other module that touches Postgres (`activity-stats`, `user`, `achievements`, `match`, `match-annulment`, `points-ledger`, `rating`, `stats`, `tiers`, `ban-list`) uses the shared `evolution-types` `DataSource`. `ticket` uses Redis, not Postgres. Both `DataSource`s are initialized at startup in `src/index.ts`.
+Module-to-DataSource mapping: `catalog`, `loadout`, `emote-bar`, `entitlements`, `community-decks`, `event-run`, `event-stats`, `player-reports`, and `rewards` use the cosmetics `DataSource` (`rewards` also reads matches and achievements from the shared schema through its `*Source` adapters; `loadout`'s `UserDirectoryPostgresRepository` reads usernames from the shared `users` table; `event-stats` queries through `event-run`'s `runQuery`). Every other module that touches Postgres (`activity-stats`, `user`, `achievements`, `match`, `match-annulment`, `points-ledger`, `rating`, `stats`, `tiers`, `ban-list`) uses the shared `evolution-types` `DataSource`. `ticket` uses Redis, not Postgres. Both `DataSource`s are initialized at startup in `src/index.ts`.
 
 ## Errors
 
@@ -123,9 +142,19 @@ Throw one of these from a use case or controller instead of setting `set.status`
 | --- | --- | --- |
 | `bearer()` (`@elysiajs/bearer`) | plugin, used per router | Exposes the raw `Authorization: Bearer <token>` value as `bearer` in the handler context. Used alone (without `banGuard`) where a route only needs to decode the token, not check a ban — e.g. `admin-cosmetics-router.ts` and `admin-moderation-router.ts`, which authorize through `JwtAdminAuthorizer` instead. |
 | `banGuard` | `src/server/guards/bandGuard.ts` | `beforeHandle` that decodes the bearer token and throws `AuthenticationError` (401) if it is missing or invalid, or `ForbiddenError` (403) if the user has an active ban. |
-| `JwtAdminAuthorizer` | `src/server/auth/AdminAuthorizer.ts` | `requireAdmin(token)`: throws `AuthenticationError` if the token is missing or has no user id, `ForbiddenError` if the decoded role is not `ADMIN`. Used by `admin-cosmetics-router.ts` and `admin-moderation-router.ts`. |
+| `JwtAdminAuthorizer` | `src/server/auth/AdminAuthorizer.ts` | `requireAdmin(token)`: throws `AuthenticationError` if the token is missing or has no user id, `ForbiddenError` if the decoded role is not `ADMIN`. Used by `admin-cosmetics-router.ts`, `admin-moderation-router.ts`, `admin-stats-router.ts`, `admin-events-router.ts` and the admin half of `player-reports-router.ts`. |
 
-Which routers use `banGuard`: **`user-router.ts`** (its authenticated, non-admin endpoints), **`ticket-router.ts`**, **`me-cosmetics-router.ts`**, **`loadout-router.ts`**, **`emote-bar-router.ts`**, **`missions-router.ts`**, and **`shop-router.ts`** use it. **`cosmetics-router.ts`, `public-loadout-router.ts`, `bot-loadout-router.ts`, `public-emote-bar-router.ts`, `achievements-router.ts`, `admin-cosmetics-router.ts`, and `admin-moderation-router.ts` do not** — `cosmetics-router.ts`, `public-loadout-router.ts`, `public-emote-bar-router.ts`, and `achievements-router.ts` serve public, unauthenticated reads, so there is no bearer token to check a ban against. Admin endpoints inside `user-router.ts` (ban/unban a user) check the decoded `role` inline rather than through `JwtAdminAuthorizer`; `admin-cosmetics-router.ts` and `admin-moderation-router.ts` use `JwtAdminAuthorizer` consistently. Ban routes are intentionally outside `banGuard` (an admin must be able to act on a banned user); annulment routes use `JwtAdminAuthorizer`.
+Which routers use `banGuard`: **`user-router.ts`** (its authenticated, non-admin endpoints), **`ticket-router.ts`**, **`me-cosmetics-router.ts`**, **`loadout-router.ts`**, **`emote-bar-router.ts`**, **`missions-router.ts`**, **`shop-router.ts`**, **`event-run-router.ts`** and **`player-reports-router.ts`** use it. **`cosmetics-router.ts`, `public-loadout-router.ts`, `bot-loadout-router.ts`, `public-emote-bar-router.ts`, `achievements-router.ts`, `admin-cosmetics-router.ts`, and `admin-moderation-router.ts` do not** — `cosmetics-router.ts`, `public-loadout-router.ts`, `public-emote-bar-router.ts`, and `achievements-router.ts` serve public, unauthenticated reads, so there is no bearer token to check a ban against. Admin endpoints inside `user-router.ts` (ban/unban a user) check the decoded `role` inline rather than through `JwtAdminAuthorizer`; the other admin routers use `JwtAdminAuthorizer` consistently. Ban routes are intentionally outside `banGuard` (an admin must be able to act on a banned user); annulment routes use `JwtAdminAuthorizer`.
+
+## Workers
+
+Background loops run in-process when their env flag is `true`, or standalone with `bun run src/worker.ts`. Instances share a lock per worker, so only one makes progress at a time.
+
+| Worker | Built in | Started from | Flag |
+| --- | --- | --- | --- |
+| Rewards (match results → mission progress and essence) | `src/modules/rewards/infrastructure/buildRewardsWorker.ts` | `src/index.ts` | `REWARDS_WORKER_ENABLED` |
+| Event runs (applies unfetched duel results, voids stale duels) | `src/modules/event-run/infrastructure/buildEventRun.ts` | `Server.start()` in `src/server/server.ts` | `EVENT_RUN_WORKER_ENABLED` |
+| Community decks (YGOPRODeck sync) | `src/modules/community-decks/infrastructure/buildCommunityDecks.ts` | `Server.start()` in `src/server/server.ts` | `COMMUNITY_DECKS_WORKER_ENABLED` |
 
 ## External services
 

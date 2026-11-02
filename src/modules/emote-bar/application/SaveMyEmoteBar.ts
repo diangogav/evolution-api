@@ -1,7 +1,7 @@
 import { ForbiddenError } from "../../../shared/errors/ForbiddenError";
 import { InvalidArgumentError } from "../../../shared/errors/InvalidArgumentError";
-import { CosmeticRepository } from "../../catalog/domain/CosmeticRepository";
-import { EntitlementsGatekeeper } from "../../entitlements/application/EntitlementsGatekeeper";
+import { CosmeticRepository } from "../../catalog";
+import { EntitlementsGatekeeper } from "../../entitlements";
 import { EmoteBar } from "../domain/EmoteBar";
 import { EmoteBarRepository } from "../domain/EmoteBarRepository";
 import { activeEmotePacksBySlug, packHasEmote } from "./activeEmotePacks";

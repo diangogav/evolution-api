@@ -1,6 +1,6 @@
 import { t } from "elysia";
 
-import { CosmeticType } from "../../catalog/domain/CosmeticType";
+import { CosmeticType } from "../../catalog";
 import { WAVE_TIERS } from "../domain/EventDefinition";
 import { EVENT_RUN_STATUSES } from "../domain/EventRun";
 

@@ -1,6 +1,5 @@
-import { AssetUrlSigner } from "../../assets/domain/AssetUrlSigner";
-import { CosmeticRepository } from "../../catalog/domain/CosmeticRepository";
-import { CosmeticType } from "../../catalog/domain/CosmeticType";
+import { AssetUrlSigner } from "../../assets";
+import { CosmeticRepository, CosmeticType } from "../../catalog";
 import { PrizeTier } from "../domain/EventDefinition";
 
 export type PrizeCosmeticView = {
