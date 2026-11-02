@@ -13,8 +13,8 @@ module layout, the two DataSources, auth and Swagger, see
 2. Copy `.env.example` to `.env` and fill in the variables listed below. Never commit `.env`.
 3. Start Postgres and Redis: `docker compose up -d` (`docker-compose.yaml`).
 4. Install dependencies: `bun install`.
-5. Create the shared schema. The game server owns it, so this repository does not run its migrations. For a local
-   database, run them from the `evolution-types` package (`migration:run` in `src/evolution-types/package.json`,
+5. Create the shared schema. Its migrations belong to the `evolution-types` package, not to this repository's runner. For a local
+   database, run them from the package (`migration:run` in `src/evolution-types/package.json`,
    `synchronize` is off in `src/evolution-types/src/data-source.ts`), or restore a copy of an existing database.
 6. Apply the cosmetics migrations and seed them (see [Database and migrations](#database-and-migrations)).
 7. Start the dev server: `bun run dev` (watch mode over `src/index.ts`, `package.json`).
@@ -155,9 +155,13 @@ Both DataSources point at the same Postgres instance but track migrations
 independently — see [architecture.md](architecture.md#data) for the full
 mapping of modules to DataSource.
 
-**Shared schema is migrated by the game server.** `src/evolution-types/` is a
-vendored, read-only submodule; this repo must never run migrations against
-its `migrations` table. `init.sql` (mounted by `docker-compose.yaml` into the
+**Shared schema is migrated from evolution-types.** `src/evolution-types/` is
+the schema package this API and EDOpro-server-ts share as a submodule. Its
+migrations run with the package's own `migration:run`, never through this
+repo's cosmetics runner, and are tracked in its `migrations` table. To change
+the shared schema, open a PR in evolution-types, then bump the submodule here
+(`git -C src/evolution-types checkout <commit>`, commit the new pointer) so the
+tests run against what the image ships. `init.sql` (mounted by `docker-compose.yaml` into the
 local Postgres container) only enables the `uuid-ossp` extension and sets the
 session timezone to UTC — it does not create schema.
 
@@ -213,7 +217,8 @@ copies `src/` and `tsconfig.json`, then clones `evolution-types` fresh with
 `git clone --depth 1` from its GitHub URL — **not** the pinned submodule
 commit used locally (`.gitmodules`). This means an image build always pulls
 whatever is on `evolution-types`' default branch at build time, unlike local
-dev's pinned submodule checkout. There is no `tsc build` step in the image:
+dev's pinned submodule checkout; keep the submodule on that branch's latest
+commit so the tests cover what production runs. There is no `tsc build` step in the image:
 it runs `bun src/index.ts` directly from source, and exposes port `3000`.
 
 Configuration reaches the container only through environment variables (the
