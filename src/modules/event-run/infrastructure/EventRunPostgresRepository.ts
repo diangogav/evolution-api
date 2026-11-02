@@ -1,7 +1,7 @@
 import type { QueryableManager } from "../../../shared/persistence/QueryableManager";
 import { EventRun, EventRunStatus } from "../domain/EventRun";
 import { EventRunRepository, ExpiredRun } from "../domain/EventRunRepository";
-import { runQuery } from "./runQuery";
+import { runQuery } from "../../../shared/persistence/runQuery";
 
 const COLUMNS = `id, user_id, event_id, deck_id, status, current_wave, waves_cleared,
 	current_reservation_id, voids, created_at, updated_at, current_bot, faced_bots`;

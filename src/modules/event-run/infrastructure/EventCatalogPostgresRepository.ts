@@ -1,7 +1,7 @@
 import type { QueryableManager } from "../../../shared/persistence/QueryableManager";
 import { EventCatalogListing, EventCatalogRepository } from "../domain/EventCatalogRepository";
 import { EventDefinition } from "../domain/EventDefinition";
-import { runQuery } from "./runQuery";
+import { runQuery } from "../../../shared/persistence/runQuery";
 
 const COLUMNS = `id, name, description, format, starts_at, ends_at, attempts_per_day,
 	waves, decks, prize_tiers`;

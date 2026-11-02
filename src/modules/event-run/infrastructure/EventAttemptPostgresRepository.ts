@@ -1,6 +1,6 @@
 import type { QueryableManager } from "../../../shared/persistence/QueryableManager";
 import { EventAttemptRepository } from "../domain/EventAttemptRepository";
-import { runQuery } from "./runQuery";
+import { runQuery } from "../../../shared/persistence/runQuery";
 
 // One statement decides and counts: the conflicting row is locked by the upsert, so two
 // concurrent starts cannot both read "2 of 3" and both spend the third attempt. No row

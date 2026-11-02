@@ -10,10 +10,7 @@ import { dirname, join, normalize, relative } from "node:path";
 const MODULES_DIR = join(import.meta.dir, "../../../src/modules");
 
 // Cross-module imports that bypass the target's index.ts, as "importer -> target".
-const KNOWN_LEAKS = [
-	"event-stats/infrastructure/EventStatsPostgresRepository.ts -> event-run/infrastructure/runQuery",
-	"stats/infrastructure/StatsSchemas.ts -> tiers/infrastructure/TierSchemas",
-];
+const KNOWN_LEAKS = ["stats/infrastructure/StatsSchemas.ts -> tiers/infrastructure/TierSchemas"];
 
 // Groups of modules that depend on each other in a loop, each sorted by name.
 const KNOWN_CYCLES = [["assets", "catalog", "entitlements", "loadout"]];
