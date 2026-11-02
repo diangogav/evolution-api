@@ -13,7 +13,7 @@ const MODULES_DIR = join(import.meta.dir, "../../../src/modules");
 const KNOWN_LEAKS = ["stats/infrastructure/StatsSchemas.ts -> tiers/infrastructure/TierSchemas"];
 
 // Groups of modules that depend on each other in a loop, each sorted by name.
-const KNOWN_CYCLES = [["assets", "catalog", "entitlements", "loadout"]];
+const KNOWN_CYCLES: string[][] = [];
 
 const IMPORT_PATTERN = /\bfrom\s+"([^"]+)"/g;
 

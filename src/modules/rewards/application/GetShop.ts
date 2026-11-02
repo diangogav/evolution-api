@@ -1,4 +1,4 @@
-import { AssetUrlSigner } from "../../assets";
+import { AssetUrlSigner } from "../../catalog";
 import { CosmeticTier, CosmeticType } from "../../catalog";
 import { EntitlementsGatekeeper } from "../../entitlements";
 import { ShopCatalogRepository } from "../domain/ShopCatalogRepository";

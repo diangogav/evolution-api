@@ -8,7 +8,7 @@ import { EmoteBarPostgresRepository } from "../../modules/emote-bar/infrastructu
 import { EmoteBarSchema } from "../../modules/emote-bar/infrastructure/EmoteBarSchemas";
 import { EntitlementsGatekeeper } from "../../modules/entitlements/application/EntitlementsGatekeeper";
 import { EntitlementPostgresRepository } from "../../modules/entitlements/infrastructure/EntitlementPostgresRepository";
-import { UserDirectoryPostgresRepository } from "../../modules/loadout/infrastructure/UserDirectoryPostgresRepository";
+import { UserDirectoryPostgresRepository } from "../../modules/user/infrastructure/UserDirectoryPostgresRepository";
 import { errorResponses, jsonOk } from "../openapi/responses";
 import { preventSignedAssetResponseCaching } from "./signed-asset-response";
 

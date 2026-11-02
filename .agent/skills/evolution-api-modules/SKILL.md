@@ -31,6 +31,9 @@ src/modules/<feature>/
   from its folders. If the symbol is missing, add an explicit `export` of a domain or
   application file to that `index.ts`; never export infrastructure. The ratchet in
   `tests/unit/architecture/module-boundaries.test.ts` fails on new leaks and cycles.
+- A port lives in the module that consumes it, and the module that implements it
+  imports it (`catalog` owns `AssetUrlSigner`; `assets` implements it). Moving the port
+  to the consumer is how a cycle between two modules is broken.
 
 ## Domain
 

@@ -1,6 +1,6 @@
 import { S3Client } from "bun";
 
-import { AssetUrlSigner, SignedAssetManifest } from "../domain/AssetUrlSigner";
+import { AssetUrlSigner, SignedAssetManifest } from "../../catalog";
 
 /**
  * Signs read URLs for assets stored in a private R2 (S3-compatible) bucket.

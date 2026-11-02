@@ -1,5 +1,5 @@
 import { Elysia, t } from "elysia";
-import { config } from "./../../config/index";
+import { config } from "../../config/index";
 
 import { BanListGetter } from "../../modules/ban-list/application/BanListGetter";
 import { GroupedBanListGetter } from "../../modules/ban-list/application/GroupedBanListGetter";

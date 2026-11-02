@@ -1,4 +1,4 @@
-import type { CosmeticAssetStorage } from "../../assets";
+import type { CosmeticAssetStorage } from "../domain/CosmeticAssetStorage";
 import { ConflictError } from "../../../shared/errors/ConflictError";
 import { InvalidArgumentError } from "../../../shared/errors/InvalidArgumentError";
 import type { CatalogChangeNotifier } from "../domain/CatalogChangeNotifier";

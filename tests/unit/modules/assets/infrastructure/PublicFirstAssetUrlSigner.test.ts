@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 
 import { ActiveCosmeticRefs } from "../../../../../src/modules/assets/domain/ActiveCosmeticRefs";
-import type { AssetUrlSigner } from "../../../../../src/modules/assets/domain/AssetUrlSigner";
+import type { AssetUrlSigner } from "../../../../../src/modules/catalog/domain/AssetUrlSigner";
 import { PublicFirstAssetUrlSigner } from "../../../../../src/modules/assets/infrastructure/PublicFirstAssetUrlSigner";
 
 const BASE = "https://cdn.example.com/cosmetics";

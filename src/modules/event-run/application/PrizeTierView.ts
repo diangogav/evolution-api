@@ -1,4 +1,4 @@
-import { AssetUrlSigner } from "../../assets";
+import { AssetUrlSigner } from "../../catalog";
 import { CosmeticRepository, CosmeticType } from "../../catalog";
 import { PrizeTier } from "../domain/EventDefinition";
 

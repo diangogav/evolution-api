@@ -1,5 +1,5 @@
-import { AssetUrlSigner } from "../../assets";
-import { EntitlementsGatekeeper } from "../../entitlements";
+import { AssetUrlSigner } from "../domain/AssetUrlSigner";
+import type { CosmeticAccessPolicy } from "../domain/CosmeticAccessPolicy";
 import { CosmeticRepository } from "../domain/CosmeticRepository";
 import { CosmeticTier } from "../domain/CosmeticTier";
 import { CosmeticType } from "../domain/CosmeticType";
@@ -22,7 +22,7 @@ export class GetCosmeticsCatalog {
 	constructor(
 		private readonly repository: CosmeticRepository,
 		private readonly signer: AssetUrlSigner,
-		private readonly gatekeeper: EntitlementsGatekeeper,
+		private readonly gatekeeper: CosmeticAccessPolicy,
 	) {}
 
 	async run(filters: CatalogFilters = {}, userId?: string | null): Promise<CatalogCosmetic[]> {

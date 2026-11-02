@@ -6,7 +6,7 @@ import { CosmeticPostgresRepository } from "../../modules/catalog/infrastructure
 import { EntitlementsGatekeeper } from "../../modules/entitlements/application/EntitlementsGatekeeper";
 import { GrantCosmeticToUser } from "../../modules/entitlements/application/GrantCosmeticToUser";
 import { EntitlementPostgresRepository } from "../../modules/entitlements/infrastructure/EntitlementPostgresRepository";
-import { UserDirectoryPostgresRepository } from "../../modules/loadout/infrastructure/UserDirectoryPostgresRepository";
+import { UserDirectoryPostgresRepository } from "../../modules/user/infrastructure/UserDirectoryPostgresRepository";
 import { GetMyEssence } from "../../modules/rewards/application/GetMyEssence";
 import { GetShop } from "../../modules/rewards/application/GetShop";
 import { PurchaseCosmetic } from "../../modules/rewards/application/PurchaseCosmetic";

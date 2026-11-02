@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test";
 
 import { GetPublicEmoteBar } from "../../../../../src/modules/emote-bar/application/GetPublicEmoteBar";
 import { EmoteBarView } from "../../../../../src/modules/emote-bar/application/GetMyEmoteBar";
-import { UserDirectory } from "../../../../../src/modules/loadout/domain/UserDirectory";
+import { UserDirectory } from "../../../../../src/modules/user/domain/UserDirectory";
 import { NotFoundError } from "../../../../../src/shared/errors/NotFoundError";
 
 const view: EmoteBarView = {

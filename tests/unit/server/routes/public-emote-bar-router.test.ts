@@ -11,7 +11,7 @@ import { Entitlement } from "../../../../src/modules/entitlements/domain/Entitle
 import { EntitlementSource } from "../../../../src/modules/entitlements/domain/EntitlementSource";
 import { GrantType } from "../../../../src/modules/entitlements/domain/GrantType";
 import { EntitlementPostgresRepository } from "../../../../src/modules/entitlements/infrastructure/EntitlementPostgresRepository";
-import { UserDirectoryPostgresRepository } from "../../../../src/modules/loadout/infrastructure/UserDirectoryPostgresRepository";
+import { UserDirectoryPostgresRepository } from "../../../../src/modules/user/infrastructure/UserDirectoryPostgresRepository";
 import { publicEmoteBarRouter } from "../../../../src/server/routes/public-emote-bar-router";
 import { NotFoundError } from "../../../../src/shared/errors/NotFoundError";
 

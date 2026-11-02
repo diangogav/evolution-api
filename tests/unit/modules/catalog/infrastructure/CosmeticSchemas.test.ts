@@ -1,8 +1,8 @@
 import { describe, expect, it } from "bun:test";
 import { Value } from "@sinclair/typebox/value";
 
-import type { AssetUrlSigner } from "../../../../../src/modules/assets/domain/AssetUrlSigner";
-import type { CosmeticAssetStorage } from "../../../../../src/modules/assets/domain/CosmeticAssetStorage";
+import type { AssetUrlSigner } from "../../../../../src/modules/catalog/domain/AssetUrlSigner";
+import type { CosmeticAssetStorage } from "../../../../../src/modules/catalog/domain/CosmeticAssetStorage";
 import { GetAdminCosmetics } from "../../../../../src/modules/catalog/application/GetAdminCosmetics";
 import { GetCosmeticAssets } from "../../../../../src/modules/catalog/application/GetCosmeticAssets";
 import { GetCosmeticsCatalog } from "../../../../../src/modules/catalog/application/GetCosmeticsCatalog";

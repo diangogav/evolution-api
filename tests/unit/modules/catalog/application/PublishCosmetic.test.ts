@@ -3,7 +3,7 @@ import { describe, expect, it } from "bun:test";
 import type {
 	CosmeticAssetStorage,
 	CosmeticAssetUpload,
-} from "../../../../../src/modules/assets/domain/CosmeticAssetStorage";
+} from "../../../../../src/modules/catalog/domain/CosmeticAssetStorage";
 import { PublishCosmetic } from "../../../../../src/modules/catalog/application/PublishCosmetic";
 import { Cosmetic } from "../../../../../src/modules/catalog/domain/Cosmetic";
 import type { CosmeticRepository } from "../../../../../src/modules/catalog/domain/CosmeticRepository";

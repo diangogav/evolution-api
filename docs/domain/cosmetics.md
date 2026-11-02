@@ -27,8 +27,10 @@ both go through `GetCosmeticsCatalog.run`
 (`src/modules/catalog/application/GetCosmeticsCatalog.ts`), which:
 
 1. Loads every cosmetic.
-2. Resolves the caller's access **once** via `EntitlementsGatekeeper`
-   (one repository fetch regardless of catalog size).
+2. Resolves the caller's access **once** through its `CosmeticAccessPolicy`
+   port (`src/modules/catalog/domain/CosmeticAccessPolicy.ts`), which the
+   routers fill with `EntitlementsGatekeeper` (one repository fetch regardless
+   of catalog size).
 3. Filters to `cosmetic.active && access.canUse(cosmetic)`, plus optional
    `type`/`tier` filters.
 4. Signs each visible cosmetic's asset manifest.

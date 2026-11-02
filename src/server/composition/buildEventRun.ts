@@ -4,7 +4,7 @@ import { redisClient } from "../../shared/redis/redisClient";
 import { CosmeticPostgresRepository } from "../../modules/catalog/infrastructure/CosmeticPostgresRepository";
 import { GrantCosmeticToUser } from "../../modules/entitlements";
 import { EntitlementPostgresRepository } from "../../modules/entitlements/infrastructure/EntitlementPostgresRepository";
-import { UserDirectoryPostgresRepository } from "../../modules/loadout/infrastructure/UserDirectoryPostgresRepository";
+import { UserDirectoryPostgresRepository } from "../../modules/user/infrastructure/UserDirectoryPostgresRepository";
 import { EssenceLedgerPostgresRepository } from "../../modules/rewards/infrastructure/EssenceLedgerPostgresRepository";
 import { ApplyReservedDuel } from "../../modules/event-run/application/ApplyReservedDuel";
 import { ProcessEventRunTick } from "../../modules/event-run/application/ProcessEventRunTick";
