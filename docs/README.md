@@ -16,7 +16,7 @@ Live Swagger: [`https://api.evolutionygo.com/swagger`](https://api.evolutionygo.
 | [domain/seasons-ranks-points.md](domain/seasons-ranks-points.md) | Seasons, ranks (ban lists, grouped ladders, Global), how season points and player of the week are computed |
 | [domain/points-ledger-and-ratings.md](domain/points-ledger-and-ratings.md) | The points ledger, Elo ratings, provisional ratings and peaks, who writes what (this API vs the game server) |
 | [domain/match-annulment.md](domain/match-annulment.md) | The annulment/reversal batch flow, per-game outcomes, the enable switch, idempotency |
-| [domain/moderation.md](domain/moderation.md) | User bans: lifecycle, `banGuard`, admin-only routes, relation to annulment |
+| [domain/moderation.md](domain/moderation.md) | User bans: lifecycle, `requireUser`, admin-only routes, relation to annulment |
 | [domain/cosmetics.md](domain/cosmetics.md) | Catalog, entitlements, loadout, signed asset URLs |
 | [rewards.md](rewards.md) | Essence, daily and weekly missions, the worker that projects progress from match results, the shop, backfill |
 | [operations.md](operations.md) | Environment variables, running locally, migrations, seeds and scripts, deployment notes |

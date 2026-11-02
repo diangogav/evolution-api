@@ -4,6 +4,7 @@ import {
 	createAdminPlayerReportsRouter,
 	createPlayerReportsRouter,
 } from "../../../../src/server/routes/player-reports-router";
+import { createRequireUser } from "../../../../src/server/auth/requireUser";
 import { AuthenticationError } from "../../../../src/shared/errors/AuthenticationError";
 import { ForbiddenError } from "../../../../src/shared/errors/ForbiddenError";
 import { ConflictError } from "../../../../src/shared/errors/ConflictError";
@@ -46,11 +47,16 @@ function fixture() {
 	const submissions: SubmitReportInput[] = [];
 	const reviews: ReviewReportInput[] = [];
 	let lists = 0;
-	const decodeUser = (token: string | undefined) => {
-		if (!token) throw new AuthenticationError("missing");
-		if (token !== "user") throw new ForbiddenError("not allowed");
-		return "signed-user";
-	};
+	const requireUser = createRequireUser({
+		jwt: {
+			decode: (token) => {
+				if (token === "user") return { id: "signed-user" };
+				if (token === "banned") return { id: "banned-user" };
+				throw new Error("bad signature");
+			},
+		},
+		activeBans: { execute: async (userId) => (userId === "banned-user" ? { userId } : null) },
+	});
 	const app = new Elysia()
 		.onError(({ error, set }) => {
 			if (error instanceof AuthenticationError) set.status = 401;
@@ -60,12 +66,7 @@ function fixture() {
 		})
 		.use(
 			createPlayerReportsRouter({
-				decodeUser,
-				guard: {
-					beforeHandle: async ({ bearer }) => {
-						decodeUser(bearer);
-					},
-				},
+				requireUser,
 				listMatches: {
 					run: async (input) => {
 						expect(input.reporterId).toBe("signed-user");
@@ -136,6 +137,9 @@ describe("Player report routes", () => {
 		};
 		expect((await f.request("/me/player-reports/matches")).status).toBe(401);
 		expect((await f.request("/me/player-reports/", undefined, body)).status).toBe(401);
+		expect((await f.request("/me/player-reports/matches", "forged")).status).toBe(401);
+		expect((await f.request("/me/player-reports/matches", "banned")).status).toBe(403);
+		expect((await f.request("/me/player-reports/", "banned", body)).status).toBe(403);
 		for (const token of [undefined, "user"]) {
 			const status = token ? 403 : 401;
 			expect((await f.request("/admin/player-reports/", token)).status).toBe(status);

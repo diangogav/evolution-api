@@ -13,10 +13,8 @@ import { PointsLedgerPostgresRepository } from "../../modules/points-ledger/infr
 import { AnnulledMatchRatingCompensator } from "../../modules/rating/application/AnnulledMatchRatingCompensator";
 import { ReinstatedMatchRatingCompensator } from "../../modules/rating/application/ReinstatedMatchRatingCompensator";
 import { RatingCompensationPostgresRepository } from "../../modules/rating/infrastructure/RatingCompensationPostgresRepository";
-import { JWT } from "../../shared/JWT";
 import { errorResponses, jsonOk } from "../openapi/responses";
-import type { AdminAuthorizer } from "../auth/AdminAuthorizer";
-import { JwtAdminAuthorizer } from "../auth/AdminAuthorizer";
+import { type AdminAuthorizer, adminAuthorizer } from "../auth/AdminAuthorizer";
 
 export interface AdminModerationRouterDependencies {
 	readonly authorizer: AdminAuthorizer;
@@ -120,7 +118,7 @@ const compensator = new AnnulledMatchRatingCompensator(ratingCompensationReposit
 const reinstatementCompensator = new ReinstatedMatchRatingCompensator(ratingCompensationRepository);
 
 export const adminModerationRouter = createAdminModerationRouter({
-	authorizer: new JwtAdminAuthorizer(new JWT(config.jwt)),
+	authorizer: adminAuthorizer,
 	annulMatches: new AnnulMatchesUseCase(
 		matchAnnulmentRepository,
 		compensator,

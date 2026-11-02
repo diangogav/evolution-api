@@ -2,6 +2,7 @@ import { UserProfileRole } from "../../evolution-types/src/types/UserProfileRole
 import { AuthenticationError } from "../../shared/errors/AuthenticationError";
 import { ForbiddenError } from "../../shared/errors/ForbiddenError";
 import type { JWT } from "../../shared/JWT";
+import { apiJwt } from "./apiJwt";
 
 export interface AdminPrincipal {
 	readonly userId: string;
@@ -24,3 +25,5 @@ export class JwtAdminAuthorizer implements AdminAuthorizer {
 		return { userId: decoded.id };
 	}
 }
+
+export const adminAuthorizer = new JwtAdminAuthorizer(apiJwt);

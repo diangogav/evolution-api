@@ -1,7 +1,6 @@
 import { bearer } from "@elysiajs/bearer";
 import { Elysia, t } from "elysia";
 
-import { config } from "../../config";
 import type { AssetUrlSigner } from "../../modules/assets/domain/AssetUrlSigner";
 import { createCatalogChangeNotifier } from "../../modules/assets/infrastructure/createCatalogChangeNotifier";
 import { createR2AssetUrlSigner } from "../../modules/assets/infrastructure/createR2AssetUrlSigner";
@@ -24,10 +23,8 @@ import { CosmeticGrantSchema } from "../../modules/entitlements/infrastructure/G
 import type { UserDirectory } from "../../modules/loadout/domain/UserDirectory";
 import { UserDirectoryPostgresRepository } from "../../modules/loadout/infrastructure/UserDirectoryPostgresRepository";
 import { errorResponses, jsonOk } from "../openapi/responses";
-import { JWT } from "../../shared/JWT";
 import { Pino } from "../../shared/logger/infrastructure/Pino";
-import type { AdminAuthorizer } from "../auth/AdminAuthorizer";
-import { JwtAdminAuthorizer } from "../auth/AdminAuthorizer";
+import { type AdminAuthorizer, adminAuthorizer } from "../auth/AdminAuthorizer";
 import { preventSignedAssetResponseCaching } from "./signed-asset-response";
 
 export interface AdminCosmeticsRouterDependencies {
@@ -164,7 +161,7 @@ const cosmetics = new CosmeticPostgresRepository();
 const storage = createR2CosmeticAssetStorage();
 
 export const adminCosmeticsRouter = createAdminCosmeticsRouter({
-	authorizer: new JwtAdminAuthorizer(new JWT(config.jwt)),
+	authorizer: adminAuthorizer,
 	cosmetics,
 	signer: createR2AssetUrlSigner(),
 	publish: new PublishCosmetic(

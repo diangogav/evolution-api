@@ -140,11 +140,19 @@ Throw one of these from a use case or controller instead of setting `set.status`
 
 | Mechanism | File | Behavior |
 | --- | --- | --- |
-| `bearer()` (`@elysiajs/bearer`) | plugin, used per router | Exposes the raw `Authorization: Bearer <token>` value as `bearer` in the handler context. Used alone (without `banGuard`) where a route only needs to decode the token, not check a ban — e.g. `admin-cosmetics-router.ts` and `admin-moderation-router.ts`, which authorize through `JwtAdminAuthorizer` instead. |
-| `banGuard` | `src/server/guards/bandGuard.ts` | `beforeHandle` that decodes the bearer token and throws `AuthenticationError` (401) if it is missing or invalid, or `ForbiddenError` (403) if the user has an active ban. |
-| `JwtAdminAuthorizer` | `src/server/auth/AdminAuthorizer.ts` | `requireAdmin(token)`: throws `AuthenticationError` if the token is missing or has no user id, `ForbiddenError` if the decoded role is not `ADMIN`. Used by `admin-cosmetics-router.ts`, `admin-moderation-router.ts`, `admin-stats-router.ts`, `admin-events-router.ts` and the admin half of `player-reports-router.ts`. |
+| `apiJwt` | `src/server/auth/apiJwt.ts` | The single `JWT` instance (`src/shared/JWT.ts`) every router uses to sign and verify tokens. |
+| `requireUser` | `src/server/auth/requireUser.ts` | Elysia plugin with a scoped `resolve`: verifies the bearer token once, answers `401` when it is missing (`No token provided`), invalid or expired (`Invalid token`) or has no user id (`Token has no user id`), answers `403` (`User is banned`) when `UserGetActiveBan` finds an active ban, and otherwise hands the handler a typed `userId`. It runs after request validation, so invalid input still answers `422` first. |
+| `adminAuthorizer` | `src/server/auth/AdminAuthorizer.ts` | Shared `JwtAdminAuthorizer`. `requireAdmin(bearer)` answers `401` without a token or user id and `403` (`Administrator role is required`) unless the token's role is `admin`; it returns the admin's `userId`. Admin routers receive it as an injected `authorizer`, so tests replace it with a fake. |
 
-Which routers use `banGuard`: **`user-router.ts`** (its authenticated, non-admin endpoints), **`ticket-router.ts`**, **`me-cosmetics-router.ts`**, **`loadout-router.ts`**, **`emote-bar-router.ts`**, **`missions-router.ts`**, **`shop-router.ts`**, **`event-run-router.ts`** and **`player-reports-router.ts`** use it. **`cosmetics-router.ts`, `public-loadout-router.ts`, `bot-loadout-router.ts`, `public-emote-bar-router.ts`, `achievements-router.ts`, `admin-cosmetics-router.ts`, and `admin-moderation-router.ts` do not** — `cosmetics-router.ts`, `public-loadout-router.ts`, `public-emote-bar-router.ts`, and `achievements-router.ts` serve public, unauthenticated reads, so there is no bearer token to check a ban against. Admin endpoints inside `user-router.ts` (ban/unban a user) check the decoded `role` inline rather than through `JwtAdminAuthorizer`; the other admin routers use `JwtAdminAuthorizer` consistently. Ban routes are intentionally outside `banGuard` (an admin must be able to act on a banned user); annulment routes use `JwtAdminAuthorizer`.
+Player routers mount `requireUser` inside a guard and read `userId` from the handler context; no handler decodes the JWT itself:
+
+```ts
+new Elysia({ prefix: "/me/missions" }).guard({}, (app) =>
+	app.use(requireUser).get("/", ({ userId, query }) => getMyMissions.run({ userId, ... })),
+);
+```
+
+`requireUser` applies only to the routes inside that guard. **`user-router.ts`** (its authenticated, non-admin endpoints), **`ticket-router.ts`**, **`me-cosmetics-router.ts`**, **`loadout-router.ts`**, **`emote-bar-router.ts`**, **`missions-router.ts`**, **`shop-router.ts`**, **`event-run-router.ts`** and **`player-reports-router.ts`** use it. Public reads (`cosmetics-router.ts`, `public-loadout-router.ts`, `bot-loadout-router.ts`, `public-emote-bar-router.ts`, `achievements-router.ts`, `community-decks-router.ts`) have no token to check. Admin routes (`admin-*-router.ts`, the admin half of `player-reports-router.ts`, and the ban endpoints of `user-router.ts`) use `bearer()` with `adminAuthorizer` instead, and stay outside `requireUser` so an admin can act on a banned user.
 
 ## Workers
 
@@ -188,7 +196,7 @@ The ratchet enforces:
 ### Adding a new endpoint: checklist
 
 1. Give the route a `detail` with `tags` (using an existing tag, or a new one added to `TAGS` in `swagger.ts` and to exactly one group in `TAG_GROUPS`), a `summary`, and a `description`.
-2. If the handler reads a bearer token — directly, through `banGuard`, or through `JwtAdminAuthorizer` — add `security: [{ bearerAuth: [] }]` to `detail` **and** add its `METHOD /api/v1/<path>` key to `PROTECTED_OPERATIONS` in the ratchet test.
+2. If the route needs a token — through `requireUser` or `adminAuthorizer` — add `security: [{ bearerAuth: [] }]` to `detail` **and** add its `METHOD /api/v1/<path>` key to `PROTECTED_OPERATIONS` in the ratchet test.
 3. Declare a 2xx response: `jsonOk(schema, description, example?)` for a JSON body, `emptyOk(description)` for no body (and add the key to `EMPTY_BODY_OPERATIONS`). Do not add new entries to `PENDING_RESPONSE_SCHEMAS` — it only shrinks.
 4. If you give a response an `example`, make sure it matches the schema — the ratchet validates it.
 5. Use `errorResponses(...)` for the standard error catalog.
@@ -205,7 +213,7 @@ Client
   │  Authorization: Bearer <token>
   ▼
 Router (src/server/routes/*-router.ts)
-  │  .use(bearer()) / .guard(banGuard) / JwtAdminAuthorizer.requireAdmin()
+  │  requireUser (player: userId, ban check) / adminAuthorizer.requireAdmin(bearer)
   ▼
 Use case (application/)
   │

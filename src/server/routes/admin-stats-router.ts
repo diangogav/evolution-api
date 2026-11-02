@@ -1,7 +1,6 @@
 import { bearer } from "@elysiajs/bearer";
 import { Elysia, t } from "elysia";
 
-import { config } from "../../config";
 import { GetActivityStats } from "../../modules/activity-stats/application/GetActivityStats";
 import { BUCKET_LIMITS } from "../../modules/activity-stats/domain/ActivityRange";
 import { ActivityStatsPostgresRepository } from "../../modules/activity-stats/infrastructure/ActivityStatsPostgresRepository";
@@ -9,9 +8,7 @@ import {
 	ActivityPeriodSchema,
 	ActivityStatsSchema,
 } from "../../modules/activity-stats/infrastructure/ActivityStatsSchemas";
-import { JWT } from "../../shared/JWT";
-import type { AdminAuthorizer } from "../auth/AdminAuthorizer";
-import { JwtAdminAuthorizer } from "../auth/AdminAuthorizer";
+import { type AdminAuthorizer, adminAuthorizer } from "../auth/AdminAuthorizer";
 import { errorResponses, jsonOk } from "../openapi/responses";
 
 export interface AdminStatsRouterDependencies {
@@ -92,7 +89,7 @@ export function createAdminStatsRouter(deps: AdminStatsRouterDependencies) {
 }
 
 export const adminStatsRouter = createAdminStatsRouter({
-	authorizer: new JwtAdminAuthorizer(new JWT(config.jwt)),
+	authorizer: adminAuthorizer,
 	getActivityStats: new GetActivityStats(new ActivityStatsPostgresRepository()),
 	clock: () => new Date(),
 });

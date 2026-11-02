@@ -36,7 +36,7 @@ ban row, it closes it and opens a new one.
 ## Endpoints
 
 All four live in `src/server/routes/user-router.ts`, under `/users`, and are
-explicitly **admin-only but outside `banGuard`** — an admin must be able to
+explicitly **admin-only but outside `requireUser`** — an admin must be able to
 act on an already-banned user:
 
 | Route | Method | Body | Notes |
@@ -46,28 +46,29 @@ act on an already-banned user:
 | `/:userId/ban/active` | GET | — | `{ activeBan: UserBan \| null }`. |
 | `/:userId/ban/history` | GET | — | `{ history: UserBan[] }`. |
 
-The admin check is inline, not through `JwtAdminAuthorizer`: each handler
-decodes the bearer token itself and throws `ForbiddenError` when
-`role !== UserProfileRole.ADMIN`
-(`src/server/routes/user-router.ts:495-497`, and similarly for the other
-three routes) — see `docs/architecture.md`'s Auth section for why this differs
-from `admin-cosmetics-router.ts`/`admin-moderation-router.ts`.
+Each handler authorizes through the shared `adminAuthorizer`
+(`JwtAdminAuthorizer`, `src/server/auth/AdminAuthorizer.ts`), like every other
+admin router: no token answers `401` ("Bearer token is required") and a
+non-admin token answers `403` ("Administrator role is required"). The ban
+records the admin id from the token as `bannedBy`.
 
 `POST /:userId/ban` answers `404` for an unknown `userId`: `UserBanUser`
 checks existence up front (`UserBanRepository.userExists`, looked up with
 `withDeleted: true`) and throws `NotFoundError`, which `src/server/server.ts`
 maps to `404`, before any ban write happens.
 
-## `banGuard`
+## `requireUser`
 
-`banGuard.beforeHandle` (`src/server/guards/bandGuard.ts`) decodes the bearer
-token, then calls `UserGetActiveBan` for the decoded user id; if there is an
-active ban it throws `ForbiddenError` (403). It runs before the route handler
-on every router that opts in via `.guard(banGuard, ...)`.
+`requireUser` (`src/server/auth/requireUser.ts`) verifies the bearer token
+once, then calls `UserGetActiveBan` for its user id; if there is an active ban
+it throws `ForbiddenError` (403). Otherwise it hands the handler that id as
+`userId`. It runs after request validation, on the routes of every router that
+mounts it (`.guard({}, (app) => app.use(requireUser)...)`).
 
-Per `docs/architecture.md`'s Auth section, **`banGuard` is applied to
-`user-router.ts`'s authenticated non-admin endpoints, `ticket-router.ts`,
-`me-cosmetics-router.ts` and `loadout-router.ts`**, but **not** to
+Per `docs/architecture.md`'s Auth section, **`requireUser` is applied to
+`user-router.ts`'s authenticated non-admin endpoints and every other player
+router (`ticket`, `me-cosmetics`, `loadout`, `emote-bar`, `missions`, `shop`,
+`event-run`, `player-reports`)**, but **not** to
 `cosmetics-router.ts` or `public-loadout-router.ts` (both serve public,
 unauthenticated reads with nothing to ban-check) or to
 `admin-cosmetics-router.ts` / `admin-moderation-router.ts` (authorized

@@ -17,7 +17,7 @@ rules).
 | [seasons-ranks-points.md](seasons-ranks-points.md) | Seasons, `RankEntity`/`RankMemberEntity`, ban lists vs grouped ladders vs Global, how season points feed the leaderboard and player of the week |
 | [points-ledger-and-ratings.md](points-ledger-and-ratings.md) | `points_ledger` rows, how `player_stats` is derived from them, Elo ratings, provisional ratings, peaks, and who writes what (this API vs the game server) |
 | [match-annulment.md](match-annulment.md) | The annulment/reversal batch flow, per-game outcomes, the `ANNULMENT_ENABLED` switch, idempotency |
-| [moderation.md](moderation.md) | User bans: active ban, history, permanent vs expiring, `banGuard`, admin-only routes, and how bans relate to annulment |
+| [moderation.md](moderation.md) | User bans: active ban, history, permanent vs expiring, `requireUser`, admin-only routes, and how bans relate to annulment |
 | [cosmetics.md](cosmetics.md) | Catalog, entitlements, loadout slots, standard cosmetics, signed asset URLs |
 
 **Ranked tiers.** Tiers (Rookie through Master) are their own client-facing

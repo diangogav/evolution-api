@@ -35,9 +35,9 @@ Generic Elysia guides recommend things this repo does not do:
   (`new Elysia({ name: "ip" })`).
 - **Guards** apply hooks/schemas to a group of routes:
   ```ts
-  new Elysia({ prefix: "/me/missions" })
-    .use(bearer())
-    .guard(banGuard, (app) => app.get("/", handler, { query: t.Object({ ... }) }))
+  new Elysia({ prefix: "/me/missions" }).guard({}, (app) =>
+    app.use(requireUser).get("/", ({ userId }) => handler(userId), { query: t.Object({ ... }) }),
+  )
   ```
 - **Validation.** Declare `params`, `query`, `body`, and `response` with `t.*`; Elysia
   answers `422` on invalid input before the handler runs. Derive types with

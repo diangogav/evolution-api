@@ -143,7 +143,7 @@ const invalidTokens: { name: string; token: string }[] = [
 	{ name: "badly signed", token: wrongSecretJwt.generate({ id: okUserId }) },
 ];
 
-describe("banGuard on the cosmetics and loadout routes", () => {
+describe("requireUser on the cosmetics and loadout routes", () => {
 	for (const routeCase of cases) {
 		it(`answers 401 for ${routeCase.name} without a token`, async () => {
 			const response = await request(routeCase);

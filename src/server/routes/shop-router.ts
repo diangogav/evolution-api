@@ -1,7 +1,6 @@
-import { bearer } from "@elysiajs/bearer";
 import { Elysia, t } from "elysia";
 
-import { config } from "../../config";
+import { requireUser } from "../auth/requireUser";
 import { createR2AssetUrlSigner } from "../../modules/assets/infrastructure/createR2AssetUrlSigner";
 import { CosmeticPostgresRepository } from "../../modules/catalog/infrastructure/CosmeticPostgresRepository";
 import { EntitlementsGatekeeper } from "../../modules/entitlements/application/EntitlementsGatekeeper";
@@ -18,11 +17,8 @@ import {
 	EssenceBalanceSchema,
 	ShopItemSchema,
 } from "../../modules/rewards/infrastructure/ShopSchemas";
-import { JWT } from "../../shared/JWT";
-import { banGuard } from "../guards/bandGuard";
 import { errorResponses, jsonOk } from "../openapi/responses";
 
-const jwt = new JWT(config.jwt);
 const ledger = new EssenceLedgerPostgresRepository();
 const entitlements = new EntitlementPostgresRepository();
 const gatekeeper = new EntitlementsGatekeeper(entitlements);
@@ -43,24 +39,20 @@ const purchaseCosmetic = new PurchaseCosmetic(
 	new CosmeticsTransactionRunner(),
 );
 
-const userIdFrom = (token: string): string => (jwt.decode(token) as { id: string }).id;
-
-export const essenceRouter = new Elysia({ prefix: "/me/essence" })
-	.use(bearer())
-	.guard(banGuard, (app) =>
-		app.get("/", ({ bearer }) => getMyEssence.run(userIdFrom(bearer as string)), {
-			detail: {
-				tags: ["Rewards"],
-				summary: "Get my essence balance",
-				description: "Returns the authenticated user's essence balance.",
-				security: [{ bearerAuth: [] }],
-				responses: {
-					200: jsonOk(EssenceBalanceSchema, "Current balance", { balance: 120 }),
-					...errorResponses(401, 403),
-				},
+export const essenceRouter = new Elysia({ prefix: "/me/essence" }).guard({}, (app) =>
+	app.use(requireUser).get("/", ({ userId }) => getMyEssence.run(userId), {
+		detail: {
+			tags: ["Rewards"],
+			summary: "Get my essence balance",
+			description: "Returns the authenticated user's essence balance.",
+			security: [{ bearerAuth: [] }],
+			responses: {
+				200: jsonOk(EssenceBalanceSchema, "Current balance", { balance: 120 }),
+				...errorResponses(401, 403),
 			},
-		}),
-	);
+		},
+	}),
+);
 
 const shopItemExample = {
 	id: "4244bc19-0f5c-4e13-b260-137fd178ff2d",
@@ -76,9 +68,10 @@ const shopItemExample = {
 	assetsExpiresAt: "2026-09-25T18:30:00.000Z",
 };
 
-export const shopRouter = new Elysia({ prefix: "/shop" }).use(bearer()).guard(banGuard, (app) =>
+export const shopRouter = new Elysia({ prefix: "/shop" }).guard({}, (app) =>
 	app
-		.get("/", ({ bearer }) => getShop.run(userIdFrom(bearer as string)), {
+		.use(requireUser)
+		.get("/", ({ userId }) => getShop.run(userId), {
 			detail: {
 				tags: ["Rewards"],
 				summary: "List the shop",
@@ -93,9 +86,9 @@ export const shopRouter = new Elysia({ prefix: "/shop" }).use(bearer()).guard(ba
 		})
 		.post(
 			"/:cosmeticId/purchase",
-			({ bearer, params }) =>
+			({ userId, params }) =>
 				purchaseCosmetic.run({
-					userId: userIdFrom(bearer as string),
+					userId,
 					cosmeticId: params.cosmeticId,
 				}),
 			{
