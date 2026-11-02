@@ -1,4 +1,4 @@
-import type { AssetUrlSigner } from "../../assets/domain/AssetUrlSigner";
+import type { AssetUrlSigner } from "../../assets";
 import type { CosmeticRepository } from "../domain/CosmeticRepository";
 import type { CosmeticTier } from "../domain/CosmeticTier";
 import type { CosmeticType } from "../domain/CosmeticType";

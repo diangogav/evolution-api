@@ -1,8 +1,6 @@
-import { AssetUrlSigner, SignedAssetManifest } from "../../assets/domain/AssetUrlSigner";
-import { EMOTE_PACK_MANIFEST } from "../../catalog/domain/EmotePack";
-import { Cosmetic } from "../../catalog/domain/Cosmetic";
-import { CosmeticRepository } from "../../catalog/domain/CosmeticRepository";
-import { EntitlementsGatekeeper } from "../../entitlements/application/EntitlementsGatekeeper";
+import { AssetUrlSigner, SignedAssetManifest } from "../../assets";
+import { EMOTE_PACK_MANIFEST, Cosmetic, CosmeticRepository } from "../../catalog";
+import { EntitlementsGatekeeper } from "../../entitlements";
 import { EMOTE_BAR_SLOTS } from "../domain/EmoteBar";
 import { EmoteBarRepository } from "../domain/EmoteBarRepository";
 import { DEFAULT_EMOTE_IDS, EmoteRef } from "../domain/EmoteRef";

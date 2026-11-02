@@ -1,5 +1,5 @@
-import { AssetUrlSigner } from "../../assets/domain/AssetUrlSigner";
-import { EntitlementsGatekeeper } from "../../entitlements/application/EntitlementsGatekeeper";
+import { AssetUrlSigner } from "../../assets";
+import { EntitlementsGatekeeper } from "../../entitlements";
 import { CosmeticRepository } from "../domain/CosmeticRepository";
 import { CosmeticTier } from "../domain/CosmeticTier";
 import { CosmeticType } from "../domain/CosmeticType";

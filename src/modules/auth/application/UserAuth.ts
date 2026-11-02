@@ -1,7 +1,7 @@
 import { AuthenticationError } from "../../../shared/errors/AuthenticationError";
 import { Hash } from "../../../shared/Hash";
 import { JWT } from "../../../shared/JWT";
-import { UserRepository } from "../../user/domain/UserRepository";
+import { UserRepository } from "../../user";
 
 export class UserAuth {
 	constructor(

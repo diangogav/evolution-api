@@ -1,4 +1,4 @@
-import { CosmeticTier } from "../../catalog/domain/CosmeticTier";
+import { CosmeticTier } from "../../catalog";
 import { tierGrants } from "./accessTier";
 
 // Resolved access snapshot for a single user/request. Built once by the gatekeeper

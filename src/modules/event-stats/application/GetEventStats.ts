@@ -1,5 +1,5 @@
 import { NotFoundError } from "../../../shared/errors/NotFoundError";
-import type { EventCatalogRepository } from "../../event-run/domain/EventCatalogRepository";
+import type { EventCatalogRepository } from "../../event-run";
 import {
 	buildEventStatsReport,
 	type EventStatsReport,

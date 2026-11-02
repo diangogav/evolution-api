@@ -1,6 +1,6 @@
 import { t } from "elysia";
 
-import { CosmeticType } from "../../catalog/domain/CosmeticType";
+import { CosmeticType } from "../../catalog";
 
 /**
  * Entry of `GetMyLoadout`. `assetsExpiresAt` is absent when the equipped cosmetic id

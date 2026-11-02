@@ -1,8 +1,7 @@
 import { NotFoundError } from "../../../shared/errors/NotFoundError";
-import { AssetUrlSigner } from "../../assets/domain/AssetUrlSigner";
-import { CosmeticRepository } from "../../catalog/domain/CosmeticRepository";
-import { Locale, localize } from "../../rewards/domain/LocalizedText";
-import { periodKey } from "../../rewards/domain/MissionPeriod";
+import { AssetUrlSigner } from "../../assets";
+import { CosmeticRepository } from "../../catalog";
+import { Locale, localize, periodKey } from "../../rewards";
 import { EventAttemptRepository } from "../domain/EventAttemptRepository";
 import { EventCatalogRepository } from "../domain/EventCatalogRepository";
 import { isEventOpen, WaveTier } from "../domain/EventDefinition";

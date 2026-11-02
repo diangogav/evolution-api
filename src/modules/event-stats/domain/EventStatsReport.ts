@@ -1,6 +1,5 @@
-import type { EventDefinition } from "../../event-run/domain/EventDefinition";
-import type { EventRunStatus } from "../../event-run/domain/EventRun";
-import { localize } from "../../rewards/domain/LocalizedText";
+import type { EventDefinition, EventRunStatus } from "../../event-run";
+import { localize } from "../../rewards";
 
 // The back office is Spanish; `localize` falls back to English for rows without it.
 const ADMIN_LOCALE = "es";

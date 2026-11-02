@@ -1,7 +1,6 @@
-import { AssetUrlSigner } from "../../assets/domain/AssetUrlSigner";
-import { CosmeticTier } from "../../catalog/domain/CosmeticTier";
-import { CosmeticType } from "../../catalog/domain/CosmeticType";
-import { EntitlementsGatekeeper } from "../../entitlements/application/EntitlementsGatekeeper";
+import { AssetUrlSigner } from "../../assets";
+import { CosmeticTier, CosmeticType } from "../../catalog";
+import { EntitlementsGatekeeper } from "../../entitlements";
 import { ShopCatalogRepository } from "../domain/ShopCatalogRepository";
 
 export type ShopItemView = {

@@ -1,6 +1,5 @@
 import { config } from "../../../config";
-import type { CatalogChangeNotifier } from "../../catalog/domain/CatalogChangeNotifier";
-import type { CosmeticRepository } from "../../catalog/domain/CosmeticRepository";
+import type { CatalogChangeNotifier, CosmeticRepository } from "../../catalog";
 import type { Logger } from "../../../shared/logger/domain/Logger";
 import { RefreshPublicCosmeticIndex } from "../application/RefreshPublicCosmeticIndex";
 import { activeCosmeticRefs } from "./activeCosmeticRefs";

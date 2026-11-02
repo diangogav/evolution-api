@@ -1,5 +1,4 @@
-import { CosmeticTier } from "../../catalog/domain/CosmeticTier";
-import { CosmeticType } from "../../catalog/domain/CosmeticType";
+import { CosmeticTier, CosmeticType } from "../../catalog";
 
 // A cosmetic as the shop sees it: active and carrying an essence price. Cosmetics
 // without a price (STANDARD, REGISTERED, hand-granted EXCLUSIVE) are not for sale.

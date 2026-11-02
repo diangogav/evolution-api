@@ -1,9 +1,7 @@
 import { ConflictError } from "../../../shared/errors/ConflictError";
 import { NotFoundError } from "../../../shared/errors/NotFoundError";
 import { PaymentRequiredError } from "../../../shared/errors/PaymentRequiredError";
-import { EntitlementsGatekeeper } from "../../entitlements/application/EntitlementsGatekeeper";
-import { GrantCosmeticToUser } from "../../entitlements/application/GrantCosmeticToUser";
-import { EntitlementSource } from "../../entitlements/domain/EntitlementSource";
+import { EntitlementsGatekeeper, GrantCosmeticToUser, EntitlementSource } from "../../entitlements";
 import { essenceLedgerEntry } from "../domain/EssenceLedgerEntry";
 import { EssenceLedgerRepository } from "../domain/EssenceLedgerRepository";
 import { ShopCatalogRepository } from "../domain/ShopCatalogRepository";

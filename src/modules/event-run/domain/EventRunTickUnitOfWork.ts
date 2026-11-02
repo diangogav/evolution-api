@@ -1,5 +1,5 @@
 import type { QueryableManager } from "../../../shared/persistence/QueryableManager";
-import { RewardsUnitOfWork } from "../../rewards/domain/RewardsUnitOfWork";
+import { RewardsUnitOfWork } from "../../rewards";
 
 // The worker's unit of work. `savepoint` isolates one item of the tick inside the locked
 // transaction: a throwing item rolls back only its own writes, so one broken record never

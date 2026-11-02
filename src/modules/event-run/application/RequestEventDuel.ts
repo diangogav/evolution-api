@@ -1,5 +1,5 @@
 import { NotFoundError } from "../../../shared/errors/NotFoundError";
-import { TransactionRunner } from "../../rewards/domain/TransactionRunner";
+import { TransactionRunner } from "../../rewards";
 import {
 	eventDuelReservation,
 	generateReservationId,

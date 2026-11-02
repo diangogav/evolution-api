@@ -1,4 +1,4 @@
-import { CosmeticType } from "../../catalog/domain/CosmeticType";
+import { CosmeticType } from "../../catalog";
 
 export interface LoadoutItem {
 	cosmeticType: CosmeticType;

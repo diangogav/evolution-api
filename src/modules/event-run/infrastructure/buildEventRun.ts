@@ -2,7 +2,7 @@ import { config } from "../../../config";
 import { Logger } from "../../../shared/logger/domain/Logger";
 import { redisClient } from "../../../shared/redis/redisClient";
 import { CosmeticPostgresRepository } from "../../catalog/infrastructure/CosmeticPostgresRepository";
-import { GrantCosmeticToUser } from "../../entitlements/application/GrantCosmeticToUser";
+import { GrantCosmeticToUser } from "../../entitlements";
 import { EntitlementPostgresRepository } from "../../entitlements/infrastructure/EntitlementPostgresRepository";
 import { UserDirectoryPostgresRepository } from "../../loadout/infrastructure/UserDirectoryPostgresRepository";
 import { EssenceLedgerPostgresRepository } from "../../rewards/infrastructure/EssenceLedgerPostgresRepository";

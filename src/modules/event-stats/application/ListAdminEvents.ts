@@ -1,4 +1,4 @@
-import type { EventCatalogListing } from "../../event-run/domain/EventCatalogRepository";
+import type { EventCatalogListing } from "../../event-run";
 import { type EventSummary, summarizeEvents } from "../domain/EventStatsReport";
 
 export type ListAdminEventsResult = EventSummary[];

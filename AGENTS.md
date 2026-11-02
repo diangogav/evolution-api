@@ -47,6 +47,9 @@ Before finishing a change, run the focused tests, then `bun test` and `bun run l
 - **Dependency rule:** `infrastructure -> application -> domain`. Domain imports no
   framework or ORM code. Never return TypeORM or domain entities from a router; return
   use case results typed by TypeBox schemas.
+- **Module boundaries:** a module imports another only through its `index.ts`; the
+  ratchet test `tests/unit/architecture/module-boundaries.test.ts` lists today's
+  exceptions and only lets them shrink. See `docs/architecture.md`.
 - **Composition root:** `src/server/routes/*-router.ts` `new` up dependencies by hand (no
   DI container). Routers are mounted under `/api/v1` in `src/server/server.ts`.
 - **Errors:** throw the classes in `src/shared/errors/`; `mapDomainErrorStatus` in
