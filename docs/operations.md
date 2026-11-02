@@ -51,6 +51,7 @@ unless noted otherwise.
 | `POSTGRES_DB` | Yes* | — | Database name. |
 | `POSTGRES_HOST` | Optional | `localhost` | Postgres host. |
 | `POSTGRES_PORT` | Optional | `5432` | Postgres port. |
+| `SQL_QUERY_LOGGING` | Optional | off | `true` prints every SQL statement the cosmetics DataSource runs (local debugging). Off, only errors, warnings and migrations are logged. The shared evolution-types DataSource sets its own `logging`. |
 
 \* Read directly in `src/evolution-types/src/config`, not through
 `ensureEnvVariable` like every other variable below. A missing or wrong value

@@ -2,6 +2,7 @@ import { join } from "path";
 import { DataSource, DataSourceOptions } from "typeorm";
 
 import { RedactingQueryLogger } from "./shared/persistence/RedactingQueryLogger";
+import { sqlLoggerOptions } from "./shared/persistence/sqlLoggerOptions";
 import { config } from "./evolution-types/src/config";
 import { CosmeticEntity } from "./modules/catalog/infrastructure/CosmeticEntity";
 import { EntitlementEntity } from "./modules/entitlements/infrastructure/EntitlementEntity";
@@ -10,8 +11,8 @@ import { UserLoadoutEntity } from "./modules/loadout/infrastructure/UserLoadoutE
 
 // Cosmetics owns its own DataSource and migration history, isolated from the shared
 // schema in evolution-types. It points at the same Postgres but tracks migrations in
-// its own table (`cosmetics_migrations`), so the shared `migrations` table — run by
-// the game server — never sees these changes. It only knows about cosmetics tables;
+// its own table (`cosmetics_migrations`), so the shared `migrations` table — run from
+// the evolution-types package — never sees these changes. It only knows about cosmetics tables;
 // the foreign key to users(id) is declared in raw SQL inside the migration, so this
 // DataSource never touches the shared `users` table.
 const options: DataSourceOptions = {
@@ -23,7 +24,10 @@ const options: DataSourceOptions = {
 	database: config.postgres.database,
 	synchronize: false,
 	// With a logger instance TypeORM ignores DataSource.logging; configure it here.
-	logger: new RedactingQueryLogger(true, ["player_reports", "player_report_reviews"]),
+	logger: new RedactingQueryLogger(sqlLoggerOptions(process.env.SQL_QUERY_LOGGING), [
+		"player_reports",
+		"player_report_reviews",
+	]),
 	entities: [CosmeticEntity, UserLoadoutEntity, EntitlementEntity, UserEmoteBarEntity],
 	subscribers: [],
 	migrations: [join(__dirname, "/migrations/*.ts")],
