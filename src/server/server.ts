@@ -36,6 +36,7 @@ import { statsRouter } from "./routes/stats-router";
 import { ticketRouter } from "./routes/ticket-router";
 import { userRouter } from "./routes/user-router";
 import { createSwagger } from "./swagger";
+import { playerReportsRouter, adminPlayerReportsRouter } from "./routes/player-reports-router";
 
 type ErrorHookContext = { error: unknown; set: { status?: number | string } };
 
@@ -119,6 +120,8 @@ export function mountApiV1Routes(app: Elysia) {
 			.use(shopRouter)
 			.use(eventsRouter)
 			.use(eventRunsRouter)
-			.use(communityDecksRouter);
+			.use(communityDecksRouter)
+			.use(playerReportsRouter)
+			.use(adminPlayerReportsRouter);
 	});
 }

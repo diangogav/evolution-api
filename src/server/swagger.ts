@@ -14,6 +14,11 @@ const DESCRIPTION = [
 ].join("\n");
 
 const TAGS = [
+	{ name: "Player Reports", description: "Private, match-bound opponent reports" },
+	{
+		name: "Player Reports Admin",
+		description: "Private report queue and audited moderator reviews",
+	},
 	{
 		name: "Authentication",
 		description: "Registration, login, password recovery and account password management",
@@ -56,14 +61,21 @@ const TAGS = [
 ];
 
 const TAG_GROUPS = [
-	{ name: "Account", tags: ["Authentication", "User Management"] },
+	{ name: "Account", tags: ["Authentication", "User Management", "Player Reports"] },
 	{ name: "Ranked", tags: ["Leaderboard", "Ranked", "Statistics", "Ban Lists", "Achievements"] },
 	{ name: "Decks", tags: ["Community Decks"] },
 	{ name: "Cosmetics", tags: ["Cosmetics"] },
 	{ name: "Rewards", tags: ["Rewards"] },
 	{
 		name: "Administration",
-		tags: ["User Bans", "Match Moderation", "Cosmetics Admin", "Activity Stats", "Event Stats"],
+		tags: [
+			"User Bans",
+			"Match Moderation",
+			"Cosmetics Admin",
+			"Activity Stats",
+			"Event Stats",
+			"Player Reports Admin",
+		],
 	},
 ];
 

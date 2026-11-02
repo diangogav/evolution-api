@@ -1,6 +1,7 @@
 import { join } from "path";
 import { DataSource, DataSourceOptions } from "typeorm";
 
+import { RedactingQueryLogger } from "./shared/persistence/RedactingQueryLogger";
 import { config } from "./evolution-types/src/config";
 import { CosmeticEntity } from "./modules/catalog/infrastructure/CosmeticEntity";
 import { EntitlementEntity } from "./modules/entitlements/infrastructure/EntitlementEntity";
@@ -21,7 +22,8 @@ const options: DataSourceOptions = {
 	password: config.postgres.password,
 	database: config.postgres.database,
 	synchronize: false,
-	logging: true,
+	// With a logger instance TypeORM ignores DataSource.logging; configure it here.
+	logger: new RedactingQueryLogger(true, ["player_reports", "player_report_reviews"]),
 	entities: [CosmeticEntity, UserLoadoutEntity, EntitlementEntity, UserEmoteBarEntity],
 	subscribers: [],
 	migrations: [join(__dirname, "/migrations/*.ts")],
