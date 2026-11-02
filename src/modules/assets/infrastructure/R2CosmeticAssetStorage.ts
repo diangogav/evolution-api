@@ -1,7 +1,7 @@
 import { S3Client } from "bun";
 
 import { ConflictError } from "../../../shared/errors/ConflictError";
-import type { CosmeticAssetStorage, CosmeticAssetUpload } from "../domain/CosmeticAssetStorage";
+import type { CosmeticAssetStorage, CosmeticAssetUpload } from "../../catalog";
 
 /** Writes private cosmetic objects to R2 and verifies the persisted byte size. */
 export class R2CosmeticAssetStorage implements CosmeticAssetStorage {

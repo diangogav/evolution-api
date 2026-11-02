@@ -1,7 +1,7 @@
 import { bearer } from "@elysiajs/bearer";
 import { Elysia, t } from "elysia";
 
-import type { AssetUrlSigner } from "../../modules/assets/domain/AssetUrlSigner";
+import type { AssetUrlSigner } from "../../modules/catalog/domain/AssetUrlSigner";
 import { createCatalogChangeNotifier } from "../../modules/assets/infrastructure/createCatalogChangeNotifier";
 import { createR2AssetUrlSigner } from "../../modules/assets/infrastructure/createR2AssetUrlSigner";
 import { createR2CosmeticAssetStorage } from "../../modules/assets/infrastructure/createR2CosmeticAssetStorage";
@@ -20,8 +20,8 @@ import type { EntitlementRepository } from "../../modules/entitlements/domain/En
 import { EntitlementSource } from "../../modules/entitlements/domain/EntitlementSource";
 import { EntitlementPostgresRepository } from "../../modules/entitlements/infrastructure/EntitlementPostgresRepository";
 import { CosmeticGrantSchema } from "../../modules/entitlements/infrastructure/GrantSchemas";
-import type { UserDirectory } from "../../modules/loadout/domain/UserDirectory";
-import { UserDirectoryPostgresRepository } from "../../modules/loadout/infrastructure/UserDirectoryPostgresRepository";
+import type { UserDirectory } from "../../modules/user/domain/UserDirectory";
+import { UserDirectoryPostgresRepository } from "../../modules/user/infrastructure/UserDirectoryPostgresRepository";
 import { errorResponses, jsonOk } from "../openapi/responses";
 import { Pino } from "../../shared/logger/infrastructure/Pino";
 import { type AdminAuthorizer, adminAuthorizer } from "../auth/AdminAuthorizer";

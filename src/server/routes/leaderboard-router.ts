@@ -10,7 +10,7 @@ import {
 } from "../../modules/stats/infrastructure/StatsSchemas";
 import { jsonOk, errorResponses } from "../openapi/responses";
 
-import { config } from "./../../config/index";
+import { config } from "../../config/index";
 import { GetBestPlayerOfLastCompletedWeek } from "../../modules/stats/application/GetBestPlayerOfLastCompletedWeek";
 
 const userStatsRepository = new UserStatsPostgresRepository();

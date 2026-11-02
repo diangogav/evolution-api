@@ -5,7 +5,7 @@ import { Cosmetic } from "../../../../../src/modules/catalog/domain/Cosmetic";
 import { CosmeticRepository } from "../../../../../src/modules/catalog/domain/CosmeticRepository";
 import { CosmeticTier } from "../../../../../src/modules/catalog/domain/CosmeticTier";
 import { CosmeticType } from "../../../../../src/modules/catalog/domain/CosmeticType";
-import { AssetUrlSigner } from "../../../../../src/modules/assets/domain/AssetUrlSigner";
+import { AssetUrlSigner } from "../../../../../src/modules/catalog/domain/AssetUrlSigner";
 import { CosmeticAccess } from "../../../../../src/modules/entitlements/domain/CosmeticAccess";
 import { EntitlementsGatekeeper } from "../../../../../src/modules/entitlements/application/EntitlementsGatekeeper";
 import { EntitlementRepository } from "../../../../../src/modules/entitlements/domain/EntitlementRepository";

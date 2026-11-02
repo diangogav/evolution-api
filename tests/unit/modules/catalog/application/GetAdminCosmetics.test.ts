@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 
-import type { AssetUrlSigner } from "../../../../../src/modules/assets/domain/AssetUrlSigner";
+import type { AssetUrlSigner } from "../../../../../src/modules/catalog/domain/AssetUrlSigner";
 import { GetAdminCosmetics } from "../../../../../src/modules/catalog/application/GetAdminCosmetics";
 import { Cosmetic } from "../../../../../src/modules/catalog/domain/Cosmetic";
 import type { CosmeticRepository } from "../../../../../src/modules/catalog/domain/CosmeticRepository";

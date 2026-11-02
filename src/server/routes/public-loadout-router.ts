@@ -6,7 +6,7 @@ import { GetMyLoadout } from "../../modules/loadout/application/GetMyLoadout";
 import { GetPublicLoadout } from "../../modules/loadout/application/GetPublicLoadout";
 import { LoadoutSchema } from "../../modules/loadout/infrastructure/LoadoutSchemas";
 import { LoadoutPostgresRepository } from "../../modules/loadout/infrastructure/LoadoutPostgresRepository";
-import { UserDirectoryPostgresRepository } from "../../modules/loadout/infrastructure/UserDirectoryPostgresRepository";
+import { UserDirectoryPostgresRepository } from "../../modules/user/infrastructure/UserDirectoryPostgresRepository";
 import { errorResponses, jsonOk } from "../openapi/responses";
 import { preventSignedAssetResponseCaching } from "./signed-asset-response";
 

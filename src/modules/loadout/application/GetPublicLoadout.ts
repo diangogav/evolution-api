@@ -1,5 +1,5 @@
 import { NotFoundError } from "../../../shared/errors/NotFoundError";
-import { UserDirectory } from "../domain/UserDirectory";
+import { UserDirectory } from "../../user";
 import { GetMyLoadout, MyLoadoutSlot } from "./GetMyLoadout";
 
 // Public, read-only loadout of a player addressed by username — used to render an

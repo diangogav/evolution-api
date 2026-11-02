@@ -1,5 +1,5 @@
 import { NotFoundError } from "../../../shared/errors/NotFoundError";
-import { AssetUrlSigner } from "../../assets";
+import { AssetUrlSigner } from "../../catalog";
 import { CosmeticRepository } from "../../catalog";
 import { Locale, localize, periodKey } from "../../rewards";
 import { EventAttemptRepository } from "../domain/EventAttemptRepository";

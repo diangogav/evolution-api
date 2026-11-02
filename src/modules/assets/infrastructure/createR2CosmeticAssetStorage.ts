@@ -1,4 +1,4 @@
-import type { CosmeticAssetStorage } from "../domain/CosmeticAssetStorage";
+import type { CosmeticAssetStorage } from "../../catalog";
 import { createR2Client } from "./createR2Client";
 import { R2CosmeticAssetStorage } from "./R2CosmeticAssetStorage";
 

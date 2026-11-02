@@ -1,5 +1,5 @@
 import type { ActiveCosmeticRefs } from "../domain/ActiveCosmeticRefs";
-import type { AssetUrlSigner, SignedAssetManifest } from "../domain/AssetUrlSigner";
+import type { AssetUrlSigner, SignedAssetManifest } from "../../catalog";
 
 /**
  * Serves active cosmetics from fixed public URLs so browsers and the service worker

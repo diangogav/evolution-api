@@ -1,5 +1,5 @@
-import { AssetUrlSigner } from "../../assets";
-import { EntitlementsGatekeeper } from "../../entitlements";
+import { AssetUrlSigner } from "../domain/AssetUrlSigner";
+import type { CosmeticAccessPolicy } from "../domain/CosmeticAccessPolicy";
 import { NotFoundError } from "../../../shared/errors/NotFoundError";
 import { CosmeticRepository } from "../domain/CosmeticRepository";
 
@@ -13,7 +13,7 @@ export class GetCosmeticAssets {
 	constructor(
 		private readonly repository: CosmeticRepository,
 		private readonly signer: AssetUrlSigner,
-		private readonly gatekeeper: EntitlementsGatekeeper,
+		private readonly gatekeeper: CosmeticAccessPolicy,
 	) {}
 
 	async run(cosmeticId: string, userId: string | null): Promise<CosmeticAssets> {

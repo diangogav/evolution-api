@@ -1,4 +1,4 @@
-import { AssetUrlSigner, SignedAssetManifest } from "../../assets";
+import { AssetUrlSigner, SignedAssetManifest } from "../../catalog";
 import { EMOTE_PACK_MANIFEST, Cosmetic, CosmeticRepository } from "../../catalog";
 import { EntitlementsGatekeeper } from "../../entitlements";
 import { EMOTE_BAR_SLOTS } from "../domain/EmoteBar";

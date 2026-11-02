@@ -1,5 +1,5 @@
 import { NotFoundError } from "../../../shared/errors/NotFoundError";
-import { UserDirectory } from "../../loadout";
+import { UserDirectory } from "../../user";
 import { EmoteBarView, GetMyEmoteBar } from "./GetMyEmoteBar";
 
 // Public, read-only emote bar of a player addressed by username — used to play an

@@ -4,7 +4,7 @@ import { requireUser } from "../auth/requireUser";
 import { CosmeticPostgresRepository } from "../../modules/catalog/infrastructure/CosmeticPostgresRepository";
 import { GrantCosmeticToUser } from "../../modules/entitlements/application/GrantCosmeticToUser";
 import { EntitlementPostgresRepository } from "../../modules/entitlements/infrastructure/EntitlementPostgresRepository";
-import { UserDirectoryPostgresRepository } from "../../modules/loadout/infrastructure/UserDirectoryPostgresRepository";
+import { UserDirectoryPostgresRepository } from "../../modules/user/infrastructure/UserDirectoryPostgresRepository";
 import { ClaimMission } from "../../modules/rewards/application/ClaimMission";
 import { GetMyMissions } from "../../modules/rewards/application/GetMyMissions";
 import { resolveLocale } from "../../modules/rewards/domain/LocalizedText";

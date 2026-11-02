@@ -1,6 +1,6 @@
 import { config } from "../../../config";
 import type { ActiveCosmeticRefs } from "../domain/ActiveCosmeticRefs";
-import type { AssetUrlSigner } from "../domain/AssetUrlSigner";
+import type { AssetUrlSigner } from "../../catalog";
 import { activeCosmeticRefs } from "./activeCosmeticRefs";
 import { createR2Client } from "./createR2Client";
 import { PublicFirstAssetUrlSigner } from "./PublicFirstAssetUrlSigner";

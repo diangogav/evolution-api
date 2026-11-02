@@ -1,4 +1,4 @@
-import { AssetUrlSigner } from "../../../../../src/modules/assets/domain/AssetUrlSigner";
+import { AssetUrlSigner } from "../../../../../src/modules/catalog/domain/AssetUrlSigner";
 import { Cosmetic } from "../../../../../src/modules/catalog/domain/Cosmetic";
 import { CosmeticRepository } from "../../../../../src/modules/catalog/domain/CosmeticRepository";
 import { CosmeticTier } from "../../../../../src/modules/catalog/domain/CosmeticTier";

@@ -1,4 +1,4 @@
-import { AssetUrlSigner } from "../../assets";
+import { AssetUrlSigner } from "../../catalog";
 import { CosmeticRepository, CosmeticType } from "../../catalog";
 import { LoadoutItem } from "../domain/Loadout";
 import { LoadoutRepository } from "../domain/LoadoutRepository";

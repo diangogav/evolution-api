@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 
-import { AssetUrlSigner } from "../../../../../src/modules/assets/domain/AssetUrlSigner";
+import { AssetUrlSigner } from "../../../../../src/modules/catalog/domain/AssetUrlSigner";
 import { Cosmetic } from "../../../../../src/modules/catalog/domain/Cosmetic";
 import { CosmeticRepository } from "../../../../../src/modules/catalog/domain/CosmeticRepository";
 import { CosmeticTier } from "../../../../../src/modules/catalog/domain/CosmeticTier";
@@ -9,7 +9,7 @@ import { GetMyLoadout } from "../../../../../src/modules/loadout/application/Get
 import { GetPublicLoadout } from "../../../../../src/modules/loadout/application/GetPublicLoadout";
 import { Loadout } from "../../../../../src/modules/loadout/domain/Loadout";
 import { LoadoutRepository } from "../../../../../src/modules/loadout/domain/LoadoutRepository";
-import { UserDirectory } from "../../../../../src/modules/loadout/domain/UserDirectory";
+import { UserDirectory } from "../../../../../src/modules/user/domain/UserDirectory";
 import { NotFoundError } from "../../../../../src/shared/errors/NotFoundError";
 
 const sleeve = Cosmetic.from({
