@@ -1,6 +1,35 @@
 import { t } from "elysia";
 
-import { TierViewSchema } from "../../tiers/infrastructure/TierSchemas";
+// The `tier` object on profile ratings and leaderboard rows. It mirrors the tiers
+// module's TierViewSchema instead of importing that module's infrastructure; a test in
+// StatsSchemas.test.ts fails if the two ever differ.
+const TierIdSchema = t.Union([
+	t.Literal("rookie"),
+	t.Literal("bronze"),
+	t.Literal("silver"),
+	t.Literal("gold"),
+	t.Literal("platinum"),
+	t.Literal("diamond"),
+	t.Literal("master"),
+]);
+
+export const StatsTierViewSchema = t.Object({
+	id: TierIdSchema,
+	name: t.String(),
+	effectivePoints: t.Number(),
+	gamesPlayed: t.Number(),
+	progress: t.Nullable(
+		t.Object({
+			nextTierId: TierIdSchema,
+			unit: t.Union([t.Literal("games"), t.Literal("points")]),
+			current: t.Number(),
+			target: t.Number(),
+			distinctOpponentWins: t.Nullable(t.Object({ current: t.Number(), required: t.Number() })),
+		}),
+	),
+	rating: t.Optional(t.Number()),
+	peak: t.Optional(t.Number()),
+});
 
 /** A bigint column produced by a SQL window or aggregate function. */
 const decimalString = (description: string, { signed = false } = {}) =>
@@ -57,14 +86,14 @@ const userStatsFields = {
 export const UserStatsSchema = t.Object({
 	...userStatsFields,
 	ratings: t.Array(
-		t.Object({ ...RatingSummarySchema.properties, tier: t.Nullable(TierViewSchema) }),
+		t.Object({ ...RatingSummarySchema.properties, tier: t.Nullable(StatsTierViewSchema) }),
 	),
 });
 
 export const LeaderboardRowSchema = t.Object({
 	...userStatsFields,
 	ratings: t.Array(RatingSummarySchema),
-	tier: t.Nullable(TierViewSchema),
+	tier: t.Nullable(StatsTierViewSchema),
 });
 
 /** Response of GET /stats: a bare array of rows, without pagination metadata. */
