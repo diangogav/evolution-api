@@ -1,7 +1,7 @@
 import type { QueryableManager } from "../../../shared/persistence/QueryableManager";
 import { EventDuelRepository, MarkAppliedResult } from "../domain/EventDuelRepository";
 import { ReservedDuelOutcome, ReservedDuelRecord } from "../domain/ReservedDuelRecord";
-import { runQuery } from "./runQuery";
+import { runQuery } from "../../../shared/persistence/runQuery";
 
 const RECORD_RESERVATION_QUERY = `INSERT INTO event_run_reservations
 	(reservation_id, run_id, wave, bot_name, issued_at) VALUES ($1, $2, $3, $4, $5)`;

@@ -1,5 +1,5 @@
-import { cosmeticsDataSource } from "../../../cosmetics-data-source";
-import type { QueryableManager } from "../../../shared/persistence/QueryableManager";
+import { cosmeticsDataSource } from "../../cosmetics-data-source";
+import type { QueryableManager } from "./QueryableManager";
 
 // Runs on the caller's transaction when given one, on the cosmetics DataSource otherwise.
 // The duel server's `reserved_duels` lives in the same database, so it is read the same way.

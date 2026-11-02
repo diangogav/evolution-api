@@ -69,9 +69,9 @@ A module reaches another module only through that module's `index.ts`, which re-
 - A dependency cycle between modules fails, unless it is in `KNOWN_CYCLES`.
 - An `index.ts` that re-exports with `export *` or from outside `domain/` and `application/` fails.
 
-Both lists only shrink: fixing a leak or a cycle means deleting its entry, and the test also fails while a fixed entry is still listed. Today they hold `event-run`'s wiring (`buildEventRun.ts`) reaching into four modules' Postgres repositories, `event-stats` borrowing `event-run`'s `runQuery`, `stats` reusing the `tiers` TypeBox schema, and the `assets` ↔ `catalog` ↔ `entitlements` ↔ `loadout` loop.
+Both lists only shrink: fixing a leak or a cycle means deleting its entry, and the test also fails while a fixed entry is still listed. Today they hold `stats` reusing the `tiers` TypeBox schema, and the `assets` ↔ `catalog` ↔ `entitlements` ↔ `loadout` loop.
 
-Routers (`src/server/routes/`) are the composition root and may import any layer of any module.
+Routers (`src/server/routes/`) and `src/server/composition/` are the composition root and may import any layer of any module. Wiring that needs another module's adapters, like `buildEventRun.ts`, lives in `src/server/composition/`; a builder that only wires its own module (`buildRewardsWorker.ts`, `buildCommunityDecks.ts`) stays in that module's `infrastructure/`.
 
 ## Composition root: routers
 
@@ -118,7 +118,7 @@ Both `DataSource`s point at the same Postgres instance but track migrations inde
 
 `src/evolution-types/` is a vendored package owned by the game server. Do not edit its entities or migrations from this repository; it is shared infrastructure, not API-local code. The cosmetics `DataSource` declares its foreign key to `users(id)` in raw SQL inside its own migration, so it never manages the shared `users` table.
 
-Module-to-DataSource mapping: `catalog`, `loadout`, `emote-bar`, `entitlements`, `community-decks`, `event-run`, `event-stats`, `player-reports`, and `rewards` use the cosmetics `DataSource` (`rewards` also reads matches and achievements from the shared schema through its `*Source` adapters; `loadout`'s `UserDirectoryPostgresRepository` reads usernames from the shared `users` table; `event-stats` queries through `event-run`'s `runQuery`). Every other module that touches Postgres (`activity-stats`, `user`, `achievements`, `match`, `match-annulment`, `points-ledger`, `rating`, `stats`, `tiers`, `ban-list`) uses the shared `evolution-types` `DataSource`. `ticket` uses Redis, not Postgres. Both `DataSource`s are initialized at startup in `src/index.ts`.
+Module-to-DataSource mapping: `catalog`, `loadout`, `emote-bar`, `entitlements`, `community-decks`, `event-run`, `event-stats`, `player-reports`, and `rewards` use the cosmetics `DataSource` (`rewards` also reads matches and achievements from the shared schema through its `*Source` adapters; `loadout`'s `UserDirectoryPostgresRepository` reads usernames from the shared `users` table; `event-run` and `event-stats` query through `src/shared/persistence/runQuery.ts`). Every other module that touches Postgres (`activity-stats`, `user`, `achievements`, `match`, `match-annulment`, `points-ledger`, `rating`, `stats`, `tiers`, `ban-list`) uses the shared `evolution-types` `DataSource`. `ticket` uses Redis, not Postgres. Both `DataSource`s are initialized at startup in `src/index.ts`.
 
 ## Errors
 
@@ -161,7 +161,7 @@ Background loops run in-process when their env flag is `true`, or standalone wit
 | Worker | Built in | Started from | Flag |
 | --- | --- | --- | --- |
 | Rewards (match results → mission progress and essence) | `src/modules/rewards/infrastructure/buildRewardsWorker.ts` | `src/index.ts` | `REWARDS_WORKER_ENABLED` |
-| Event runs (applies unfetched duel results, voids stale duels) | `src/modules/event-run/infrastructure/buildEventRun.ts` | `Server.start()` in `src/server/server.ts` | `EVENT_RUN_WORKER_ENABLED` |
+| Event runs (applies unfetched duel results, voids stale duels) | `src/server/composition/buildEventRun.ts` | `Server.start()` in `src/server/server.ts` | `EVENT_RUN_WORKER_ENABLED` |
 | Community decks (YGOPRODeck sync) | `src/modules/community-decks/infrastructure/buildCommunityDecks.ts` | `Server.start()` in `src/server/server.ts` | `COMMUNITY_DECKS_WORKER_ENABLED` |
 
 ## External services

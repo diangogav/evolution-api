@@ -8,7 +8,7 @@ import { GetMyEventRun } from "../../modules/event-run/application/GetMyEventRun
 import { RequestEventDuel } from "../../modules/event-run/application/RequestEventDuel";
 import { StartEventRun } from "../../modules/event-run/application/StartEventRun";
 import { BunRedisReservationStore } from "../../modules/event-run/infrastructure/BunRedisReservationStore";
-import { buildApplyReservedDuel } from "../../modules/event-run/infrastructure/buildEventRun";
+import { buildApplyReservedDuel } from "../composition/buildEventRun";
 import { EventAttemptPostgresRepository } from "../../modules/event-run/infrastructure/EventAttemptPostgresRepository";
 import { EventCatalogPostgresRepository } from "../../modules/event-run/infrastructure/EventCatalogPostgresRepository";
 import { EventDuelPostgresRepository } from "../../modules/event-run/infrastructure/EventDuelPostgresRepository";

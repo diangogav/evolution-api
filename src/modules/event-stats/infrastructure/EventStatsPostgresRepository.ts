@@ -1,4 +1,4 @@
-import { runQuery } from "../../event-run/infrastructure/runQuery";
+import { runQuery } from "../../../shared/persistence/runQuery";
 import type { EventRawStats, EventStatsRepository } from "../domain/EventStatsReport";
 
 // Event tables live on the cosmetics DataSource; `users` is in the same database, so
