@@ -181,6 +181,22 @@ Migrations are written by hand (`src/scripts/run-cosmetics-migrations.ts`); a
 on Bun while the shared submodule's own migrations use the TypeORM CLI via
 ts-node.
 
+Rules for a new migration, enforced by `tests/unit/migrations/migration-files.test.ts`:
+
+- The file is `<13-digit timestamp>-<description>.ts`, and its `name` is the class
+  name ending with that same timestamp (`AddCardFrameCosmeticType1782600000000` in `1782600000000-add-card-frame-cosmetic-type.ts`).
+- The timestamp is new. TypeORM orders migrations by it, so a repeated one leaves
+  the order to the file names. `1781800000000` is shared by two migrations that are
+  already applied; it stays as is and no other exception is allowed.
+- Never rename or renumber a migration that has run anywhere: TypeORM records it by
+  `name` and would run it again.
+- Data that must ship with a deploy (event content, bot looks, prize cosmetics) goes
+  in a migration like any schema change, so it lands exactly once and in order. Give
+  it its own migration, separate from schema changes, and name it after the data it
+  writes (`seed-…`, `add-…-cosmetics`). Data that is safe to rerun on every deploy,
+  like the standard cosmetic set, belongs in an idempotent script instead
+  (`seed:cosmetics`).
+
 ## Scripts
 
 All six scripts live in `src/scripts/`, run through Bun, and open/close their
