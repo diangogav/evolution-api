@@ -41,9 +41,10 @@ Before finishing a change, run the focused tests, then `bun test` and `bun run l
 
 - **Two DataSources, one Postgres.** `src/cosmetics-data-source.ts` owns the API's tables
   (cosmetics, entitlements, loadout, rewards); its migrations live in `src/migrations/`
-  and are tracked in `cosmetics_migrations`. `src/evolution-types/` is the game server's
-  vendored shared schema (users, matches, stats, bans): do not edit its entities or
-  migrations from this repo.
+  and are tracked in `cosmetics_migrations`. `src/evolution-types/` is the shared schema
+  package (users, matches, stats, bans) that this API and EDOpro-server-ts both vendor
+  as a submodule: change its entities and migrations in the evolution-types repository,
+  then bump the submodule here.
 - **Dependency rule:** `infrastructure -> application -> domain`. Domain imports no
   framework or ORM code. Never return TypeORM or domain entities from a router; return
   use case results typed by TypeBox schemas.
