@@ -19,6 +19,11 @@ export const MissionViewSchema = t.Object({
 	reward: MissionRewardSchema,
 	completed: t.Boolean(),
 	claimed: t.Boolean(),
+	resetsAt: t.String({
+		format: "date-time",
+		description:
+			"When the current period ends (next 00:00 UTC daily, next Monday 00:00 UTC weekly)",
+	}),
 });
 
 export const ClaimResultSchema = t.Object({
