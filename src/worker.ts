@@ -2,7 +2,7 @@ import { config } from "./config";
 import { cosmeticsDataSource } from "./cosmetics-data-source";
 import { PostgresTypeORM } from "./evolution-types/src/PostgresTypeORM";
 import { buildCommunityDecksWorker } from "./modules/community-decks/infrastructure/buildCommunityDecks";
-import { buildEventRunWorker } from "./modules/event-run/infrastructure/buildEventRun";
+import { buildEventRunWorker } from "./server/composition/buildEventRun";
 import { buildRewardsWorker } from "./modules/rewards/infrastructure/buildRewardsWorker";
 import { Pino } from "./shared/logger/infrastructure/Pino";
 

@@ -51,7 +51,8 @@ Before finishing a change, run the focused tests, then `bun test` and `bun run l
   ratchet test `tests/unit/architecture/module-boundaries.test.ts` lists today's
   exceptions and only lets them shrink. See `docs/architecture.md`.
 - **Composition root:** `src/server/routes/*-router.ts` `new` up dependencies by hand (no
-  DI container). Routers are mounted under `/api/v1` in `src/server/server.ts`.
+  DI container). Routers are mounted under `/api/v1` in `src/server/server.ts`. Wiring
+  that needs another module's adapters goes in `src/server/composition/`.
 - **Auth:** player routes mount `requireUser` (`src/server/auth/requireUser.ts`) and read
   `userId` from the handler context; admin routes call `adminAuthorizer.requireAdmin`.
   Never decode the JWT in a handler.

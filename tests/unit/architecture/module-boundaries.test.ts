@@ -11,10 +11,6 @@ const MODULES_DIR = join(import.meta.dir, "../../../src/modules");
 
 // Cross-module imports that bypass the target's index.ts, as "importer -> target".
 const KNOWN_LEAKS = [
-	"event-run/infrastructure/buildEventRun.ts -> catalog/infrastructure/CosmeticPostgresRepository",
-	"event-run/infrastructure/buildEventRun.ts -> entitlements/infrastructure/EntitlementPostgresRepository",
-	"event-run/infrastructure/buildEventRun.ts -> loadout/infrastructure/UserDirectoryPostgresRepository",
-	"event-run/infrastructure/buildEventRun.ts -> rewards/infrastructure/EssenceLedgerPostgresRepository",
 	"event-stats/infrastructure/EventStatsPostgresRepository.ts -> event-run/infrastructure/runQuery",
 	"stats/infrastructure/StatsSchemas.ts -> tiers/infrastructure/TierSchemas",
 ];

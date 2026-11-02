@@ -10,7 +10,7 @@ import { InvalidArgumentError } from "../shared/errors/InvalidArgumentError";
 import { NotFoundError } from "../shared/errors/NotFoundError";
 import { config } from "../config";
 import { buildCommunityDecksWorker } from "../modules/community-decks/infrastructure/buildCommunityDecks";
-import { buildEventRunWorker } from "../modules/event-run/infrastructure/buildEventRun";
+import { buildEventRunWorker } from "./composition/buildEventRun";
 import { Logger } from "../shared/logger/domain/Logger";
 
 import { achievementsRouter, userAchievementsRouter } from "./routes/achievements-router";

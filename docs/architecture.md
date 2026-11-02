@@ -69,9 +69,9 @@ A module reaches another module only through that module's `index.ts`, which re-
 - A dependency cycle between modules fails, unless it is in `KNOWN_CYCLES`.
 - An `index.ts` that re-exports with `export *` or from outside `domain/` and `application/` fails.
 
-Both lists only shrink: fixing a leak or a cycle means deleting its entry, and the test also fails while a fixed entry is still listed. Today they hold `event-run`'s wiring (`buildEventRun.ts`) reaching into four modules' Postgres repositories, `event-stats` borrowing `event-run`'s `runQuery`, `stats` reusing the `tiers` TypeBox schema, and the `assets` ↔ `catalog` ↔ `entitlements` ↔ `loadout` loop.
+Both lists only shrink: fixing a leak or a cycle means deleting its entry, and the test also fails while a fixed entry is still listed. Today they hold `event-stats` borrowing `event-run`'s `runQuery`, `stats` reusing the `tiers` TypeBox schema, and the `assets` ↔ `catalog` ↔ `entitlements` ↔ `loadout` loop.
 
-Routers (`src/server/routes/`) are the composition root and may import any layer of any module.
+Routers (`src/server/routes/`) and `src/server/composition/` are the composition root and may import any layer of any module. Wiring that needs another module's adapters, like `buildEventRun.ts`, lives in `src/server/composition/`; a builder that only wires its own module (`buildRewardsWorker.ts`, `buildCommunityDecks.ts`) stays in that module's `infrastructure/`.
 
 ## Composition root: routers
 
@@ -161,7 +161,7 @@ Background loops run in-process when their env flag is `true`, or standalone wit
 | Worker | Built in | Started from | Flag |
 | --- | --- | --- | --- |
 | Rewards (match results → mission progress and essence) | `src/modules/rewards/infrastructure/buildRewardsWorker.ts` | `src/index.ts` | `REWARDS_WORKER_ENABLED` |
-| Event runs (applies unfetched duel results, voids stale duels) | `src/modules/event-run/infrastructure/buildEventRun.ts` | `Server.start()` in `src/server/server.ts` | `EVENT_RUN_WORKER_ENABLED` |
+| Event runs (applies unfetched duel results, voids stale duels) | `src/server/composition/buildEventRun.ts` | `Server.start()` in `src/server/server.ts` | `EVENT_RUN_WORKER_ENABLED` |
 | Community decks (YGOPRODeck sync) | `src/modules/community-decks/infrastructure/buildCommunityDecks.ts` | `Server.start()` in `src/server/server.ts` | `COMMUNITY_DECKS_WORKER_ENABLED` |
 
 ## External services
