@@ -72,6 +72,7 @@ describe("GetMyMissions", () => {
 			reward: { type: "essence", amount: 20 },
 			completed: true,
 			claimed: true,
+			resetsAt: "2026-10-24T00:00:00.000Z",
 		});
 		expect(result[1]).toMatchObject({ value: 0, completed: false, claimed: false });
 	});
@@ -80,7 +81,11 @@ describe("GetMyMissions", () => {
 		const result = await useCase().run({ userId: "user-1", period: "weekly", locale: "en", now });
 
 		expect(result).toEqual([
-			expect.objectContaining({ code: "weekly_play_20", name: "weekly_play_20 en" }),
+			expect.objectContaining({
+				code: "weekly_play_20",
+				name: "weekly_play_20 en",
+				resetsAt: "2026-10-26T00:00:00.000Z",
+			}),
 			expect.objectContaining({ code: "weekly_ranked_streak_3", metric: "rankedWinStreak" }),
 		]);
 	});

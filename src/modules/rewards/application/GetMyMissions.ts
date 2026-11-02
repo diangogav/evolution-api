@@ -15,6 +15,7 @@ export type MissionView = {
 	reward: MissionReward;
 	completed: boolean;
 	claimed: boolean;
+	resetsAt: string;
 };
 
 export type GetMyMissionsInput = {
@@ -32,7 +33,7 @@ export class GetMyMissions {
 	) {}
 
 	async run(input: GetMyMissionsInput): Promise<MissionView[]> {
-		const { periodKey, missions } = currentMissions(
+		const { periodKey, resetsAt, missions } = currentMissions(
 			await this.catalog.findActive(),
 			input.period,
 			input.now,
@@ -52,6 +53,7 @@ export class GetMyMissions {
 				input.locale,
 				progress.find((row) => row.missionId === mission.id),
 				claimed.includes(mission.id),
+				resetsAt,
 			),
 		);
 	}
@@ -62,6 +64,7 @@ function toView(
 	locale: Locale,
 	progress: { value: number; completed: boolean } | undefined,
 	claimed: boolean,
+	resetsAt: Date,
 ): MissionView {
 	return {
 		code: mission.code,
@@ -73,5 +76,6 @@ function toView(
 		reward: mission.reward,
 		completed: progress?.completed ?? false,
 		claimed,
+		resetsAt: resetsAt.toISOString(),
 	};
 }

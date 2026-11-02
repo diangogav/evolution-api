@@ -53,6 +53,7 @@ const missionExample = {
 	reward: { type: "essence", amount: 20 },
 	completed: false,
 	claimed: false,
+	resetsAt: "2026-10-24T00:00:00.000Z",
 };
 
 export const missionsRouter = new Elysia({ prefix: "/me/missions" })
