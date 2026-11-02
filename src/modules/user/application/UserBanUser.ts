@@ -1,7 +1,6 @@
 import { UserBanRepository } from "../domain/UserBanRepository";
 import { UserBan } from "../domain/UserBan";
 import { NotFoundError } from "../../../shared/errors/NotFoundError";
-import { v4 as uuidv4 } from "uuid";
 
 export class UserBanUser {
 	constructor(private readonly userBanRepository: UserBanRepository) {}
@@ -20,7 +19,7 @@ export class UserBanUser {
 		const now = new Date();
 		await this.userBanRepository.finishActiveBan(params.userId, now);
 		const ban = UserBan.create({
-			id: uuidv4(),
+			id: crypto.randomUUID(),
 			userId: params.userId,
 			reason: params.reason,
 			bannedAt: now,

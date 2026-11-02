@@ -2,15 +2,9 @@
 
 # dependencies
 /node_modules
-/.pnp
-.pnp.js
 
 # testing
 /coverage
-
-# next.js
-/.next/
-/out/
 
 # production
 /build
@@ -30,10 +24,7 @@ yarn-error.log*
 .env.test.local
 .env.production.local
 
-# vercel
-.vercel
-
-# enviroment
+# environment
 .env
 
 **/*.trace
@@ -42,6 +33,12 @@ yarn-error.log*
 **/*.tgz
 **/*.log
 package-lock.json
+pnpm-lock.yaml
+pnpm-workspace.yaml
 **/*.bun
 # IDE
 .idea/
+
+# local tooling
+.atl/
+.venv/
