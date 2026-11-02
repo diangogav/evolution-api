@@ -10,11 +10,13 @@ import { GlobalStatsRepository } from "../../../../../src/modules/stats/domain/G
 import { PeriodUserStats } from "../../../../../src/modules/stats/domain/PeriodUserStats";
 import { RatingMembers } from "../../../../../src/modules/stats/domain/RatingMembers";
 import { UserStats } from "../../../../../src/modules/stats/domain/UserStats";
+import { TierViewSchema } from "../../../../../src/modules/tiers/infrastructure/TierSchemas";
 import { UserStatsRepository } from "../../../../../src/modules/stats/domain/UserStatsRepository";
 import {
 	GlobalStatsResponseSchema,
 	LeaderboardSchema,
 	PlayerOfTheWeekSchema,
+	StatsTierViewSchema,
 	UserStatsSchema,
 } from "../../../../../src/modules/stats/infrastructure/StatsSchemas";
 import { TierView } from "../../../../../src/modules/tiers/application/dtos/TierView";
@@ -122,6 +124,16 @@ const statsRepository: UserStatsRepository = {
 		}),
 	],
 };
+
+// stats keeps its own copy of the tier schema so it does not reach into the tiers
+// module's infrastructure. This pins the copy to the original, so the two cannot drift.
+describe("StatsTierViewSchema", () => {
+	it("describes the same tier object as the tiers module's TierViewSchema", () => {
+		const plain = (schema: unknown) => JSON.parse(JSON.stringify(schema));
+
+		expect(plain(StatsTierViewSchema)).toEqual(plain(TierViewSchema));
+	});
+});
 
 describe("UserStatsSchema", () => {
 	it("accepts the profile UserStatsFinder returns, with a tier per rating", async () => {

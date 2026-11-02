@@ -69,7 +69,7 @@ A module reaches another module only through that module's `index.ts`, which re-
 - A dependency cycle between modules fails, unless it is in `KNOWN_CYCLES`.
 - An `index.ts` that re-exports with `export *` or from outside `domain/` and `application/` fails.
 
-Both lists only shrink: fixing a leak or a cycle means deleting its entry, and the test also fails while a fixed entry is still listed. Today `KNOWN_LEAKS` holds only `stats` reusing the `tiers` TypeBox schema, and `KNOWN_CYCLES` is empty. Ports belong to the module that consumes them: `catalog` owns `AssetUrlSigner`, `CosmeticAssetStorage` and `CosmeticAccessPolicy`, which `assets` and `entitlements` implement, and `user` owns `UserDirectory`.
+Both lists only shrink: fixing a leak or a cycle means deleting its entry, and the test also fails while a fixed entry is still listed. Today both lists are empty. A response schema another module embeds is copied, not imported: `stats` keeps `StatsTierViewSchema`, and `StatsSchemas.test.ts` pins it to `tiers`' `TierViewSchema` so the copy cannot drift. Ports belong to the module that consumes them: `catalog` owns `AssetUrlSigner`, `CosmeticAssetStorage` and `CosmeticAccessPolicy`, which `assets` and `entitlements` implement, and `user` owns `UserDirectory`.
 
 Routers (`src/server/routes/`) and `src/server/composition/` are the composition root and may import any layer of any module. Wiring that needs another module's adapters, like `buildEventRun.ts`, lives in `src/server/composition/`; a builder that only wires its own module (`buildRewardsWorker.ts`, `buildCommunityDecks.ts`) stays in that module's `infrastructure/`.
 
