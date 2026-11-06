@@ -162,6 +162,30 @@ describe("evaluateMatch", () => {
 		expect(afterUnranked.progress[0].value).toBe(2);
 	});
 
+	it("drops an incomplete streak mission back to zero when a ranked loss breaks the streak", () => {
+		const { progress, state: next } = evaluateMatch(
+			facts({ won: false }),
+			state({ rankedStreak: 2, progress: { weekly_ranked_streak_3: 2 } }),
+			[weeklyStreak3],
+		);
+		expect(next.rankedStreak).toBe(0);
+		expect(progress[0]).toEqual({
+			missionCode: "weekly_ranked_streak_3",
+			periodKey: "2026-W43",
+			value: 0,
+			completed: false,
+		});
+	});
+
+	it("keeps an incomplete streak mission at its value after an unranked match", () => {
+		const { progress } = evaluateMatch(
+			facts({ won: false, ranked: false }),
+			state({ rankedStreak: 2, progress: { weekly_ranked_streak_3: 2 } }),
+			[weeklyStreak3],
+		);
+		expect(progress[0].value).toBe(2);
+	});
+
 	it("keeps a completed streak mission completed after the streak later breaks within the period", () => {
 		const { progress } = evaluateMatch(
 			facts({ won: false }),

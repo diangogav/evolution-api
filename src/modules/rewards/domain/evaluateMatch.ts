@@ -1,4 +1,4 @@
-import { Mission, MissionMetric } from "./Mission";
+import { Mission, MissionRule } from "./Mission";
 import { periodKey } from "./MissionPeriod";
 
 export type DuelFacts = { result: "winner" | "loser" | "deuce"; turns: number };
@@ -49,9 +49,7 @@ export function evaluateMatch(
 	const progress = missions.map((mission) => {
 		const current = state.progress[mission.code] ?? 0;
 		const applies = !mission.rule.ranked || facts.ranked;
-		const value = applies
-			? nextValue(mission.rule.metric, current, facts, state, rankedStreak)
-			: current;
+		const value = applies ? nextValue(mission.rule, current, facts, state, rankedStreak) : current;
 		const capped = Math.min(value, mission.rule.target);
 		return {
 			missionCode: mission.code,
@@ -77,14 +75,14 @@ function nextRankedStreak(facts: MatchFacts, streak: number): number {
 }
 
 function nextValue(
-	metric: MissionMetric,
+	rule: MissionRule,
 	current: number,
 	facts: MatchFacts,
 	state: RewardState,
 	rankedStreak: number,
 ): number {
 	const paidWin = facts.won && facts.opponentRegistered;
-	switch (metric) {
+	switch (rule.metric) {
 		case "duelsPlayed":
 			return current + 1;
 		case "duelsWon":
@@ -92,8 +90,9 @@ function nextValue(
 		case "rankedDuelsPlayed":
 			return current + (facts.ranked ? 1 : 0);
 		case "rankedWinStreak":
-			// A completed streak stays completed; otherwise the live streak is the value.
-			return Math.max(current, rankedStreak);
+			// A completed streak stays completed; otherwise the live streak is the value,
+			// so a ranked loss before the target drops the mission back to zero.
+			return current >= rule.target ? current : rankedStreak;
 		case "winUnder10Turns":
 			return current + (paidWin && wonAnyDuelFast(facts) ? 1 : 0);
 		case "winDifferentFormat":
