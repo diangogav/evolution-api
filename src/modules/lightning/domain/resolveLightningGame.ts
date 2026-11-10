@@ -85,3 +85,24 @@ export function outcomeForSeat(resolution: GameResolution, seat: 0 | 1): EntryGa
 			return "void";
 	}
 }
+
+/**
+ * What a seat recorded from a game already resolved. The game row keeps the resolution,
+ * not which seat missed the room, so a no-show reads it back from the server's record (an
+ * unclaimed reservation has none: both seats missed it).
+ */
+export function outcomeOfResolvedGame(
+	game: { resolution: LightningGameResolution; reason: string | null },
+	record: ReservedDuelRecord | null,
+	seat: 0 | 1,
+): EntryGameOutcome {
+	if (game.resolution !== "no_show") {
+		return outcomeForSeat(
+			{ resolution: game.resolution, reason: "", noShowSeats: [], stale: false, unclaimed: false },
+			seat,
+		);
+	}
+	const absent = game.reason === "unclaimed" ? null : (record?.abandonedBySeat ?? null);
+	if (absent === null) return "no_show";
+	return absent === seat ? "no_show" : "void";
+}

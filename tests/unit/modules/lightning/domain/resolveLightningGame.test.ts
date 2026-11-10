@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test";
 
 import type { ReservedDuelRecord } from "../../../../../src/modules/reserved-duel";
 import {
+	outcomeOfResolvedGame,
 	outcomeForSeat,
 	resolveLightningGame,
 	UNCLAIMED_RESERVATION_MS,
@@ -153,5 +154,28 @@ describe("outcomeForSeat", () => {
 
 		const voided = { ...base, resolution: "void" as const, noShowSeats: [] };
 		expect(outcomeForSeat(voided, 0)).toBe("void");
+	});
+});
+
+describe("outcomeOfResolvedGame", () => {
+	const game = (resolution: "seat0_win" | "draw" | "no_show" | "void", reason: string) => ({
+		resolution,
+		reason,
+	});
+
+	it("reads wins, draws and voids from the stored resolution", () => {
+		expect(outcomeOfResolvedGame(game("seat0_win", "win"), null, 0)).toBe("win");
+		expect(outcomeOfResolvedGame(game("seat0_win", "win"), null, 1)).toBe("loss");
+		expect(outcomeOfResolvedGame(game("draw", "draw"), null, 1)).toBe("draw");
+		expect(outcomeOfResolvedGame(game("void", "cancelled"), null, 0)).toBe("void");
+	});
+
+	it("tells which seat missed the room from the server's record", () => {
+		const noShow = game("no_show", "no_show");
+		const absentSeat1 = record({ outcome: "abandoned", startedAt: null, abandonedBySeat: 1 });
+
+		expect(outcomeOfResolvedGame(noShow, absentSeat1, 0)).toBe("void");
+		expect(outcomeOfResolvedGame(noShow, absentSeat1, 1)).toBe("no_show");
+		expect(outcomeOfResolvedGame(game("no_show", "unclaimed"), null, 0)).toBe("no_show");
 	});
 });

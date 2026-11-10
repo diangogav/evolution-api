@@ -58,6 +58,17 @@ export function newLightningEntry(input: {
 	};
 }
 
+// Live standings show everyone still in (and anyone who left after playing); the final
+// table keeps only players with at least one game, so registering alone earns nothing.
+export function qualifiesForStandings(
+	entry: Pick<LightningEntry, "status" | "gamesPlayed">,
+	options: { final: boolean },
+): boolean {
+	if (entry.status === "removed") return false;
+	if (entry.status === "withdrawn" || options.final) return entry.gamesPlayed > 0;
+	return true;
+}
+
 /** What one seat records from a resolved game. `void` counts nothing. */
 export type EntryGameOutcome = "win" | "draw" | "loss" | "no_show" | "void";
 
