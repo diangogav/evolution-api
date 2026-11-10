@@ -136,8 +136,9 @@ Shared error classes live in `src/shared/errors/`. `mapDomainErrorStatus` in `sr
 | `ForbiddenError` | 403 |
 | `UnprocessableError` | 422 |
 | `PaymentRequiredError` | 402 |
+| `TooManyRequestsError` | 429 |
 
-Throw one of these from a use case or controller instead of setting `set.status` by hand. Response bodies for mapped errors are `text/plain` (the error's message) — `onError` only sets the status code, it does not shape a body. Elysia's own request validation fails independently of `onError` and answers `422` with a JSON body; production only sends `type`, `on` and `found` (`src/server/openapi/responses.ts`, `ValidationErrorSchema`). Anything that is not one of the seven classes above — a plain `Error`, or an unmapped TypeORM `EntityNotFoundError` from a raw `findOneOrFail` — falls through unmapped and answers `500`. A use case should check existence itself and throw `NotFoundError` before reaching for `findOneOrFail`, the way `UserBanUser` does via `UserBanRepository.userExists`, so an unknown id answers a mapped `404` instead.
+Throw one of these from a use case or controller instead of setting `set.status` by hand. Response bodies for mapped errors are `text/plain` (the error's message) — `onError` only sets the status code, it does not shape a body. Elysia's own request validation fails independently of `onError` and answers `422` with a JSON body; production only sends `type`, `on` and `found` (`src/server/openapi/responses.ts`, `ValidationErrorSchema`). Anything that is not one of the eight classes above — a plain `Error`, or an unmapped TypeORM `EntityNotFoundError` from a raw `findOneOrFail` — falls through unmapped and answers `500`. A use case should check existence itself and throw `NotFoundError` before reaching for `findOneOrFail`, the way `UserBanUser` does via `UserBanRepository.userExists`, so an unknown id answers a mapped `404` instead.
 
 ## Auth
 
