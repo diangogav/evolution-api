@@ -22,6 +22,11 @@ export const LIGHTNING_TOURNAMENT_STATUSES = [
 
 export type LightningTournamentStatus = (typeof LIGHTNING_TOURNAMENT_STATUSES)[number];
 
+// An entry in one of these can still be called to a duel, or is waiting for the start.
+export const LIVE_LIGHTNING_TOURNAMENT_STATUSES = ["registration", "running", "finishing"] as const;
+
+export type LiveLightningTournamentStatus = (typeof LIVE_LIGHTNING_TOURNAMENT_STATUSES)[number];
+
 /** Prize per final position: index 0 is first place; `others` pays every ranked player below. */
 export type PrizeTable = { positions: number[]; others: number };
 

@@ -74,6 +74,7 @@ const PROTECTED_OPERATIONS = [
 	"POST /api/v1/lightning/{id}/entries/me/pause",
 	"POST /api/v1/lightning/{id}/entries/me/resume",
 	"GET /api/v1/lightning/{id}/me",
+	"GET /api/v1/lightning/me/active",
 ];
 
 // Operations whose success has no body; they declare it with `emptyOk`.

@@ -57,6 +57,7 @@ function buildApp() {
 		pause: { run: record("pause", { userId: "u-1" }) as never },
 		resume: { run: record("resume", { userId: "u-1" }) as never },
 		myState: { run: record("myState", { entry: null }) as never },
+		myActive: { run: record("myActive", []) as never },
 		create: {
 			run: record("create", () => {
 				throw new UnprocessableError("Invalid lightning tournament: name");
@@ -112,6 +113,7 @@ describe("lightning router — player routes", () => {
 		["POST", `/${ID}/entries/me/pause`],
 		["POST", `/${ID}/entries/me/resume`],
 		["GET", `/${ID}/me`],
+		["GET", "/me/active"],
 	];
 
 	it("answer 401 without a token and 403 for a banned player, before any use case", async () => {
@@ -137,6 +139,23 @@ describe("lightning router — player routes", () => {
 			{ useCase: "pause", input },
 			{ useCase: "resume", input },
 			{ useCase: "myState", input },
+			{ useCase: "myActive", input: { userId: "u-1" } },
+		]);
+	});
+
+	it("routes /me/active to the active entries, apart from the tournament and its /me", async () => {
+		const { app, calls } = buildApp();
+
+		const active = await app.handle(send("GET", "/me/active", "u-1"));
+		expect((await app.handle(send("GET", `/${ID}/me`, "u-1"))).status).toBe(200);
+		expect((await app.handle(send("GET", "/me", "u-1"))).status).toBe(200);
+
+		expect(active.status).toBe(200);
+		expect(await active.json()).toEqual([]);
+		expect(calls).toEqual([
+			{ useCase: "myActive", input: { userId: "u-1" } },
+			{ useCase: "myState", input: { tournamentId: ID, userId: "u-1", now: NOW } },
+			{ useCase: "get", input: { tournamentId: "me", now: NOW } },
 		]);
 	});
 

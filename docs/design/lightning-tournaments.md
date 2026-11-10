@@ -157,6 +157,7 @@ Default `points_by_position`: 1st 10, 2nd 7, 3rd 5, 4th 3, every other participa
 | DELETE | `/lightning/{id}/entries/me` | withdraw |
 | POST | `/lightning/{id}/entries/me/pause` / `resume` | presence |
 | GET | `/lightning/{id}/me` | applies the caller's pending game first, then `{ tournament, players, entry, state: idle \| paired \| playing \| away, game: { reservationId, password, seat, roomId, opponent } \| null, lastGame, position }`; `entry` and `state` are null for a player who did not enter |
+| GET | `/lightning/me/active` | read-only poll from any page: `[{ tournamentId, name, system, status, startsAt, state, game: { reservationId, password, seat, roomId, opponent } \| null, bye }]`, one per active entry in a `registration`, `running` or `finishing` tournament, soonest start first; applies nothing and takes no lock |
 | GET | `/lightning/rankings?season=` | season ranking from `lightning_rankings` |
 | POST | `/lightning` (admin) | create: name, format, windows, turn time, min/max, point tables |
 | POST | `/lightning/{id}/cancel` (admin) | cancel with reason |

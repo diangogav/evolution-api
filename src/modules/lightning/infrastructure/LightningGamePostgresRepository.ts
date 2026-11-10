@@ -8,23 +8,23 @@ import {
 import { LightningGameRepository, ResolveGameResult } from "../domain/LightningGameRepository";
 import { returnedRows, toDate } from "./returnedRows";
 
-const COLUMNS = `reservation_id, tournament_id, seat0_user_id, seat1_user_id, issued_at, status,
+export const GAME_COLUMNS = `reservation_id, tournament_id, seat0_user_id, seat1_user_id, issued_at, status,
 	resolution, reason, applied_at, round`;
 
-const INSERT_QUERY = `INSERT INTO lightning_games (${COLUMNS})
+const INSERT_QUERY = `INSERT INTO lightning_games (${GAME_COLUMNS})
 	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`;
 
-const LIST_BY_ROUND_QUERY = `SELECT ${COLUMNS} FROM lightning_games
+const LIST_BY_ROUND_QUERY = `SELECT ${GAME_COLUMNS} FROM lightning_games
 	WHERE tournament_id = $1 AND round = $2 ORDER BY issued_at, reservation_id`;
 
-const LIST_PENDING_QUERY = `SELECT ${COLUMNS} FROM lightning_games
+const LIST_PENDING_QUERY = `SELECT ${GAME_COLUMNS} FROM lightning_games
 	WHERE tournament_id = $1 AND status = 'pending' ORDER BY issued_at, reservation_id`;
 
-const PENDING_FOR_USER_QUERY = `SELECT ${COLUMNS} FROM lightning_games
+const PENDING_FOR_USER_QUERY = `SELECT ${GAME_COLUMNS} FROM lightning_games
 	WHERE tournament_id = $1 AND status = 'pending' AND (seat0_user_id = $2 OR seat1_user_id = $2)
 	ORDER BY issued_at DESC LIMIT 1`;
 
-const LAST_RESOLVED_FOR_USER_QUERY = `SELECT ${COLUMNS} FROM lightning_games
+const LAST_RESOLVED_FOR_USER_QUERY = `SELECT ${GAME_COLUMNS} FROM lightning_games
 	WHERE tournament_id = $1 AND status <> 'pending' AND (seat0_user_id = $2 OR seat1_user_id = $2)
 	ORDER BY applied_at DESC NULLS LAST, issued_at DESC LIMIT 1`;
 
@@ -32,10 +32,10 @@ const LAST_RESOLVED_FOR_USER_QUERY = `SELECT ${COLUMNS} FROM lightning_games
 const RESOLVE_QUERY = `UPDATE lightning_games SET status = $2, resolution = $3, reason = $4,
 	applied_at = $5 WHERE reservation_id = $1 AND status = 'pending' RETURNING reservation_id`;
 
-const LIST_RESOLVED_QUERY = `SELECT ${COLUMNS} FROM lightning_games
+const LIST_RESOLVED_QUERY = `SELECT ${GAME_COLUMNS} FROM lightning_games
 	WHERE tournament_id = $1 AND status <> 'pending' ORDER BY applied_at, reservation_id`;
 
-type Row = {
+export type GameRow = {
 	reservation_id: string;
 	tournament_id: string;
 	seat0_user_id: string;
@@ -48,7 +48,7 @@ type Row = {
 	round: number | string | null;
 };
 
-function toGame(row: Row): LightningGame {
+export function toGame(row: GameRow): LightningGame {
 	return {
 		reservationId: row.reservation_id,
 		tournamentId: row.tournament_id,
@@ -84,7 +84,7 @@ export class LightningGamePostgresRepository implements LightningGameRepository 
 	}
 
 	async listPending(tournamentId: string, manager?: QueryableManager): Promise<LightningGame[]> {
-		return (await runQuery<Row>(LIST_PENDING_QUERY, [tournamentId], manager)).map(toGame);
+		return (await runQuery<GameRow>(LIST_PENDING_QUERY, [tournamentId], manager)).map(toGame);
 	}
 
 	async findPendingForUser(
@@ -92,7 +92,7 @@ export class LightningGamePostgresRepository implements LightningGameRepository 
 		userId: string,
 		manager: QueryableManager,
 	): Promise<LightningGame | null> {
-		const [row] = await runQuery<Row>(PENDING_FOR_USER_QUERY, [tournamentId, userId], manager);
+		const [row] = await runQuery<GameRow>(PENDING_FOR_USER_QUERY, [tournamentId, userId], manager);
 		return row ? toGame(row) : null;
 	}
 
@@ -101,7 +101,7 @@ export class LightningGamePostgresRepository implements LightningGameRepository 
 		userId: string,
 		manager: QueryableManager,
 	): Promise<LightningGame | null> {
-		const [row] = await runQuery<Row>(
+		const [row] = await runQuery<GameRow>(
 			LAST_RESOLVED_FOR_USER_QUERY,
 			[tournamentId, userId],
 			manager,
@@ -132,10 +132,12 @@ export class LightningGamePostgresRepository implements LightningGameRepository 
 		round: number,
 		manager?: QueryableManager,
 	): Promise<LightningGame[]> {
-		return (await runQuery<Row>(LIST_BY_ROUND_QUERY, [tournamentId, round], manager)).map(toGame);
+		return (await runQuery<GameRow>(LIST_BY_ROUND_QUERY, [tournamentId, round], manager)).map(
+			toGame,
+		);
 	}
 
 	async listResolved(tournamentId: string, manager?: QueryableManager): Promise<LightningGame[]> {
-		return (await runQuery<Row>(LIST_RESOLVED_QUERY, [tournamentId], manager)).map(toGame);
+		return (await runQuery<GameRow>(LIST_RESOLVED_QUERY, [tournamentId], manager)).map(toGame);
 	}
 }

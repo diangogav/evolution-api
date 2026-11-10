@@ -56,6 +56,32 @@ export type MyLightningState = {
 	bye: boolean;
 };
 
+/** The presence shown to the player. */
+export function shownPresence(
+	system: LightningSystem,
+	presence: LightningPresence,
+): LightningPresence {
+	// Swiss pairs every active player each round, so there is no away to report.
+	return system === "swiss" && presence === "away" ? "idle" : presence;
+}
+
+/** The player's pending game as they need it to join the room. */
+export function myGameView(
+	game: LightningGame,
+	userId: string,
+	recordOf: Map<string, { roomId: number | null }>,
+	ref: (userId: string) => PlayerRef,
+): MyLightningGame {
+	const seat = seatOf(game, userId) as 0 | 1;
+	return {
+		reservationId: game.reservationId,
+		password: reservationPassword(game.reservationId),
+		seat,
+		roomId: recordOf.get(game.reservationId)?.roomId ?? null,
+		opponent: ref(seat === 0 ? game.seat1UserId : game.seat0UserId),
+	};
+}
+
 /**
  * What the waiting room polls. The caller's own pending game is applied first, under the
  * tournament row lock, so the result shows right after the duel without waiting for the
@@ -145,9 +171,8 @@ export class GetMyLightningState {
 			return {
 				...base,
 				entry: toEntryView(entry),
-				// Swiss pairs every active player each round, so there is no away to report.
-				state: swiss && entry.presence === "away" ? "idle" : entry.presence,
-				game: pending ? this.gameView(pending, input.userId, recordOf, ref) : null,
+				state: shownPresence(tournament.system, entry.presence),
+				game: pending ? myGameView(pending, input.userId, recordOf, ref) : null,
 				lastGame: last
 					? this.lastGameView(last, input.userId, recordOf, ref, tournament.system)
 					: null,
@@ -155,22 +180,6 @@ export class GetMyLightningState {
 				bye,
 			};
 		});
-	}
-
-	private gameView(
-		game: LightningGame,
-		userId: string,
-		recordOf: Map<string, { roomId: number | null }>,
-		ref: (userId: string) => PlayerRef,
-	): MyLightningGame {
-		const seat = seatOf(game, userId) as 0 | 1;
-		return {
-			reservationId: game.reservationId,
-			password: reservationPassword(game.reservationId),
-			seat,
-			roomId: recordOf.get(game.reservationId)?.roomId ?? null,
-			opponent: ref(seat === 0 ? game.seat1UserId : game.seat0UserId),
-		};
 	}
 
 	private lastGameView(

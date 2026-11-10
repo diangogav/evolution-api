@@ -6,7 +6,16 @@ import {
 	LightningEntryStatus,
 	LightningPresence,
 } from "../domain/LightningEntry";
-import { LightningEntryRepository } from "../domain/LightningEntryRepository";
+import {
+	ActiveLightningEntrySummary,
+	LightningEntryRepository,
+} from "../domain/LightningEntryRepository";
+import {
+	LightningSystem,
+	LIVE_LIGHTNING_TOURNAMENT_STATUSES,
+	LiveLightningTournamentStatus,
+} from "../domain/LightningTournament";
+import { GAME_COLUMNS, GameRow, toGame } from "./LightningGamePostgresRepository";
 import { returnedRows, toDate } from "./returnedRows";
 
 const COLUMNS = `tournament_id, user_id, registered_at, status, presence, deck, score, wins, draws,
@@ -38,6 +47,37 @@ const REMOVE_BANNED_QUERY = `UPDATE lightning_entries AS e SET status = 'removed
 				AND (b.expires_at IS NULL OR b.expires_at > now())
 		)
 	RETURNING e.user_id`;
+
+// Polled from every page, so it stays plain reads: the few live tournaments come from the
+// status index and each one reaches the entry, the pending game and the bye by their keys.
+// Entries have no index on user_id alone, which is why the tournaments drive the join.
+const ACTIVE_FOR_USER_QUERY = `SELECT t.id, t.name, t.system, t.status, t.starts_at, e.presence,
+	(SELECT to_jsonb(g) FROM (
+		SELECT ${GAME_COLUMNS} FROM lightning_games
+		WHERE tournament_id = t.id AND status = 'pending' AND (seat0_user_id = $1 OR seat1_user_id = $1)
+		ORDER BY issued_at DESC LIMIT 1
+	) AS g) AS pending_game,
+	(t.system = 'swiss' AND EXISTS (
+		SELECT 1 FROM lightning_byes AS b
+		WHERE b.tournament_id = t.id AND b.user_id = $1 AND b.round = t.current_round
+	)) AS has_bye
+	FROM lightning_tournaments AS t
+	JOIN lightning_entries AS e ON e.tournament_id = t.id AND e.user_id = $1
+	WHERE t.status IN (${LIVE_LIGHTNING_TOURNAMENT_STATUSES.map((status) => `'${status}'`).join(", ")})
+		AND e.status = 'active'
+	ORDER BY t.starts_at, t.id`;
+
+type ActiveRow = {
+	id: string;
+	name: string;
+	system: LightningSystem;
+	status: LiveLightningTournamentStatus;
+	starts_at: Date;
+	presence: LightningPresence;
+	/** jsonb: timestamps arrive as ISO strings, which toGame parses. */
+	pending_game: GameRow | null;
+	has_bye: boolean;
+};
 
 type Row = {
 	tournament_id: string;
@@ -145,5 +185,22 @@ export class LightningEntryPostgresRepository implements LightningEntryRepositor
 	async removeBanned(tournamentId: string, manager: QueryableManager): Promise<string[]> {
 		const result = await manager.query(REMOVE_BANNED_QUERY, [tournamentId]);
 		return returnedRows<{ user_id: string }>(result).map((row) => row.user_id);
+	}
+
+	async listActiveForUser(
+		userId: string,
+		manager?: QueryableManager,
+	): Promise<ActiveLightningEntrySummary[]> {
+		const rows = await runQuery<ActiveRow>(ACTIVE_FOR_USER_QUERY, [userId], manager);
+		return rows.map((row) => ({
+			tournamentId: row.id,
+			name: row.name,
+			system: row.system,
+			status: row.status,
+			startsAt: new Date(row.starts_at),
+			presence: row.presence,
+			pendingGame: row.pending_game ? toGame(row.pending_game) : null,
+			hasBye: row.has_bye === true,
+		}));
 	}
 }

@@ -26,6 +26,8 @@ import { LightningTickUnitOfWork } from "../../../../../src/modules/lightning/do
 import {
 	LightningTournament,
 	lightningTournament,
+	LIVE_LIGHTNING_TOURNAMENT_STATUSES,
+	LiveLightningTournamentStatus,
 	NewLightningTournament,
 } from "../../../../../src/modules/lightning/domain/LightningTournament";
 import { LightningTournamentRepository } from "../../../../../src/modules/lightning/domain/LightningTournamentRepository";
@@ -172,6 +174,34 @@ export class World {
 			}
 			return removed;
 		},
+		listActiveForUser: async (userId) =>
+			[...this.tournaments.values()]
+				.filter((t) => (LIVE_LIGHTNING_TOURNAMENT_STATUSES as readonly string[]).includes(t.status))
+				.sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime())
+				.flatMap((t) => {
+					const entry = this.entries.get(this.entryKey(t.id, userId));
+					if (!entry || entry.status !== "active") return [];
+					const pending = this.gamesOf(t.id).find(
+						(g) => g.status === "pending" && (g.seat0UserId === userId || g.seat1UserId === userId),
+					);
+					return [
+						{
+							tournamentId: t.id,
+							name: t.name,
+							system: t.system,
+							status: t.status as LiveLightningTournamentStatus,
+							startsAt: t.startsAt,
+							presence: entry.presence,
+							pendingGame: pending ? { ...pending } : null,
+							hasBye:
+								t.system === "swiss" &&
+								this.byes.some(
+									(b) =>
+										b.tournamentId === t.id && b.userId === userId && b.round === t.currentRound,
+								),
+						},
+					];
+				}),
 	};
 
 	readonly gameRepository: LightningGameRepository = {

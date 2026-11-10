@@ -286,6 +286,93 @@ describe("LightningEntryPostgresRepository", () => {
 		expect(sql).toContain("FROM user_bans AS b WHERE b.user_id = e.user_id");
 		expect(sql).toContain("b.expires_at IS NULL OR b.expires_at > now()");
 	});
+
+	it("lists a user's active entries in live tournaments with the pending game and the bye, without locks", async () => {
+		const manager = managerReturning([
+			{
+				id: "t-1",
+				name: "Friday Swiss",
+				system: "swiss",
+				status: "running",
+				starts_at: at("2026-11-10T20:00:00Z"),
+				presence: "paired",
+				pending_game: {
+					reservation_id: "R1",
+					tournament_id: "t-1",
+					seat0_user_id: "u-2",
+					seat1_user_id: "u-1",
+					issued_at: "2026-11-10T20:05:00+00:00",
+					status: "pending",
+					resolution: null,
+					reason: null,
+					applied_at: null,
+					round: 2,
+				},
+				has_bye: false,
+			},
+			{
+				id: "t-2",
+				name: "Saturday Lightning",
+				system: "arena",
+				status: "registration",
+				starts_at: at("2026-11-11T20:00:00Z"),
+				presence: "idle",
+				pending_game: null,
+				has_bye: false,
+			},
+		]);
+
+		const active = await new LightningEntryPostgresRepository().listActiveForUser("u-1", manager);
+
+		const [sql, params] = manager.query.mock.calls[0];
+		expect(params).toEqual(["u-1"]);
+		const query = compact(sql);
+		expect(query).toContain(
+			"FROM lightning_tournaments AS t JOIN lightning_entries AS e ON e.tournament_id = t.id AND e.user_id = $1",
+		);
+		expect(query).toContain(
+			"WHERE t.status IN ('registration', 'running', 'finishing') AND e.status = 'active'",
+		);
+		expect(query).toContain(
+			"WHERE tournament_id = t.id AND status = 'pending' AND (seat0_user_id = $1 OR seat1_user_id = $1)",
+		);
+		expect(query).toContain("b.user_id = $1 AND b.round = t.current_round");
+		expect(query).toContain("ORDER BY t.starts_at, t.id");
+		expect(query).not.toContain("FOR UPDATE");
+		expect(active).toEqual([
+			{
+				tournamentId: "t-1",
+				name: "Friday Swiss",
+				system: "swiss",
+				status: "running",
+				startsAt: at("2026-11-10T20:00:00Z"),
+				presence: "paired",
+				pendingGame: {
+					reservationId: "R1",
+					tournamentId: "t-1",
+					seat0UserId: "u-2",
+					seat1UserId: "u-1",
+					issuedAt: at("2026-11-10T20:05:00Z"),
+					status: "pending",
+					resolution: null,
+					reason: null,
+					appliedAt: null,
+					round: 2,
+				},
+				hasBye: false,
+			},
+			{
+				tournamentId: "t-2",
+				name: "Saturday Lightning",
+				system: "arena",
+				status: "registration",
+				startsAt: at("2026-11-11T20:00:00Z"),
+				presence: "idle",
+				pendingGame: null,
+				hasBye: false,
+			},
+		]);
+	});
 });
 
 describe("LightningGamePostgresRepository", () => {

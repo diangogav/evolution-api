@@ -10,6 +10,7 @@ import { CreateLightningTournament } from "../../modules/lightning/application/C
 import { EnterLightningTournament } from "../../modules/lightning/application/EnterLightningTournament";
 import { GetLightningRankings } from "../../modules/lightning/application/GetLightningRankings";
 import { GetLightningTournament } from "../../modules/lightning/application/GetLightningTournament";
+import { GetMyActiveLightningEntries } from "../../modules/lightning/application/GetMyActiveLightningEntries";
 import { GetMyLightningState } from "../../modules/lightning/application/GetMyLightningState";
 import { ListLightningTournaments } from "../../modules/lightning/application/ListLightningTournaments";
 import { PauseLightningEntry } from "../../modules/lightning/application/PauseLightningEntry";
@@ -21,6 +22,7 @@ import { LightningEntryPostgresRepository } from "../../modules/lightning/infras
 import { LightningGamePostgresRepository } from "../../modules/lightning/infrastructure/LightningGamePostgresRepository";
 import { LightningResultPostgresRepository } from "../../modules/lightning/infrastructure/LightningResultPostgresRepository";
 import {
+	ActiveLightningEntryListSchema,
 	CancelLightningTournamentBodySchema,
 	CreateLightningTournamentBodySchema,
 	EnterLightningBodySchema,
@@ -59,6 +61,7 @@ export interface LightningRouterDependencies {
 	readonly pause: Runner<PauseLightningEntry>;
 	readonly resume: Runner<ResumeLightningEntry>;
 	readonly myState: Runner<GetMyLightningState>;
+	readonly myActive: Runner<GetMyActiveLightningEntries>;
 	readonly create: Runner<CreateLightningTournament>;
 	readonly cancel: Runner<CancelLightningTournament>;
 }
@@ -316,6 +319,37 @@ export function createLightningRouter(deps: LightningRouterDependencies) {
 		.guard({}, (app) =>
 			app
 				.use(deps.requireUser)
+				// Static segments win over `/:id` in Elysia's router, whatever the registration order.
+				.get("/me/active", ({ userId }) => deps.myActive.run({ userId }), {
+					detail: {
+						tags: ["Lightning"],
+						summary: "List my active lightning entries",
+						description:
+							"What the client polls from any page to tell the player they were called to a duel: one item per active entry in a tournament in registration, running or finishing, soonest start first. `state` is the entry's presence (never `away` in Swiss); `game` is the pending pairing (room password, seat, room once open, opponent) or null; `bye` is true when the player has the bye in the current Swiss round. Read-only: unlike `GET /lightning/{id}/me` it applies no finished game, so a result shows once the worker or the tournament page applies it.",
+						security: [{ bearerAuth: [] }],
+						responses: {
+							200: jsonOk(ActiveLightningEntryListSchema, "The player's active entries", [
+								{
+									tournamentId: ID,
+									name: swissExample.name,
+									system: "swiss",
+									status: "running",
+									startsAt: swissExample.startsAt,
+									state: "paired",
+									game: {
+										reservationId: "Xy3kP9aQ2mNb7RtL",
+										password: "rv#Xy3kP9aQ2mNb7RtL",
+										seat: 1,
+										roomId: 4213,
+										opponent,
+									},
+									bye: false,
+								},
+							]),
+							...errorResponses(401, 403),
+						},
+					},
+				})
 				.post(
 					"/:id/entries",
 					({ userId, params, body }) =>
@@ -488,6 +522,7 @@ export const lightningRouter = createLightningRouter({
 		transactions,
 		byes,
 	),
+	myActive: new GetMyActiveLightningEntries(entries, records, players),
 	create: new CreateLightningTournament(tournaments),
 	cancel: new CancelLightningTournament(
 		tournaments,

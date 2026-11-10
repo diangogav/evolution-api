@@ -6,6 +6,7 @@ import {
 	LIGHTNING_FORMATS,
 	LIGHTNING_SYSTEMS,
 	LIGHTNING_TOURNAMENT_STATUSES,
+	LIVE_LIGHTNING_TOURNAMENT_STATUSES,
 	MAX_ROUND_BREAK_SECONDS,
 	MAX_ROUND_MINUTES,
 	MAX_SWISS_ROUNDS,
@@ -162,23 +163,23 @@ export const LightningTournamentDetailSchema = t.Object({
 	}),
 });
 
+const MyLightningGameSchema = t.Object(
+	{
+		reservationId: t.String(),
+		password: t.String({ description: "Room password to join the reserved duel with" }),
+		seat: t.Union([t.Literal(0), t.Literal(1)]),
+		roomId: t.Nullable(t.Integer({ description: "Null until the server opened the room" })),
+		opponent: PlayerRefSchema,
+	},
+	{ description: "The pairing to play now; null when not paired" },
+);
+
 export const MyLightningStateSchema = t.Object({
 	tournament: LightningTournamentSchema,
 	players: t.Integer({ description: "Active entries" }),
 	entry: t.Nullable(LightningEntrySchema),
 	state: t.Nullable(LightningPresenceSchema),
-	game: t.Nullable(
-		t.Object(
-			{
-				reservationId: t.String(),
-				password: t.String({ description: "Room password to join the reserved duel with" }),
-				seat: t.Union([t.Literal(0), t.Literal(1)]),
-				roomId: t.Nullable(t.Integer({ description: "Null until the server opened the room" })),
-				opponent: PlayerRefSchema,
-			},
-			{ description: "The pairing to play now; null when not paired" },
-		),
-	),
+	game: t.Nullable(MyLightningGameSchema),
 	lastGame: t.Nullable(
 		t.Object(
 			{
@@ -195,6 +196,19 @@ export const MyLightningStateSchema = t.Object({
 	position: t.Nullable(t.Integer({ description: "Place in the live standings" })),
 	bye: t.Boolean({ description: "True when the player has the bye in the current Swiss round" }),
 });
+
+export const ActiveLightningEntryListSchema = t.Array(
+	t.Object({
+		tournamentId: t.String({ format: "uuid" }),
+		name: t.String(),
+		system: LightningSystemSchema,
+		status: literals(LIVE_LIGHTNING_TOURNAMENT_STATUSES),
+		startsAt: DateTime(),
+		state: LightningPresenceSchema,
+		game: t.Nullable(MyLightningGameSchema),
+		bye: t.Boolean({ description: "True when the player has the bye in the current Swiss round" }),
+	}),
+);
 
 export const LightningRankingListSchema = t.Array(
 	t.Object({
