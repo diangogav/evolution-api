@@ -5,6 +5,7 @@ import { AuthenticationError } from "../shared/errors/AuthenticationError";
 import { ConflictError } from "../shared/errors/ConflictError";
 import { ForbiddenError } from "../shared/errors/ForbiddenError";
 import { PaymentRequiredError } from "../shared/errors/PaymentRequiredError";
+import { TooManyRequestsError } from "../shared/errors/TooManyRequestsError";
 import { UnprocessableError } from "../shared/errors/UnprocessableError";
 import { InvalidArgumentError } from "../shared/errors/InvalidArgumentError";
 import { NotFoundError } from "../shared/errors/NotFoundError";
@@ -69,6 +70,10 @@ export function mapDomainErrorStatus({ error, set }: ErrorHookContext): void {
 
 	if (error instanceof PaymentRequiredError) {
 		set.status = 402;
+	}
+
+	if (error instanceof TooManyRequestsError) {
+		set.status = 429;
 	}
 }
 

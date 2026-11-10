@@ -59,7 +59,7 @@ src/modules/<feature>/
 - Pass time in (`now: Date`) instead of calling `new Date()` inside the use case.
 - Expected failures throw the shared errors from `src/shared/errors/`
   (`NotFoundError`, `ConflictError`, `UnprocessableError`, `ForbiddenError`,
-  `InvalidArgumentError`, `AuthenticationError`, `PaymentRequiredError`).
+  `InvalidArgumentError`, `AuthenticationError`, `PaymentRequiredError`, `TooManyRequestsError`).
   `mapDomainErrorStatus` in `src/server/server.ts` maps them to HTTP status codes. A plain
   `Error` becomes a 500. Never set status codes from a use case.
 - Check existence yourself and throw `NotFoundError` instead of relying on
