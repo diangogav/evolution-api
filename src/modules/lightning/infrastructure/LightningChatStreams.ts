@@ -158,6 +158,9 @@ export class LightningChatStreams {
 		}
 		signal.addEventListener("abort", close);
 
+		// Bun sends the response headers with the first body bytes, so a stream with nothing
+		// to replay would leave the reader's fetch pending until the first event or heartbeat.
+		write(formatSseComment("open"));
 		for (const message of replayed.messages) deliver({ type: "message", message });
 		if (replayed.truncated) {
 			write(formatSseEvent({ event: "reset", data: "{}" }));
