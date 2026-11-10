@@ -36,7 +36,10 @@ import {
 	NewLightningTournament,
 } from "../../../../../src/modules/lightning/domain/LightningTournament";
 import { LightningTournamentRepository } from "../../../../../src/modules/lightning/domain/LightningTournamentRepository";
-import { PlayerDirectory } from "../../../../../src/modules/lightning/domain/PlayerDirectory";
+import {
+	ChatAuthor,
+	PlayerDirectory,
+} from "../../../../../src/modules/lightning/domain/PlayerDirectory";
 import type {
 	DuelReservation,
 	ReservationStore,
@@ -395,6 +398,14 @@ export class World {
 	readonly players: PlayerDirectory = {
 		usernamesOf: async (ids) =>
 			new Map(ids.filter((id) => USERNAMES.has(id)).map((id) => [id, USERNAMES.get(id) as string])),
+		authorsOf: async (ids) =>
+			new Map(
+				ids.flatMap((id): [string, ChatAuthor][] => {
+					if (id === ADMIN) return [[id, { username: "admin", admin: true }]];
+					const username = USERNAMES.get(id);
+					return username ? [[id, { username, admin: false }]] : [];
+				}),
+			),
 	};
 
 	readonly legality: DeckLegalityChecker = { check: async () => this.legal };
