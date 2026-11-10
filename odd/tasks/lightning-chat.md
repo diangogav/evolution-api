@@ -18,8 +18,8 @@ Design: `docs/design/lightning-chat.md` (written 2026-11-10; not yet reviewed).
 
 | ID | Repo | Task | S# | Route | Risk | Status | Commit |
 |---|---|---|---|---|---|---|---|
-| T1 | api | Migration `AddLightningChat…` (`lightning_chat_messages`, CHECK, index, FK cascade); domain `LightningChatMessage` (body rules) and repository port; Postgres repository (insert, page before id, after id with cap, soft delete) | S3 | delegated | 1 persisted schema (additive) | pending | |
-| T2 | api | `TooManyRequestsError` mapped to 429; Redis rate limiter port and adapter | S6 | delegated | 3 shared error map (additive) | pending | |
+| T1 | api | Migration `AddLightningChat…` (`lightning_chat_messages`, CHECK, index, FK cascade); domain `LightningChatMessage` (body rules) and repository port; Postgres repository (insert, page before id, after id with cap, soft delete) | S3 | delegated | 1 persisted schema (additive) | done | fe1d1d3 |
+| T2 | api | `TooManyRequestsError` mapped to 429; Redis rate limiter port and adapter | S6 | delegated | 3 shared error map (additive) | done | be822ae |
 | T3 | api | Use cases `PostLightningChatMessage` (tournament state, entrant or admin, rate limit, insert, publish), `GetLightningChatHistory`, `DeleteLightningChatMessage`; `LightningChatPublisher` port | S2, S3, S6 | delegated | none | pending | |
 | T4 | api | Redis fan-out: publisher on the shared client, `LightningChatHub` with its own subscriber connection, per-tournament local registry, subscribe on first stream, unsubscribe on last | S5 | delegated | 4 concurrency (subscribe/unsubscribe races) | pending | |
 | T5 | api | Routes: history, post, admin delete, SSE stream (replay + buffered live events, heartbeat, headers, stream limits); TypeBox schemas and OpenAPI | S4, S7 | delegated | 3 shared contract (additive) | pending | |
