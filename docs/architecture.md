@@ -2,7 +2,7 @@
 
 Evolution API is the backend for the Evolution Yu-Gi-Oh! platform: player accounts, ranked play and tiers, cosmetics, and moderation. It follows Hexagonal Architecture (ports and adapters) with a plain composition root — there is no dependency-injection container.
 
-Tournaments were removed from this API (2026-09): the shared schema still owns the `lightning_*` and `tournaments` tables, but they now belong to the game server, not to this codebase.
+The bracket tournaments module was removed from this API (2026-09). Lightning tournaments came back as an API-owned module (`lightning`) on top of reserved duels; its `lightning_*` tables live in the cosmetics DataSource (see [design/lightning-tournaments.md](design/lightning-tournaments.md)).
 
 ## Stack
 
@@ -47,6 +47,7 @@ Modules that exist today (`src/modules/*`):
 | `entitlements` | What cosmetics a user has access to, and granting them. |
 | `event-run` | Seasonal event gauntlets: the event catalog, runs, event duels and their worker. |
 | `event-stats` | Per-event run, wave, deck and player stats for the backoffice. |
+| `lightning` | Lightning tournaments: short arenas that pair idle players continuously by score, one reserved duel per pairing, with standings, season ranking and prizes, and their worker (see `design/lightning-tournaments.md`). |
 | `loadout` | A player's equipped cosmetics — own view and public view. |
 | `match` | Match history retrieval. |
 | `player-reports` | Private opponent reports with server match evidence, rolling quota and audited admin reviews. See [player reports](player-reports.md). |
@@ -107,6 +108,7 @@ Routers (`src/server/routes/`) and `src/server/composition/` are the composition
 | `eventsRouter` | `/events` | `src/server/routes/event-run-router.ts` |
 | `eventRunsRouter` | `/event-runs` | `src/server/routes/event-run-router.ts` |
 | `communityDecksRouter` | `/community-decks` | `src/server/routes/community-decks-router.ts` |
+| `lightningRouter` | `/lightning` | `src/server/routes/lightning-router.ts` |
 
 ## Data
 
@@ -114,12 +116,12 @@ Both `DataSource`s point at the same Postgres instance but track migrations inde
 
 | DataSource | File | Scope | Migrations table |
 | --- | --- | --- | --- |
-| Shared (evolution-types) | `src/evolution-types/src/data-source.ts` | Users, matches, tournaments, stats, bans, achievements, ratings, points ledger, lightning tournaments/ranking | `migrations` (run from the `evolution-types` package) |
-| Cosmetics | `src/cosmetics-data-source.ts` | Cosmetics, entitlements, user and bot loadouts, user emote bars, rewards (essence ledger, missions, claims, projections) | `cosmetics_migrations`, migrations in `src/migrations/` |
+| Shared (evolution-types) | `src/evolution-types/src/data-source.ts` | Users, matches, tournaments, stats, bans, achievements, ratings, points ledger, reserved duel records | `migrations` (run from the `evolution-types` package) |
+| Cosmetics | `src/cosmetics-data-source.ts` | Cosmetics, entitlements, user and bot loadouts, user emote bars, rewards (essence ledger, missions, claims, projections), event runs, lightning tournaments (entries, games, results, season rankings) | `cosmetics_migrations`, migrations in `src/migrations/` |
 
 `src/evolution-types/` is the schema package shared by this API and EDOpro-server-ts, vendored by both as a git submodule. Its entities and migrations change in the evolution-types repository and reach this API by bumping the submodule; they are never edited inside this checkout. Its migrations run with the package's own `migration:run`. The cosmetics `DataSource` declares its foreign key to `users(id)` in raw SQL inside its own migration, so it never manages the shared `users` table.
 
-Module-to-DataSource mapping: `catalog`, `loadout`, `emote-bar`, `entitlements`, `community-decks`, `event-run`, `event-stats`, `player-reports`, and `rewards` use the cosmetics `DataSource` (`rewards` also reads matches and achievements from the shared schema through its `*Source` adapters; `user`'s `UserDirectoryPostgresRepository` reads usernames from the shared `users` table; `event-run`, `event-stats` and `reserved-duel` query through `src/shared/persistence/runQuery.ts`). Every other module that touches Postgres (`activity-stats`, `user`, `achievements`, `match`, `match-annulment`, `points-ledger`, `rating`, `stats`, `tiers`, `ban-list`) uses the shared `evolution-types` `DataSource`. `ticket` uses Redis, not Postgres. Both `DataSource`s are initialized at startup in `src/index.ts`.
+Module-to-DataSource mapping: `catalog`, `loadout`, `emote-bar`, `entitlements`, `community-decks`, `event-run`, `event-stats`, `lightning`, `player-reports`, `reserved-duel`, and `rewards` use the cosmetics `DataSource` (`rewards` also reads matches and achievements from the shared schema through its `*Source` adapters; `user`'s `UserDirectoryPostgresRepository` reads usernames from the shared `users` table; `event-run`, `event-stats`, `lightning` and `reserved-duel` query through `src/shared/persistence/runQuery.ts`, and `lightning` reads usernames and bans from the shared tables in place). Every other module that touches Postgres (`activity-stats`, `user`, `achievements`, `match`, `match-annulment`, `points-ledger`, `rating`, `stats`, `tiers`, `ban-list`) uses the shared `evolution-types` `DataSource`. `ticket` uses Redis, not Postgres. Both `DataSource`s are initialized at startup in `src/index.ts`.
 
 ## Errors
 
@@ -153,7 +155,7 @@ new Elysia({ prefix: "/me/missions" }).guard({}, (app) =>
 );
 ```
 
-`requireUser` applies only to the routes inside that guard. **`user-router.ts`** (its authenticated, non-admin endpoints), **`ticket-router.ts`**, **`me-cosmetics-router.ts`**, **`loadout-router.ts`**, **`emote-bar-router.ts`**, **`missions-router.ts`**, **`shop-router.ts`**, **`event-run-router.ts`** and **`player-reports-router.ts`** use it. Public reads (`cosmetics-router.ts`, `public-loadout-router.ts`, `bot-loadout-router.ts`, `public-emote-bar-router.ts`, `achievements-router.ts`, `community-decks-router.ts`) have no token to check. Admin routes (`admin-*-router.ts`, the admin half of `player-reports-router.ts`, and the ban endpoints of `user-router.ts`) use `bearer()` with `adminAuthorizer` instead, and stay outside `requireUser` so an admin can act on a banned user.
+`requireUser` applies only to the routes inside that guard. **`user-router.ts`** (its authenticated, non-admin endpoints), **`ticket-router.ts`**, **`me-cosmetics-router.ts`**, **`loadout-router.ts`**, **`emote-bar-router.ts`**, **`missions-router.ts`**, **`shop-router.ts`**, **`event-run-router.ts`**, **`player-reports-router.ts`** and the player routes of **`lightning-router.ts`** use it. Public reads (`cosmetics-router.ts`, `public-loadout-router.ts`, `bot-loadout-router.ts`, `public-emote-bar-router.ts`, `achievements-router.ts`, `community-decks-router.ts`, and the list, detail and ranking of `lightning-router.ts`) have no token to check. Admin routes (`admin-*-router.ts`, the admin half of `player-reports-router.ts`, create and cancel in `lightning-router.ts`, and the ban endpoints of `user-router.ts`) use `bearer()` with `adminAuthorizer` instead, and stay outside `requireUser` so an admin can act on a banned user.
 
 ## Workers
 
@@ -163,6 +165,7 @@ Background loops run in-process when their env flag is `true`, or standalone wit
 | --- | --- | --- | --- |
 | Rewards (match results → mission progress and essence) | `src/modules/rewards/infrastructure/buildRewardsWorker.ts` | `src/index.ts` | `REWARDS_WORKER_ENABLED` |
 | Event runs (applies unfetched duel results, voids stale duels) | `src/server/composition/buildEventRun.ts` | `Server.start()` in `src/server/server.ts` | `EVENT_RUN_WORKER_ENABLED` |
+| Lightning tournaments (clock transitions, applying duel records, pairing, completion) | `src/server/composition/buildLightning.ts` | `Server.start()` in `src/server/server.ts`; `src/worker.ts` only when the flag is set | `LIGHTNING_WORKER_ENABLED` |
 | Community decks (YGOPRODeck sync) | `src/modules/community-decks/infrastructure/buildCommunityDecks.ts` | `Server.start()` in `src/server/server.ts` | `COMMUNITY_DECKS_WORKER_ENABLED` |
 
 ## External services

@@ -125,6 +125,7 @@ Trigger: the worker tick (every 5 s: games `pending` whose `reserved_duels.ended
 | `abandoned`, `started_at` null, `abandoned_by_seat = s` (`no_show`, lobby leave) | `no_show`: no points; seat `s` gets `no_shows++` and `presence = away`; the other seat `idle` | away player must click "I'm back" (`POST …/entries/me/resume`); `no_shows ≥ 3` → entry `removed` |
 | `abandoned`, `started_at` null, no seat (`room_closed`, `server_restart`) | `void`: nothing counted | both `idle` |
 | no `ended_at`, stale | `void`, alert logged | both `idle` |
+| no row at all 3 minutes after issue (nobody joined) | the reservation is revoked first; `revoked` or `gone` → `no_show` for both seats (`reason: unclaimed`); `in_use` → still pending | both `away` with a strike |
 | any record while the tournament is `finishing` or later | same scoring, but entries are not returned to `idle` (nothing pairs anyway) | — |
 
 The API also revokes the reservation on `void` and `no_show` so a late claim cannot start a duel the tournament has forgotten; `in_use` means the room is live and the record will arrive, so the game stays `pending`.
@@ -155,7 +156,7 @@ Default `points_by_position`: 1st 10, 2nd 7, 3rd 5, 4th 3, every other participa
 | POST | `/lightning/{id}/entries` | `{ deck: { main, extra, side } }`; 422 illegal deck or full; 409 already entered |
 | DELETE | `/lightning/{id}/entries/me` | withdraw |
 | POST | `/lightning/{id}/entries/me/pause` / `resume` | presence |
-| GET | `/lightning/{id}/me` | applies the caller's pending game first, then `{ entry, state: idle \| paired \| playing \| away, game: { password, seat, opponent } \| null, standings position }` |
+| GET | `/lightning/{id}/me` | applies the caller's pending game first, then `{ tournament, players, entry, state: idle \| paired \| playing \| away, game: { reservationId, password, seat, roomId, opponent } \| null, lastGame, position }`; `entry` and `state` are null for a player who did not enter |
 | GET | `/lightning/rankings?season=` | season ranking from `lightning_rankings` |
 | POST | `/lightning` (admin) | create: name, format, windows, turn time, min/max, point tables |
 | POST | `/lightning/{id}/cancel` (admin) | cancel with reason |
