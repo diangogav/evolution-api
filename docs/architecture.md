@@ -47,7 +47,7 @@ Modules that exist today (`src/modules/*`):
 | `entitlements` | What cosmetics a user has access to, and granting them. |
 | `event-run` | Seasonal event gauntlets: the event catalog, runs, event duels and their worker. |
 | `event-stats` | Per-event run, wave, deck and player stats for the backoffice. |
-| `lightning` | Lightning tournaments: short arenas that pair idle players continuously by score, or Swiss rounds (see `design/lightning-swiss.md`), one reserved duel per pairing, with standings, season ranking and prizes, and their worker (see `design/lightning-tournaments.md`). |
+| `lightning` | Lightning tournaments: short arenas that pair idle players continuously by score, or Swiss rounds (see `design/lightning-swiss.md`), one reserved duel per pairing, with standings, season ranking and prizes, and their worker (see `design/lightning-tournaments.md`); and a chat per tournament, posted over HTTP and read as an SSE stream fanned out through Redis pub/sub (see `design/lightning-chat.md`). |
 | `loadout` | A player's equipped cosmetics — own view and public view. |
 | `match` | Match history retrieval. |
 | `player-reports` | Private opponent reports with server match evidence, rolling quota and audited admin reviews. See [player reports](player-reports.md). |
@@ -156,7 +156,7 @@ new Elysia({ prefix: "/me/missions" }).guard({}, (app) =>
 );
 ```
 
-`requireUser` applies only to the routes inside that guard. **`user-router.ts`** (its authenticated, non-admin endpoints), **`ticket-router.ts`**, **`me-cosmetics-router.ts`**, **`loadout-router.ts`**, **`emote-bar-router.ts`**, **`missions-router.ts`**, **`shop-router.ts`**, **`event-run-router.ts`**, **`player-reports-router.ts`** and the player routes of **`lightning-router.ts`** use it. Public reads (`cosmetics-router.ts`, `public-loadout-router.ts`, `bot-loadout-router.ts`, `public-emote-bar-router.ts`, `achievements-router.ts`, `community-decks-router.ts`, and the list, detail and ranking of `lightning-router.ts`) have no token to check. Admin routes (`admin-*-router.ts`, the admin half of `player-reports-router.ts`, create and cancel in `lightning-router.ts`, and the ban endpoints of `user-router.ts`) use `bearer()` with `adminAuthorizer` instead, and stay outside `requireUser` so an admin can act on a banned user.
+`requireUser` applies only to the routes inside that guard. **`user-router.ts`** (its authenticated, non-admin endpoints), **`ticket-router.ts`**, **`me-cosmetics-router.ts`**, **`loadout-router.ts`**, **`emote-bar-router.ts`**, **`missions-router.ts`**, **`shop-router.ts`**, **`event-run-router.ts`**, **`player-reports-router.ts`** and the player routes of **`lightning-router.ts`** use it. Public reads (`cosmetics-router.ts`, `public-loadout-router.ts`, `bot-loadout-router.ts`, `public-emote-bar-router.ts`, `achievements-router.ts`, `community-decks-router.ts`, and the list, detail and ranking of `lightning-router.ts`) have no token to check. Admin routes (`admin-*-router.ts`, the admin half of `player-reports-router.ts`, create and cancel in `lightning-router.ts` (its chat delete calls `adminAuthorizer` inside the `requireUser` guard), and the ban endpoints of `user-router.ts`) use `bearer()` with `adminAuthorizer` instead, and stay outside `requireUser` so an admin can act on a banned user.
 
 ## Workers
 
@@ -177,7 +177,7 @@ Env var names only — never read `.env` values, only `src/config/index.ts`.
 | --- | --- | --- |
 | Email (Resend) | Sends password-reset and account emails from `user-router.ts` (`ResendEmailSender`, `src/shared/email/infrastructure/ResendEmailSender.ts`). | `RESEND_API_KEY`, `RESEND_FROM_EMAIL` |
 | R2 (Cloudflare) | Signs URLs and stores cosmetic asset files (`src/modules/assets/infrastructure/createR2AssetUrlSigner.ts`, `createR2CosmeticAssetStorage.ts`). | `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `R2_ENDPOINT`, `R2_SIGNED_URL_TTL` |
-| Redis | Backs ranked game tickets (`src/modules/ticket/infrastructure/BunRedisRankedTicketRepository.ts`). | `REDIS_URL` |
+| Redis | Backs ranked game tickets (`src/modules/ticket/infrastructure/BunRedisRankedTicketRepository.ts`), duel reservations (`src/modules/reserved-duel/infrastructure/BunRedisReservationStore.ts`) and the lightning chat rate limit and fan-out; the chat subscriptions use a second connection per instance (`src/modules/lightning/infrastructure/LightningChatHub.ts`). | `REDIS_URL` |
 
 ## Swagger and the OpenAPI ratchet
 

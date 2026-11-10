@@ -22,7 +22,7 @@ Design: `docs/design/lightning-chat.md` (written 2026-11-10; not yet reviewed).
 | T2 | api | `TooManyRequestsError` mapped to 429; Redis rate limiter port and adapter | S6 | delegated | 3 shared error map (additive) | done | be822ae |
 | T3 | api | Use cases `PostLightningChatMessage` (tournament state, entrant or admin, rate limit, insert, publish), `GetLightningChatHistory`, `DeleteLightningChatMessage`; `LightningChatPublisher` port | S2, S3, S6 | delegated | none | done | f310d82 |
 | T4 | api | Redis fan-out: publisher on the shared client, `LightningChatHub` with its own subscriber connection, per-tournament local registry, subscribe on first stream, unsubscribe on last | S5 | delegated | 4 concurrency (subscribe/unsubscribe races) | done | 55f73c9 |
-| T5 | api | Routes: history, post, admin delete, SSE stream (replay + buffered live events, heartbeat, headers, stream limits); TypeBox schemas and OpenAPI | S4, S7 | delegated | 3 shared contract (additive) | pending | |
+| T5 | api | Routes: history, post, admin delete, SSE stream (replay + buffered live events, heartbeat, headers, stream limits); TypeBox schemas and OpenAPI | S4, S7 | delegated | 3 shared contract (additive) | done | 4df1612, 7221e82 |
 | T6 | api | Docs: architecture index, operations note (one extra Redis connection per instance) | S4 | delegated | none | pending | |
 | T7 | client | `ChatMessageList` presentational (props instead of the global `chatStore`), duel chat unchanged | S7 | delegated | 2 shared UI | pending | |
 | T8 | client | Chat ports, HTTP API, `fetch`-based SSE feed with backoff and `Last-Event-ID`, store, lazy panel in the tournament page | S4, S7 | delegated | none | pending | |
