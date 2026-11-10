@@ -18,7 +18,11 @@ export function buildRewardsWorker(logger: Logger): RewardsWorker {
 		new MissionCatalogPostgresRepository(),
 		new CosmeticsUnitOfWork(),
 		{ batchSize: config.rewardsWorker.batchSize, lagMs: config.rewardsWorker.lagMs },
-		{ sources: [new UserAchievementSource()], ledger: new EssenceLedgerPostgresRepository() },
+		{
+			sources: [new UserAchievementSource()],
+			ledger: new EssenceLedgerPostgresRepository(),
+			windowMs: config.rewardsWorker.achievementWindowHours * 3_600_000,
+		},
 	);
 	return new RewardsWorker(tick, config.rewardsWorker.intervalMs, logger);
 }

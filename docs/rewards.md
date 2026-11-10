@@ -10,7 +10,7 @@ Essence is never stored as a number. It is the sum of a user's rows in `essence_
 | --- | --- | --- | --- |
 | `mission` | `<mission_code>:<period_key>` | the mission's reward amount | claim endpoint |
 | `daily_bonus` | `<day key>` | 30, once all three daily missions of a day are claimed | claim endpoint |
-| `achievement` | `user_achievements.id` | the achievement's `essence_reward` | worker |
+| `achievement` | `user_achievements.id` | the achievement's `essence_reward` | worker; lightning completion for the `LIGHTNING_*` rows it writes |
 | `purchase` | `cosmetics.id` | minus the cosmetic's `essence_price` | shop endpoint |
 | `adjustment` | free text | any | manual repairs |
 | `event_run` | `event:<event_id>:tier:<waves>` | the event prize tier's essence, once per player and tier | event run apply (`/event-runs/me`, duel request, event run worker) |
@@ -49,18 +49,29 @@ The catalog is data: table `mission_catalog`, seeded by migration and editable w
 
 ## The worker
 
-The game server writes match results straight to the shared Postgres (`matches`, `duels`, `user_achievements`); this API never ingests them. The one exception is the lightning module, which writes the `LIGHTNING_*` rows of `user_achievements` when it completes a tournament; the worker credits them like the server's. The rewards worker reads those tables as an outbox:
+The game server writes match results straight to the shared Postgres (`matches`, `duels`, `user_achievements`); this API never ingests them. The one exception is the lightning module, which writes the `LIGHTNING_*` rows of `user_achievements` when it completes a tournament and credits their essence in that same transaction, under the key the worker would use (see [Achievements](#achievements)). The rewards worker reads those tables as an outbox:
 
 1. Every few seconds (`REWARDS_WORKER_INTERVAL_MS`) it opens one transaction and tries a transaction-scoped advisory lock. If another instance holds it, the tick is skipped, so the worker is safe to enable on several API instances.
-2. For each **source** it reads its cursor row in `rewards_cursor`, then fetches the next batch of rows ordered by `(created_at, id)` after the cursor and older than `REWARDS_WORKER_LAG_MS`. The lag keeps a match whose duels are still being written from being read half-complete.
+2. For each **match source** it reads its cursor row in `rewards_cursor`, then fetches the next batch of rows ordered by `(created_at, id)` after the cursor and older than `REWARDS_WORKER_LAG_MS`. The lag keeps a match whose duels are still being written from being read half-complete.
 3. Each row becomes facts for one user and goes through the pure rules engine against that user's stored progress and state. Progress rows (`mission_progress`), per-user state (`user_reward_state`: last format, live ranked streak) and the cursor are written in the same transaction.
-4. Commit. If the process dies first, nothing moved and the next tick repeats the batch.
+4. In the same transaction it credits one batch of achievement essence (see [Achievements](#achievements)).
+5. Commit. If the process dies first, nothing moved and the next tick repeats the batch.
 
-Sources today: `matches` (ranked, one row per player per match), `unranked_matches` (one row per match that fans out into one fact per registered user on either side; guests carry no id, so wins against them never count) and `user_achievements` (each new row credits essence).
+Match sources today: `matches` (ranked, one row per player per match) and `unranked_matches` (one row per match that fans out into one fact per registered user on either side; guests carry no id, so wins against them never count). `user_achievements` is read without a cursor, as described below.
 
 The cursor is stored as UTC text with microseconds. Postgres timestamps keep microseconds and a JS `Date` keeps milliseconds; a cursor that went through a `Date` would re-read the last processed row every tick.
 
 It runs inside the API process when `REWARDS_WORKER_ENABLED=true` (`src/index.ts`) or standalone with `bun run src/worker.ts`. Variables are listed in [operations.md](operations.md#rewards-worker).
+
+### Achievements
+
+Each `user_achievements` row whose live catalog entry has an `essence_reward` above 0 is credited once, as kind `achievement` keyed by the row id.
+
+The worker does not keep a cursor for this table. A cursor on `(unlocked_at, id)` loses any row committed after the cursor already moved past its `unlocked_at`, which happens whenever a writer stamps the time before a long transaction commits. Instead, every tick runs an anti-join (`src/modules/rewards/infrastructure/UserAchievementSource.ts`): rows joined to a live catalog entry that pays essence, with no `essence_ledger` row for `(user_id, 'achievement', id)`, unlocked within the last `REWARDS_ACHIEVEMENT_WINDOW_HOURS` (default 168, one week) and older than `REWARDS_WORKER_LAG_MS`, oldest first, at most `REWARDS_WORKER_BATCH_SIZE` per tick. The ledger's unique `(user_id, kind, reference_key)` index serves the `NOT EXISTS` probe and keeps the credit idempotent.
+
+The window bounds the read, not the guarantee: a row committed later than the window after its `unlocked_at` is no longer looked at and needs a manual `adjustment` (or a run with a wider window). The `user_achievements` row left in `rewards_cursor` by earlier versions is no longer read or written; it is harmless and can be deleted.
+
+Lightning completion is the exception: it credits the `LIGHTNING_*` rows it inserts in the same transaction, with the same entry the worker builds (`achievementCredit`), so the unlock and its essence commit together. When the worker reaches such a row the ledger's unique index skips its credit.
 
 ### The rules engine contract
 
@@ -74,7 +85,7 @@ Because it is pure, it is tested exhaustively without a database, and a backfill
 
 ### Backfill and repair
 
-The worker is idempotent: progress upserts are keyed, ledger rows are unique, and the cursor only moves inside a committed transaction. To reprocess from a point in time, stop the worker, move or delete the cursor row and start it again:
+The worker is idempotent: progress upserts are keyed, ledger rows are unique, and the cursor only moves inside a committed transaction. Achievement essence needs no repair step: any uncredited row inside the window is paid on the next tick. To reprocess matches from a point in time, stop the worker, move or delete the cursor row and start it again:
 
 ```sql
 -- Reprocess every match since a date (UTC)
@@ -100,5 +111,5 @@ Reprocessing recomputes `mission_progress` values from the stored state, so run 
 | `mission_progress` | value and `completed_at` per user, mission and period (written by the worker) |
 | `mission_claims` | one row per claimed mission, user and period (written by the claim endpoint) |
 | `user_reward_state` | last format played and live ranked streak per user |
-| `rewards_cursor` | how far each source was drained |
+| `rewards_cursor` | how far each match source was drained |
 | `cosmetics.essence_price` | shop price |

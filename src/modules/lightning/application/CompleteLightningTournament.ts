@@ -1,6 +1,6 @@
 import { Logger } from "../../../shared/logger/domain/Logger";
 import type { QueryableManager } from "../../../shared/persistence/QueryableManager";
-import { essenceLedgerEntry, EssenceLedgerRepository } from "../../rewards";
+import { achievementCredit, essenceLedgerEntry, EssenceLedgerRepository } from "../../rewards";
 import { computeStandings, Standing } from "../domain/computeStandings";
 import {
 	CatalogLightningAchievement,
@@ -30,9 +30,11 @@ export function essenceReferenceKey(tournamentId: string, userId: string): strin
  * season points, essence and achievements; anyone else finds nothing to do. The ledger's
  * unique movement key makes a retried essence credit harmless on top of that.
  *
- * Achievements are written to the shared `user_achievements`, so the rewards worker pays
- * their essence like any other unlock. A code missing from the catalog (its migration not
- * run yet) is skipped and logged: it must never keep a tournament from completing.
+ * Achievements are written to the shared `user_achievements` and their essence is credited
+ * right after each insert, on the same transaction and under the very ledger key the
+ * rewards worker uses, so an unlock and its essence commit together and the worker finds
+ * nothing left to pay. A code missing from the catalog (its migration not run yet) is
+ * skipped and logged: it must never keep a tournament from completing.
  */
 export class CompleteLightningTournament {
 	constructor(
@@ -156,7 +158,7 @@ export class CompleteLightningTournament {
 		const unlocked: UnlockedLightningAchievement[] = [];
 		for (const achievement of earned) {
 			if (held.has(achievement.id)) continue;
-			await this.achievements.grant(
+			const rowId = await this.achievements.grant(
 				{
 					userId: standing.userId,
 					achievementId: achievement.id,
@@ -165,6 +167,12 @@ export class CompleteLightningTournament {
 				},
 				manager,
 			);
+			const credit = achievementCredit({
+				sourceId: rowId,
+				userId: standing.userId,
+				essenceReward: achievement.essenceReward,
+			});
+			if (credit) await this.ledger.append(credit, manager);
 			unlocked.push({
 				code: achievement.code,
 				name: achievement.name,

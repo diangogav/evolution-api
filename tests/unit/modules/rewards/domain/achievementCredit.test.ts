@@ -4,7 +4,6 @@ import { achievementCredit } from "../../../../../src/modules/rewards/domain/ach
 
 const unlock = {
 	sourceId: "ua-1",
-	createdAt: "2026-10-23 10:00:05.000001",
 	userId: "user-1",
 	essenceReward: 50,
 };

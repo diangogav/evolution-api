@@ -1,74 +1,44 @@
-import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from "bun:test";
+import { describe, expect, it, mock } from "bun:test";
 
-import { dataSource } from "../../../../../src/evolution-types/src/data-source";
 import { UserAchievementSource } from "../../../../../src/modules/rewards/infrastructure/UserAchievementSource";
 
+const compact = (sql: string) => sql.replace(/\s+/g, " ");
+
+function managerReturning(...results: unknown[]) {
+	const queue = [...results];
+	return { query: mock(async (_sql: string, _params?: unknown[]) => queue.shift() ?? []) };
+}
+
+const window = {
+	notBefore: new Date("2026-10-16T10:01:00Z"),
+	notAfter: new Date("2026-10-23T10:00:55Z"),
+};
+
 describe("UserAchievementSource", () => {
-	let querySpy: ReturnType<typeof spyOn>;
+	it("maps uncredited unlocks with their catalog essence reward", async () => {
+		const manager = managerReturning([{ sourceId: "ua-1", userId: "user-1", essenceReward: "50" }]);
 
-	beforeEach(() => {
-		querySpy = spyOn(dataSource, "query").mockResolvedValue([]);
+		const rows = await new UserAchievementSource().fetchUncredited(window, 100, manager);
+
+		expect(rows).toEqual([{ sourceId: "ua-1", userId: "user-1", essenceReward: 50 }]);
 	});
 
-	afterEach(() => {
-		mock.restore();
-	});
+	it("reads paying unlocks inside the window that have no achievement ledger row, oldest first, on the tick's transaction", async () => {
+		const manager = managerReturning([]);
 
-	it("maps unlocked achievements with their catalog essence reward, keeping unlocked_at as microsecond UTC text", async () => {
-		querySpy.mockResolvedValueOnce([
-			{
-				sourceId: "ua-1",
-				createdAt: "2026-10-23 10:00:05.123456",
-				userId: "user-1",
-				essenceReward: 50,
-			},
-		]);
+		await new UserAchievementSource().fetchUncredited(window, 50, manager);
 
-		const rows = await new UserAchievementSource().fetchAfter(
-			{ lastCreatedAt: null, lastId: null },
-			100,
-			new Date("2026-10-23T10:01:00Z"),
+		const [sql, params] = manager.query.mock.calls[0];
+		const query = compact(sql);
+		expect(query).toContain("FROM user_achievements ua");
+		expect(query).toContain(
+			"JOIN achievements a ON a.id = ua.achievement_id AND a.deleted_at IS NULL AND a.essence_reward > 0",
 		);
-
-		expect(rows).toEqual([
-			{
-				sourceId: "ua-1",
-				createdAt: "2026-10-23 10:00:05.123456",
-				userId: "user-1",
-				essenceReward: 50,
-			},
-		]);
-	});
-
-	it("drains user_achievements joined to the live catalog in (unlocked_at, id) order after the cursor and within the lag bound", async () => {
-		await new UserAchievementSource().fetchAfter(
-			{ lastCreatedAt: "2026-10-23 10:00:05.123456", lastId: "ua-1" },
-			50,
-			new Date("2026-10-23T10:01:00Z"),
+		expect(query).toContain("ua.unlocked_at >= $1::timestamp AND ua.unlocked_at <= $2::timestamp");
+		expect(query).toContain(
+			"NOT EXISTS ( SELECT 1 FROM essence_ledger el WHERE el.user_id = ua.user_id AND el.kind = 'achievement' AND el.reference_key = ua.id::text )",
 		);
-
-		const [sql, params] = querySpy.mock.calls[0] as [string, unknown[]];
-		expect(sql).toContain("FROM user_achievements ua");
-		expect(sql).toContain(
-			"JOIN achievements a ON a.id = ua.achievement_id AND a.deleted_at IS NULL",
-		);
-		expect(sql).toContain('a.essence_reward AS "essenceReward"');
-		expect(sql).toContain("to_char(ua.unlocked_at, 'YYYY-MM-DD HH24:MI:SS.US')");
-		expect(sql).toContain("(ua.unlocked_at, ua.id) > ($1::timestamp, $2::uuid)");
-		expect(sql).toContain("ua.unlocked_at <= $3::timestamp");
-		expect(sql).toContain("ORDER BY ua.unlocked_at ASC, ua.id ASC");
-		expect(params).toEqual(["2026-10-23 10:00:05.123456", "ua-1", "2026-10-23 10:01:00.000", 50]);
-	});
-
-	it("passes a null cursor so the first drain starts from the beginning", async () => {
-		await new UserAchievementSource().fetchAfter(
-			{ lastCreatedAt: null, lastId: null },
-			10,
-			new Date(),
-		);
-
-		const [, params] = querySpy.mock.calls[0] as [string, unknown[]];
-		expect(params[0]).toBeNull();
-		expect(params[1]).toBeNull();
+		expect(query).toContain("ORDER BY ua.unlocked_at ASC, ua.id ASC LIMIT $3");
+		expect(params).toEqual(["2026-10-16 10:01:00.000", "2026-10-23 10:00:55.000", 50]);
 	});
 });

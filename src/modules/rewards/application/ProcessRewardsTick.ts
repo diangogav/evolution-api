@@ -18,9 +18,11 @@ export type TickOptions = {
 };
 
 // Achievement credit is optional wiring: without it the tick only projects missions.
+// `windowMs` bounds how far back an unlock is still looked for, so the read stays small.
 export type AchievementCrediting = {
 	sources: AchievementSource[];
 	ledger: EssenceLedgerRepository;
+	windowMs: number;
 };
 
 export type TickResult = {
@@ -28,10 +30,11 @@ export type TickResult = {
 	processed: Record<string, number>;
 };
 
-// One pass of the rewards worker: for every source, drain one batch past its cursor,
+// One pass of the rewards worker: for every match source, drain one batch past its cursor,
 // feed each match through the pure engine against the user's stored state, and persist
 // progress, state and cursor in a single transaction. Facts are applied in source order
-// per user, so streaks and "previous format" are exact.
+// per user, so streaks and "previous format" are exact. Achievements carry no cursor:
+// each tick credits a batch of the unlocks the ledger does not have yet.
 export class ProcessRewardsTick {
 	constructor(
 		private readonly sources: MatchSource[],
@@ -39,7 +42,11 @@ export class ProcessRewardsTick {
 		private readonly catalog: MissionCatalogRepository,
 		private readonly unitOfWork: RewardsUnitOfWork,
 		private readonly options: TickOptions,
-		private readonly achievements: AchievementCrediting = { sources: [], ledger: NO_LEDGER },
+		private readonly achievements: AchievementCrediting = {
+			sources: [],
+			ledger: NO_LEDGER,
+			windowMs: 0,
+		},
 	) {}
 
 	async run(now: Date): Promise<TickResult> {
@@ -52,7 +59,7 @@ export class ProcessRewardsTick {
 				counts[source.name] = await this.drain(source, missions, notAfter, manager);
 			}
 			for (const source of this.achievements.sources) {
-				counts[source.name] = await this.drainAchievements(source, notAfter, manager);
+				counts[source.name] = await this.creditAchievements(source, now, notAfter, manager);
 			}
 			return counts;
 		});
@@ -83,28 +90,25 @@ export class ProcessRewardsTick {
 		return batch.length;
 	}
 
-	// Each unlocked achievement is one idempotent ledger credit; the cursor moves with the
-	// batch so a row is read once and the ledger key guards the rest.
-	private async drainAchievements(
+	// Each unlock is one idempotent ledger credit. The source only returns what the ledger
+	// lacks, so the next tick resumes from whatever is still owed; a row another writer
+	// credits in between is skipped by the ledger key.
+	private async creditAchievements(
 		source: AchievementSource,
+		now: Date,
 		notAfter: Date,
 		manager: QueryableManager,
 	): Promise<number> {
-		const cursor = await this.projection.readCursor(source.name, manager);
-		const batch = await source.fetchAfter(cursor, this.options.batchSize, notAfter);
-		if (batch.length === 0) return 0;
-
+		const notBefore = new Date(now.getTime() - this.achievements.windowMs);
+		const batch = await source.fetchUncredited(
+			{ notBefore, notAfter },
+			this.options.batchSize,
+			manager,
+		);
 		for (const unlock of batch) {
 			const entry = achievementCredit(unlock);
 			if (entry) await this.achievements.ledger.append(entry, manager);
 		}
-
-		const last = batch[batch.length - 1];
-		await this.projection.advanceCursor(
-			source.name,
-			{ lastCreatedAt: last.createdAt, lastId: last.sourceId },
-			manager,
-		);
 		return batch.length;
 	}
 

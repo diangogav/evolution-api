@@ -4,7 +4,8 @@ import { EssenceLedgerEntry, essenceLedgerEntry } from "./EssenceLedgerEntry";
 // Essence paid for unlocking an achievement: its catalog essence reward, which is
 // independent from the ranked points. The ledger key is the user_achievements row id,
 // so re-reading the row can never credit it twice. An achievement with no essence
-// reward pays nothing and leaves no ledger row.
+// reward pays nothing and leaves no ledger row. The lightning module credits its own
+// unlocks with this same entry, so the worker reaching them later is a no-op.
 export function achievementCredit(unlock: UnlockedAchievement): EssenceLedgerEntry | null {
 	const delta = unlock.essenceReward;
 	if (delta <= 0) return null;

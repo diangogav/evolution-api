@@ -18,6 +18,7 @@ import { RewardsUnitOfWork } from "../../../../../src/modules/rewards/domain/Rew
 import { toUtcTimestamp } from "../../../../../src/modules/rewards/infrastructure/RankedMatchSource";
 import {
 	AchievementSource,
+	AchievementWindow,
 	UnlockedAchievement,
 } from "../../../../../src/modules/rewards/domain/AchievementSource";
 import { EssenceLedgerEntry } from "../../../../../src/modules/rewards/domain/EssenceLedgerEntry";
@@ -90,24 +91,33 @@ class FakeSource implements MatchSource {
 	}
 }
 
+// The anti-join the Postgres source runs: paying unlocks inside the window with no
+// achievement ledger row yet, oldest first.
 class FakeAchievementSource implements AchievementSource {
 	readonly name = "user_achievements";
-	constructor(private readonly rows: UnlockedAchievement[]) {}
+	readonly calls: Array<{ window: AchievementWindow; limit: number }> = [];
+	constructor(
+		readonly rows: Array<UnlockedAchievement & { unlockedAt: string }>,
+		private readonly ledger: FakeLedger,
+	) {}
 
-	async fetchAfter(
-		cursor: SourceCursor,
-		limit: number,
-		notAfter: Date,
-	): Promise<UnlockedAchievement[]> {
+	async fetchUncredited(window: AchievementWindow, limit: number): Promise<UnlockedAchievement[]> {
+		this.calls.push({ window, limit });
 		return this.rows
-			.filter((row) => row.createdAt <= toUtcTimestamp(notAfter))
-			.filter((row) =>
-				cursor.lastCreatedAt === null
-					? true
-					: row.createdAt > cursor.lastCreatedAt ||
-						(row.createdAt === cursor.lastCreatedAt && row.sourceId > (cursor.lastId ?? "")),
+			.filter((row) => row.essenceReward > 0)
+			.filter((row) => row.unlockedAt >= toUtcTimestamp(window.notBefore))
+			.filter((row) => row.unlockedAt <= toUtcTimestamp(window.notAfter))
+			.filter(
+				(row) =>
+					!this.ledger.entries.some(
+						(e) => e.kind === "achievement" && e.referenceKey === row.sourceId,
+					),
 			)
-			.slice(0, limit);
+			.sort(
+				(a, b) => a.unlockedAt.localeCompare(b.unlockedAt) || a.sourceId.localeCompare(b.sourceId),
+			)
+			.slice(0, limit)
+			.map(({ sourceId, userId, essenceReward }) => ({ sourceId, userId, essenceReward }));
 	}
 }
 
@@ -288,44 +298,120 @@ describe("ProcessRewardsTick", () => {
 		expect(projection.cursors.size).toBe(0);
 	});
 
-	it("credits essence for newly unlocked achievements in the same tick and advances their own cursor", async () => {
-		const unlocks: UnlockedAchievement[] = [
-			{
+	describe("achievements", () => {
+		const HOUR = 3_600_000;
+
+		function crediting(rows: Array<UnlockedAchievement & { unlockedAt: string }>, batchSize = 100) {
+			const projection = new FakeProjection();
+			const ledger = new FakeLedger();
+			const source = new FakeAchievementSource(rows, ledger);
+			const useCase = new ProcessRewardsTick(
+				[new FakeSource([])],
+				projection,
+				catalogRepository,
+				new FakeUnitOfWork(),
+				{ batchSize, lagMs: 5000 },
+				{ sources: [source], ledger, windowMs: 168 * HOUR },
+			);
+			return { projection, ledger, source, useCase };
+		}
+
+		it("credits each paying unlock once, keyed by its row, and keeps no cursor for it", async () => {
+			const { projection, ledger, useCase } = crediting([
+				{
+					sourceId: "ua-1",
+					unlockedAt: "2026-10-23 10:00:05.000001",
+					userId: "user-1",
+					essenceReward: 30,
+				},
+				{
+					sourceId: "ua-2",
+					unlockedAt: "2026-10-23 10:00:06.000001",
+					userId: "user-2",
+					essenceReward: 0,
+				},
+			]);
+
+			const result = await useCase.run(new Date("2026-10-23T10:01:00Z"));
+			const again = await useCase.run(new Date("2026-10-23T10:02:00Z"));
+
+			expect(result.processed).toEqual({ matches: 0, user_achievements: 1 });
+			expect(ledger.entries).toEqual([
+				{ userId: "user-1", kind: "achievement", referenceKey: "ua-1", delta: 30 },
+			]);
+			expect(projection.cursors.has("user_achievements")).toBe(false);
+			expect(again.processed).toEqual({ matches: 0, user_achievements: 0 });
+			expect(ledger.entries).toHaveLength(1);
+		});
+
+		it("still credits a row committed after later rows were already credited", async () => {
+			const { ledger, source, useCase } = crediting([
+				{
+					sourceId: "ua-2",
+					unlockedAt: "2026-10-23 10:00:30.000000",
+					userId: "user-2",
+					essenceReward: 40,
+				},
+			]);
+
+			await useCase.run(new Date("2026-10-23T10:01:00Z"));
+			// Stamped before ua-2 but committed after the tick that credited it.
+			source.rows.push({
 				sourceId: "ua-1",
-				createdAt: "2026-10-23 10:00:05.000001",
+				unlockedAt: "2026-10-23 10:00:10.000000",
 				userId: "user-1",
 				essenceReward: 30,
-			},
-			{
-				sourceId: "ua-2",
-				createdAt: "2026-10-23 10:00:06.000001",
-				userId: "user-2",
-				essenceReward: 0,
-			},
-		];
-		const projection = new FakeProjection();
-		const ledger = new FakeLedger();
-		const useCase = new ProcessRewardsTick(
-			[new FakeSource([])],
-			projection,
-			catalogRepository,
-			new FakeUnitOfWork(),
-			{ batchSize: 100, lagMs: 5000 },
-			{ sources: [new FakeAchievementSource(unlocks)], ledger },
-		);
+			});
+			const late = await useCase.run(new Date("2026-10-23T10:02:00Z"));
 
-		const result = await useCase.run(new Date("2026-10-23T10:01:00Z"));
-		const again = await useCase.run(new Date("2026-10-23T10:02:00Z"));
-
-		expect(result.processed).toEqual({ matches: 0, user_achievements: 2 });
-		expect(ledger.entries).toEqual([
-			{ userId: "user-1", kind: "achievement", referenceKey: "ua-1", delta: 30 },
-		]);
-		expect(projection.cursors.get("user_achievements")).toEqual({
-			lastCreatedAt: "2026-10-23 10:00:06.000001",
-			lastId: "ua-2",
+			expect(late.processed).toEqual({ matches: 0, user_achievements: 1 });
+			expect(ledger.entries.map((e) => e.referenceKey)).toEqual(["ua-2", "ua-1"]);
 		});
-		expect(again.processed).toEqual({ matches: 0, user_achievements: 0 });
-		expect(ledger.entries).toHaveLength(1);
+
+		it("asks for unlocks between the window's start and the lag bound, one batch at a time", async () => {
+			const rows = ["ua-1", "ua-2", "ua-3"].map((sourceId, i) => ({
+				sourceId,
+				unlockedAt: `2026-10-23 10:00:0${i}.000000`,
+				userId: "user-1",
+				essenceReward: 10,
+			}));
+			const { ledger, source, useCase } = crediting(rows, 2);
+
+			const first = await useCase.run(new Date("2026-10-23T10:01:00Z"));
+			const second = await useCase.run(new Date("2026-10-23T10:01:00Z"));
+
+			expect(source.calls[0]).toEqual({
+				window: {
+					notBefore: new Date("2026-10-16T10:01:00Z"),
+					notAfter: new Date("2026-10-23T10:00:55Z"),
+				},
+				limit: 2,
+			});
+			expect(first.processed.user_achievements).toBe(2);
+			expect(second.processed.user_achievements).toBe(1);
+			expect(ledger.entries.map((e) => e.referenceKey)).toEqual(["ua-1", "ua-2", "ua-3"]);
+		});
+
+		it("counts a row another writer credited in the meantime without crediting it twice", async () => {
+			const { ledger, useCase } = crediting([
+				{
+					sourceId: "ua-1",
+					unlockedAt: "2026-10-23 10:00:05.000001",
+					userId: "user-1",
+					essenceReward: 30,
+				},
+			]);
+			const append = ledger.append.bind(ledger);
+			// Lightning completion commits the same credit between the read and the append.
+			ledger.append = async (entry) => {
+				await append(entry);
+				return append(entry);
+			};
+
+			const result = await useCase.run(new Date("2026-10-23T10:01:00Z"));
+
+			expect(result.processed.user_achievements).toBe(1);
+			expect(ledger.entries).toHaveLength(1);
+		});
 	});
 });
