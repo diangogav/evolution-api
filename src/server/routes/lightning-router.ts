@@ -453,7 +453,7 @@ export function createLightningRouter(deps: LightningRouterDependencies) {
 						tags: ["Lightning"],
 						summary: "Get my lightning state",
 						description:
-							"What the waiting room polls (every 3 s while open). The player's finished game is applied first, so its result shows right away. `state` is the entry's presence: `paired` comes with `game` (room password, seat, opponent), `playing` once the duel started, `idle` while waiting, `away` after a pause or a missed room (never in Swiss). `lastGame` is the latest result while nothing is pending. `bye` is true when the player has the bye in the current Swiss round. `entry` is null when the player did not enter.",
+							"What the waiting room polls (every 3 s while open). The player's finished game is applied first, so its result shows right away. `state` is the entry's presence: `paired` comes with `game` (room password, seat, opponent), `playing` once the duel started, `idle` while waiting, `away` after a pause or a missed room (never in Swiss). `lastGame` is the latest result while nothing is pending. `bye` is true when the player has the bye in the current Swiss round. `entry` is null when the player did not enter. `ceremony` is the player's final result (position, record, season points, placement essence and the achievements this tournament unlocked) once the tournament is completed, and null before that or for a player without a result.",
 						security: [{ bearerAuth: [] }],
 						responses: {
 							200: jsonOk(MyLightningStateSchema, "The player's state", {
@@ -471,6 +471,7 @@ export function createLightningRouter(deps: LightningRouterDependencies) {
 								lastGame: null,
 								position: 4,
 								bye: false,
+								ceremony: null,
 							}),
 							...errorResponses(401, 403, 404),
 						},
@@ -521,6 +522,7 @@ export const lightningRouter = createLightningRouter({
 		buildApplyLightningGame(logger),
 		transactions,
 		byes,
+		results,
 	),
 	myActive: new GetMyActiveLightningEntries(entries, records, players),
 	create: new CreateLightningTournament(tournaments),

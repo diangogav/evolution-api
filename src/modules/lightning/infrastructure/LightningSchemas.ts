@@ -174,6 +174,31 @@ const MyLightningGameSchema = t.Object(
 	{ description: "The pairing to play now; null when not paired" },
 );
 
+const LightningCeremonySchema = t.Object(
+	{
+		position: t.Integer({ minimum: 1, description: "Final position" }),
+		players: t.Integer({ minimum: 1, description: "Ranked players in the final standings" }),
+		score: t.Integer(),
+		record: t.Object({ wins: t.Integer(), draws: t.Integer(), losses: t.Integer() }),
+		pointsAwarded: t.Integer({ description: "Season points" }),
+		essenceAwarded: t.Integer({ description: "Placement essence" }),
+		achievements: t.Array(
+			t.Object({
+				code: t.String({ description: "Achievement catalog code, e.g. `LIGHTNING_CHAMPION`" }),
+				name: t.String(),
+				essenceReward: t.Integer({
+					description: "Essence the achievement pays, on top of the placement essence",
+				}),
+			}),
+			{ description: "Achievements this tournament unlocked" },
+		),
+	},
+	{
+		description:
+			"The player's final result; null until the tournament is completed and for a player without a result",
+	},
+);
+
 export const MyLightningStateSchema = t.Object({
 	tournament: LightningTournamentSchema,
 	players: t.Integer({ description: "Active entries" }),
@@ -195,6 +220,7 @@ export const MyLightningStateSchema = t.Object({
 	),
 	position: t.Nullable(t.Integer({ description: "Place in the live standings" })),
 	bye: t.Boolean({ description: "True when the player has the bye in the current Swiss round" }),
+	ceremony: t.Nullable(LightningCeremonySchema),
 });
 
 export const ActiveLightningEntryListSchema = t.Array(

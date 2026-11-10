@@ -1,4 +1,5 @@
 import { NotFoundError } from "../../../shared/errors/NotFoundError";
+import type { QueryableManager } from "../../../shared/persistence/QueryableManager";
 import { reservationPassword, ReservedDuelRecordReader } from "../../reserved-duel";
 import { TransactionRunner } from "../../rewards";
 import { LightningByeRepository } from "../domain/LightningByeRepository";
@@ -6,6 +7,8 @@ import { EntryGameOutcome, LightningPresence } from "../domain/LightningEntry";
 import { LightningEntryRepository } from "../domain/LightningEntryRepository";
 import { LightningGame, LightningGameResolution, seatOf } from "../domain/LightningGame";
 import { LightningGameRepository } from "../domain/LightningGameRepository";
+import { UnlockedLightningAchievement } from "../domain/lightningAchievements";
+import { LightningResultRepository } from "../domain/LightningResultRepository";
 import { LightningSystem } from "../domain/LightningTournament";
 import { LightningTournamentRepository } from "../domain/LightningTournamentRepository";
 import { PlayerDirectory } from "../domain/PlayerDirectory";
@@ -42,6 +45,21 @@ export type MyLastLightningGame = {
 	appliedAt: string | null;
 };
 
+/** The player's final result, shown once the tournament completed. */
+export type MyLightningCeremony = {
+	position: number;
+	/** Ranked players in the final standings. */
+	players: number;
+	score: number;
+	record: { wins: number; draws: number; losses: number };
+	/** Season points. */
+	pointsAwarded: number;
+	/** Placement essence. */
+	essenceAwarded: number;
+	/** Achievements this tournament unlocked; their essence is paid on top of the placement. */
+	achievements: UnlockedLightningAchievement[];
+};
+
 export type MyLightningState = {
 	tournament: LightningTournamentView;
 	players: number;
@@ -54,6 +72,8 @@ export type MyLightningState = {
 	position: number | null;
 	/** True when the player has the bye in the current Swiss round. */
 	bye: boolean;
+	/** Non-null only when the tournament completed and the player has a final result. */
+	ceremony: MyLightningCeremony | null;
 };
 
 /** The presence shown to the player. */
@@ -97,6 +117,7 @@ export class GetMyLightningState {
 		private readonly applyGame: Pick<ApplyLightningGame, "applyGame">,
 		private readonly transactions: TransactionRunner,
 		private readonly byes: LightningByeRepository,
+		private readonly results: Pick<LightningResultRepository, "listResults">,
 	) {}
 
 	async run(input: GetMyLightningStateInput): Promise<MyLightningState> {
@@ -129,6 +150,10 @@ export class GetMyLightningState {
 			const entry = entries.find((candidate) => candidate.userId === input.userId) ?? null;
 			const players = entries.filter((candidate) => candidate.status === "active").length;
 			const base = { tournament: toTournamentView(tournament), players };
+			const ceremony =
+				entry && tournament.status === "completed"
+					? await this.ceremonyOf(tournament.id, input.userId, manager)
+					: null;
 			if (!entry) {
 				return {
 					...base,
@@ -138,6 +163,7 @@ export class GetMyLightningState {
 					lastGame: null,
 					position: null,
 					bye: false,
+					ceremony,
 				};
 			}
 
@@ -178,8 +204,28 @@ export class GetMyLightningState {
 					: null,
 				position: standing?.position ?? null,
 				bye,
+				ceremony,
 			};
 		});
+	}
+
+	private async ceremonyOf(
+		tournamentId: string,
+		userId: string,
+		manager: QueryableManager,
+	): Promise<MyLightningCeremony | null> {
+		const results = await this.results.listResults(tournamentId, manager);
+		const result = results.find((candidate) => candidate.userId === userId);
+		if (!result) return null;
+		return {
+			position: result.position,
+			players: results.length,
+			score: result.score,
+			record: { wins: result.wins, draws: result.draws, losses: result.losses },
+			pointsAwarded: result.pointsAwarded,
+			essenceAwarded: result.essenceAwarded,
+			achievements: result.achievements.map((achievement) => ({ ...achievement })),
+		};
 	}
 
 	private lastGameView(

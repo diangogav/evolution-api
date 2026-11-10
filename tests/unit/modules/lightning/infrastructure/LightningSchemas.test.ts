@@ -39,6 +39,7 @@ describe("LightningSchemas", () => {
 			lastGame: null,
 			position: null,
 			bye: false,
+			ceremony: null,
 		};
 		const paired = {
 			...outside,
@@ -69,6 +70,45 @@ describe("LightningSchemas", () => {
 		expect(Value.Check(MyLightningStateSchema, outside)).toBe(true);
 		expect(Value.Check(MyLightningStateSchema, paired)).toBe(true);
 		expect(Value.Check(MyLightningStateSchema, { ...paired, state: "bracket" })).toBe(false);
+		const { ceremony: _ceremony, ...withoutCeremony } = outside;
+		expect(Value.Check(MyLightningStateSchema, withoutCeremony)).toBe(false);
+	});
+
+	it("accepts the ceremony of a completed tournament with the achievements it unlocked", () => {
+		const ceremony = {
+			position: 1,
+			players: 12,
+			score: 12,
+			record: { wins: 4, draws: 0, losses: 0 },
+			pointsAwarded: 10,
+			essenceAwarded: 300,
+			achievements: [{ code: "LIGHTNING_UNBEATEN", name: "Unbeaten", essenceReward: 300 }],
+		};
+		const state = {
+			tournament: { ...tournament, status: "completed" },
+			players: 0,
+			entry: null,
+			state: null,
+			game: null,
+			lastGame: null,
+			position: null,
+			bye: false,
+			ceremony,
+		};
+
+		expect(Value.Check(MyLightningStateSchema, state)).toBe(true);
+		expect(
+			Value.Check(MyLightningStateSchema, {
+				...state,
+				ceremony: { ...ceremony, record: { wins: 4, draws: 0 } },
+			}),
+		).toBe(false);
+		expect(
+			Value.Check(MyLightningStateSchema, {
+				...state,
+				ceremony: { ...ceremony, achievements: [{ code: "LIGHTNING_FIRST", name: "First" }] },
+			}),
+		).toBe(false);
 	});
 
 	it("describes a Swiss tournament with its round clocks", () => {

@@ -2,7 +2,18 @@ import { describe, expect, it } from "bun:test";
 
 import { GetMyLightningState } from "../../../../../src/modules/lightning/application/GetMyLightningState";
 import { NotFoundError } from "../../../../../src/shared/errors/NotFoundError";
-import { ALICE, BOB, CAROL, DAVE, decided, RUNNING_AT, TOURNAMENT_ID, World } from "./fakes";
+import {
+	ALICE,
+	BOB,
+	CAROL,
+	DAVE,
+	decided,
+	ENDS_AT,
+	ERIN,
+	RUNNING_AT,
+	TOURNAMENT_ID,
+	World,
+} from "./fakes";
 
 function setup() {
 	const world = new World();
@@ -15,6 +26,7 @@ function setup() {
 		world.applyGame,
 		world.transactions,
 		world.byeRepository,
+		world.resultRepository,
 	);
 	return { world, getState };
 }
@@ -156,5 +168,72 @@ describe("GetMyLightningState", () => {
 		world.seedRunning([ALICE, BOB]);
 
 		expect((await getState.run(input)).bye).toBe(false);
+	});
+
+	it("has no ceremony while the tournament is still being played", async () => {
+		const { world, getState } = setup();
+		world.seedRunning([ALICE, BOB]);
+
+		expect((await getState.run(input)).ceremony).toBeNull();
+	});
+
+	describe("once the tournament completed", () => {
+		async function completed() {
+			const context = setup();
+			const { world } = context;
+			const tournament = world.seedTournament({
+				status: "finishing",
+				pointsByPosition: { positions: [10, 7], others: 1 },
+				essenceByPosition: { positions: [300, 200], others: 25 },
+			});
+			world.seedEntry(ALICE, { score: 6, wins: 2, gamesPlayed: 2 });
+			world.seedEntry(BOB, { score: 4, wins: 1, draws: 1, losses: 1, gamesPlayed: 3 });
+			world.seedEntry(CAROL, { score: 1, draws: 1, losses: 2, gamesPlayed: 3 });
+			world.seedEntry(DAVE);
+			const game = (seat0: string, seat1: string, resolution: "seat0_win" | "draw") =>
+				world.seedGame(seat0, seat1, { status: "applied", resolution, appliedAt: ENDS_AT });
+			game(ALICE, BOB, "seat0_win");
+			game(ALICE, CAROL, "seat0_win");
+			game(BOB, CAROL, "draw");
+			await world.completeTournament.complete(tournament, world.manager, ENDS_AT);
+			return context;
+		}
+
+		it("shows the player's final result with the achievements this tournament unlocked", async () => {
+			const { getState } = await completed();
+
+			const state = await getState.run({ ...input, userId: BOB, now: ENDS_AT });
+
+			expect(state.ceremony).toEqual({
+				position: 2,
+				players: 3,
+				score: 4,
+				record: { wins: 1, draws: 1, losses: 1 },
+				pointsAwarded: 7,
+				essenceAwarded: 200,
+				achievements: [
+					{ code: "LIGHTNING_FIRST", name: "First lightning", essenceReward: 50 },
+					{ code: "LIGHTNING_PODIUM", name: "Podium", essenceReward: 100 },
+				],
+			});
+		});
+
+		it("keeps showing only what this tournament unlocked", async () => {
+			const { world, getState } = await completed();
+			world.results = world.results.map((result) =>
+				result.userId === ALICE ? { ...result, achievements: [] } : result,
+			);
+
+			const state = await getState.run({ ...input, now: ENDS_AT });
+
+			expect(state.ceremony).toMatchObject({ position: 1, essenceAwarded: 300, achievements: [] });
+		});
+
+		it("has no ceremony for an entered player who never played, nor for a stranger", async () => {
+			const { getState } = await completed();
+
+			expect((await getState.run({ ...input, userId: DAVE, now: ENDS_AT })).ceremony).toBeNull();
+			expect((await getState.run({ ...input, userId: ERIN, now: ENDS_AT })).ceremony).toBeNull();
+		});
 	});
 });
