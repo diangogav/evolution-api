@@ -4,6 +4,7 @@ import type { QueryRunner } from "typeorm";
 import { AddLightningEssenceKind1782800100000 } from "../../../src/migrations/1782800100000-add-lightning-essence-kind";
 import { CreateLightningTournaments1782800000000 } from "../../../src/migrations/1782800000000-create-lightning-tournaments";
 import { AddLightningSwiss1782900000000 } from "../../../src/migrations/1782900000000-add-lightning-swiss";
+import { AddLightningResultAchievements1783000000000 } from "../../../src/migrations/1783000000000-add-lightning-result-achievements";
 
 function recordingRunner() {
 	const statements: string[] = [];
@@ -109,5 +110,20 @@ describe("AddLightningSwiss migration", () => {
 			expect(sql).toContain(`DROP COLUMN "${column}"`);
 		}
 		expect(sql).toContain(`ALTER TABLE "lightning_games" DROP COLUMN "round"`);
+	});
+});
+
+describe("AddLightningResultAchievements migration", () => {
+	it("adds the unlocked achievements to results, empty for existing rows, and drops them on revert", async () => {
+		const up = recordingRunner();
+		const down = recordingRunner();
+
+		await new AddLightningResultAchievements1783000000000().up(up.runner);
+		await new AddLightningResultAchievements1783000000000().down(down.runner);
+
+		expect(up.statements).toEqual([
+			`ALTER TABLE "lightning_results" ADD "achievements" jsonb NOT NULL DEFAULT '[]'::jsonb`,
+		]);
+		expect(down.statements).toEqual([`ALTER TABLE "lightning_results" DROP COLUMN "achievements"`]);
 	});
 });

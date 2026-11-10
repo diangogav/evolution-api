@@ -55,6 +55,110 @@ describe("CompleteLightningTournament", () => {
 		expect(world.tournaments.get(TOURNAMENT_ID)?.status).toBe("completed");
 	});
 
+	it("unlocks each ranked player's lightning achievements and keeps them on the result", async () => {
+		const { world, tournament } = finishedArena();
+
+		await world.completeTournament.complete(tournament, world.manager, ENDS_AT);
+
+		expect(world.unlocks.map((u) => [u.userId, u.achievementId])).toEqual([
+			[ALICE, 1101],
+			[ALICE, 1102],
+			[ALICE, 1103],
+			[ALICE, 1104],
+			[BOB, 1101],
+			[BOB, 1102],
+			[CAROL, 1101],
+			[CAROL, 1102],
+		]);
+		for (const unlock of world.unlocks) {
+			expect(unlock).toMatchObject({ season: 7, unlockedAt: ENDS_AT });
+		}
+		expect(world.results[1].achievements).toEqual([
+			{ code: "LIGHTNING_FIRST", name: "First lightning", essenceReward: 50 },
+			{ code: "LIGHTNING_PODIUM", name: "Podium", essenceReward: 100 },
+		]);
+		expect(world.events).toContain(`lock-achievements:${ALICE}`);
+		expect(world.log.error).not.toHaveBeenCalled();
+	});
+
+	it("never unlocks an achievement twice, whatever season the player got it in", async () => {
+		const { world, tournament } = finishedArena();
+		world.unlocks.push({
+			userId: ALICE,
+			achievementId: 1101,
+			season: 6,
+			unlockedAt: new Date("2026-01-01T00:00:00Z"),
+		});
+
+		await world.completeTournament.complete(tournament, world.manager, ENDS_AT);
+
+		expect(
+			world.unlocks.filter((u) => u.userId === ALICE && u.achievementId === 1101),
+		).toHaveLength(1);
+		expect(world.results[0].achievements.map((a) => a.code)).toEqual([
+			"LIGHTNING_PODIUM",
+			"LIGHTNING_CHAMPION",
+			"LIGHTNING_UNBEATEN",
+		]);
+	});
+
+	it("unlocks five-time champion with the player's fifth tournament win", async () => {
+		const { world, tournament } = finishedArena();
+		for (let i = 0; i < 4; i++) {
+			world.results.push({
+				tournamentId: `earlier-${i}`,
+				userId: ALICE,
+				position: 1,
+				score: 9,
+				wins: 3,
+				draws: 0,
+				losses: 0,
+				tiebreak: 0,
+				pointsAwarded: 10,
+				essenceAwarded: 0,
+				achievements: [],
+			});
+		}
+
+		await world.completeTournament.complete(tournament, world.manager, ENDS_AT);
+
+		const alice = world.results.find((r) => r.tournamentId === TOURNAMENT_ID && r.userId === ALICE);
+		expect(alice?.achievements.map((a) => a.code)).toContain("LIGHTNING_CHAMPION_5");
+		expect(world.unlocks.some((u) => u.userId === BOB && u.achievementId === 1105)).toBe(false);
+	});
+
+	it("completes without the achievements the catalog does not have yet and logs them", async () => {
+		const { world, tournament } = finishedArena();
+		world.achievementCatalog = world.achievementCatalog.filter(
+			(row) => row.code !== "LIGHTNING_CHAMPION" && row.code !== "LIGHTNING_UNBEATEN",
+		);
+
+		expect(await world.completeTournament.complete(tournament, world.manager, ENDS_AT)).toBe(
+			"completed",
+		);
+
+		expect(world.results[0].achievements.map((a) => a.code)).toEqual([
+			"LIGHTNING_FIRST",
+			"LIGHTNING_PODIUM",
+		]);
+		expect(world.log.error).toHaveBeenCalledTimes(1);
+		expect(String(world.log.error.mock.calls[0][0])).toContain(
+			"LIGHTNING_CHAMPION, LIGHTNING_UNBEATEN",
+		);
+	});
+
+	it("completes with no achievements at all before the catalog is seeded", async () => {
+		const { world, tournament } = finishedArena();
+		world.achievementCatalog = [];
+
+		expect(await world.completeTournament.complete(tournament, world.manager, ENDS_AT)).toBe(
+			"completed",
+		);
+		expect(world.unlocks).toEqual([]);
+		expect(world.results.every((r) => r.achievements.length === 0)).toBe(true);
+		expect(world.ledger).toHaveLength(1);
+	});
+
 	it("does nothing when the tournament already left finishing", async () => {
 		const { world, tournament } = finishedArena();
 		world.tournaments.set(TOURNAMENT_ID, { ...tournament, status: "completed" });
@@ -64,6 +168,7 @@ describe("CompleteLightningTournament", () => {
 		);
 		expect(world.results).toEqual([]);
 		expect(world.ledger).toEqual([]);
+		expect(world.unlocks).toEqual([]);
 	});
 
 	it("completes an arena nobody played without awards", async () => {
@@ -76,6 +181,8 @@ describe("CompleteLightningTournament", () => {
 		);
 		expect(world.results).toEqual([]);
 		expect(world.rankings.size).toBe(0);
+		expect(world.unlocks).toEqual([]);
+		expect(world.log.error).not.toHaveBeenCalled();
 	});
 
 	it("ranks a Swiss tournament by score, then Buchholz ahead of wins", async () => {

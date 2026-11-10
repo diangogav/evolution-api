@@ -5,6 +5,7 @@ import { CompleteLightningTournament } from "../../modules/lightning/application
 import { PairLightningPlayers } from "../../modules/lightning/application/PairLightningPlayers";
 import { PairSwissRound } from "../../modules/lightning/application/PairSwissRound";
 import { ProcessLightningTick } from "../../modules/lightning/application/ProcessLightningTick";
+import { LightningAchievementGrantsPostgresRepository } from "../../modules/lightning/infrastructure/LightningAchievementGrantsPostgresRepository";
 import { LightningByePostgresRepository } from "../../modules/lightning/infrastructure/LightningByePostgresRepository";
 import { LightningEntryPostgresRepository } from "../../modules/lightning/infrastructure/LightningEntryPostgresRepository";
 import { LightningGamePostgresRepository } from "../../modules/lightning/infrastructure/LightningGamePostgresRepository";
@@ -59,6 +60,8 @@ export function buildLightningWorker(logger: Logger): LightningWorker {
 			games,
 			new LightningResultPostgresRepository(),
 			new EssenceLedgerPostgresRepository(),
+			new LightningAchievementGrantsPostgresRepository(),
+			logger,
 		),
 		logger,
 	);

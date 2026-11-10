@@ -82,7 +82,7 @@ The shared schema already holds three empty tables from the retired proxy: `ligh
 | `lightning_tournaments` | `id`, `name`, `format` (`tcg` / `edison` / `jtp`, as the matchmaking formats), `status`, `season`, `registration_opens_at`, `starts_at`, `ends_at`, `turn_time_seconds`, `lobby_timeout_seconds`, `min_players`, `max_players`, `points_by_position` jsonb, `essence_by_position` jsonb, `created_by`, `cancelled_reason`, timestamps |
 | `lightning_entries` | PK (`tournament_id`, `user_id`); `registered_at`; `status` (`active`, `withdrawn`, `removed`); `presence` (`idle`, `paired`, `playing`, `away`); `deck` jsonb (the registered lists); `score`, `wins`, `draws`, `losses`, `games_played`, `no_shows`; `last_opponent_id`; `idle_since` |
 | `lightning_games` | PK `reservation_id`; `tournament_id`; `seat0_user_id`, `seat1_user_id`; `issued_at`; `status` (`pending`, `applied`, `voided`); `resolution` (`seat0_win`, `seat1_win`, `draw`, `void`, `no_show`); `reason`; `applied_at` |
-| `lightning_results` | PK (`tournament_id`, `user_id`); `position`, `score`, `wins`, `draws`, `losses`, `tiebreak`, `points_awarded`, `essence_awarded` |
+| `lightning_results` | PK (`tournament_id`, `user_id`); `position`, `score`, `wins`, `draws`, `losses`, `tiebreak`, `points_awarded`, `essence_awarded`, `achievements` jsonb (the achievements this tournament unlocked: `code`, `name`, `essenceReward`) |
 | `lightning_rankings` | unique (`user_id`, `season`); `points`, `tournaments_won`, `tournaments_played` |
 
 Every write that reads `reserved_duels` happens on the cosmetics connection with a plain query, as the event-run module does. The API reads only rows whose `reservation_id` is in `lightning_games`.
@@ -143,7 +143,25 @@ Standings from `lightning_entries` (active and withdrawn with `games_played > 0`
 - `lightning_results`: one row per ranked player.
 - `lightning_rankings`: `INSERT … ON CONFLICT (user_id, season) DO UPDATE SET points = points + $awarded, tournaments_played = tournaments_played + 1, tournaments_won = tournaments_won + (position = 1)`.
 - Essence through `essence_ledger` with a new kind `lightning_tournament` (its own `ALTER TYPE … ADD VALUE` migration) and `reference_key = lightning:<tournamentId>:<userId>`; the unique (user, kind, reference_key) index makes a retry harmless.
+- Achievements: each ranked player's lightning codes go to the shared `user_achievements` (see below) and are copied onto their `lightning_results` row for the ceremony.
 - Trophies (achievements with `code: null`) stay manual for admins in v1.
+
+### Achievements
+
+Two writers share `user_achievements`: the duel server writes the match codes (`first_win`, `wins_*`, `streak_*`, `matches_100`, `format_first_win:*`) when a ranked match ends, and this API writes the `LIGHTNING_*` codes when it completes a tournament. Neither writes the other's codes. The catalog rows come from an `evolution-types` migration.
+
+| Code | Unlocked by a ranked player who |
+|---|---|
+| `LIGHTNING_FIRST` | finishes a lightning tournament (ranked means at least one game) |
+| `LIGHTNING_PODIUM` | finishes in the top 3 |
+| `LIGHTNING_CHAMPION` | finishes first |
+| `LIGHTNING_UNBEATEN` | finishes first with no loss |
+| `LIGHTNING_CHAMPION_5` | finishes first for the fifth time or more (earlier wins counted in `lightning_results`) |
+
+- Rows match the server's: `gen_random_uuid()` id, `labels` `[]`, `season` the tournament's, `unlocked_at` the completion time as UTC wall clock. The catalog gives them `earned_points = 0` and no label, so ranked points never move.
+- An achievement is held once per player, in any season, as the server does: the writer skips ids the player already holds, under the server's per-player advisory lock (`user_achievements:<userId>`). That is also why the first and fifth-win codes are "by now" rules: a player who qualified before the catalog row existed gets the code at their next tournament.
+- A code missing from the catalog (migration not run) is skipped and logged as an error; the tournament still completes.
+- Essence: the rewards worker credits each new row's `essence_reward` (kind `achievement`), on top of the placement essence the tournament itself pays.
 
 Default `points_by_position`: 1st 10, 2nd 7, 3rd 5, 4th 3, every other participant with at least one game 1. Default `essence_by_position`: 1st 300, 2nd 200, 3rd 100, every other participant with at least one game 25. Defaults are stored on the tournament row at creation, so changing them later never rewrites history.
 
@@ -195,4 +213,4 @@ Follows the Svelte 5 skill and the `leaderboard` feature layout (`domain/{dtos, 
 
 ## Not in scope (v1)
 
-Swiss rounds, best-of-3 matches, team tournaments, recurring schedules (an admin creates each tournament; a template-based scheduler is the obvious next step), streak bonuses, automatic trophies, push notifications, replays.
+Swiss rounds, best-of-3 matches, team tournaments, recurring schedules (an admin creates each tournament; a template-based scheduler is the obvious next step), streak bonuses, automatic trophies beyond the `LIGHTNING_*` achievements, push notifications, replays.

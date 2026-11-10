@@ -544,13 +544,27 @@ describe("LightningResultPostgresRepository", () => {
 					tiebreak: 4,
 					pointsAwarded: 10,
 					essenceAwarded: 0,
+					achievements: [{ code: "LIGHTNING_CHAMPION", name: "Champion", essenceReward: 200 }],
 				},
 			],
 			manager,
 		);
 		const ranking = await repository.listRankings(7, 50, manager);
 
-		expect(manager.query.mock.calls[0][1]).toEqual(["t-1", "u-1", 1, 9, 3, 0, 0, 4, 10, 0]);
+		expect(compact(manager.query.mock.calls[0][0])).toContain("$11::jsonb)");
+		expect(manager.query.mock.calls[0][1]).toEqual([
+			"t-1",
+			"u-1",
+			1,
+			9,
+			3,
+			0,
+			0,
+			4,
+			10,
+			0,
+			'[{"code":"LIGHTNING_CHAMPION","name":"Champion","essenceReward":200}]',
+		]);
 		expect(compact(manager.query.mock.calls[1][0])).toContain(
 			"JOIN users AS u ON u.id = r.user_id",
 		);
@@ -565,6 +579,50 @@ describe("LightningResultPostgresRepository", () => {
 				tournamentsPlayed: 2,
 			},
 		]);
+	});
+});
+
+describe("LightningResultPostgresRepository reads", () => {
+	it("reads results with the achievements they unlocked, none for a row without them", async () => {
+		const row = {
+			tournament_id: "t-1",
+			user_id: "u-1",
+			position: 1,
+			score: "9",
+			wins: 3,
+			draws: 0,
+			losses: 0,
+			tiebreak: 4,
+			points_awarded: 10,
+			essence_awarded: "300",
+		};
+		const manager = managerReturning([
+			{
+				...row,
+				achievements: [{ code: "LIGHTNING_CHAMPION", name: "Champion", essenceReward: 200 }],
+			},
+			{ ...row, user_id: "u-2", position: 2, achievements: null },
+		]);
+
+		const results = await new LightningResultPostgresRepository().listResults("t-1", manager);
+
+		expect(results[0]).toMatchObject({
+			score: 9,
+			essenceAwarded: 300,
+			achievements: [{ code: "LIGHTNING_CHAMPION", name: "Champion", essenceReward: 200 }],
+		});
+		expect(results[1].achievements).toEqual([]);
+	});
+
+	it("counts the player's tournament wins outside the given tournament", async () => {
+		const manager = managerReturning([{ wins: "4" }]);
+
+		const wins = await new LightningResultPostgresRepository().countWins("u-1", "t-1", manager);
+
+		const [sql, params] = manager.query.mock.calls[0];
+		expect(compact(sql)).toContain("WHERE user_id = $1 AND position = 1 AND tournament_id <> $2");
+		expect(params).toEqual(["u-1", "t-1"]);
+		expect(wins).toBe(4);
 	});
 });
 

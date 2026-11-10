@@ -1,5 +1,6 @@
 import type { QueryableManager } from "../../../shared/persistence/QueryableManager";
 import { runQuery } from "../../../shared/persistence/runQuery";
+import { UnlockedLightningAchievement } from "../domain/lightningAchievements";
 import {
 	LightningRanking,
 	LightningResult,
@@ -7,10 +8,13 @@ import {
 } from "../domain/LightningResultRepository";
 
 const RESULT_COLUMNS = `tournament_id, user_id, position, score, wins, draws, losses, tiebreak,
-	points_awarded, essence_awarded`;
+	points_awarded, essence_awarded, achievements`;
 
 const INSERT_RESULT_QUERY = `INSERT INTO lightning_results (${RESULT_COLUMNS})
-	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`;
+	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb)`;
+
+const COUNT_WINS_QUERY = `SELECT COUNT(*)::int AS wins FROM lightning_results
+	WHERE user_id = $1 AND position = 1 AND tournament_id <> $2`;
 
 const LIST_RESULTS_QUERY = `SELECT ${RESULT_COLUMNS} FROM lightning_results
 	WHERE tournament_id = $1 ORDER BY position`;
@@ -42,6 +46,7 @@ type ResultRow = {
 	tiebreak: number | string;
 	points_awarded: number | string;
 	essence_awarded: number | string;
+	achievements: UnlockedLightningAchievement[] | null;
 };
 
 type RankingRow = {
@@ -69,6 +74,7 @@ export class LightningResultPostgresRepository implements LightningResultReposit
 					result.tiebreak,
 					result.pointsAwarded,
 					result.essenceAwarded,
+					JSON.stringify(result.achievements),
 				],
 				manager,
 			);
@@ -88,7 +94,25 @@ export class LightningResultPostgresRepository implements LightningResultReposit
 			tiebreak: Number(row.tiebreak),
 			pointsAwarded: Number(row.points_awarded),
 			essenceAwarded: Number(row.essence_awarded),
+			achievements: (row.achievements ?? []).map((achievement) => ({
+				code: achievement.code,
+				name: achievement.name,
+				essenceReward: Number(achievement.essenceReward),
+			})),
 		}));
+	}
+
+	async countWins(
+		userId: string,
+		excludingTournamentId: string,
+		manager: QueryableManager,
+	): Promise<number> {
+		const rows = await runQuery<{ wins: number | string }>(
+			COUNT_WINS_QUERY,
+			[userId, excludingTournamentId],
+			manager,
+		);
+		return Number(rows[0]?.wins ?? 0);
 	}
 
 	async addToRanking(

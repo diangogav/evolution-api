@@ -15,6 +15,11 @@ import {
 	LightningEntry,
 	newLightningEntry,
 } from "../../../../../src/modules/lightning/domain/LightningEntry";
+import {
+	CatalogLightningAchievement,
+	LightningAchievementGrant,
+	LightningAchievementGrants,
+} from "../../../../../src/modules/lightning/domain/LightningAchievementGrants";
 import { LightningEntryRepository } from "../../../../../src/modules/lightning/domain/LightningEntryRepository";
 import { LightningGame } from "../../../../../src/modules/lightning/domain/LightningGame";
 import { LightningGameRepository } from "../../../../../src/modules/lightning/domain/LightningGameRepository";
@@ -96,6 +101,15 @@ export class World {
 	records = new Map<string, ReservedDuelRecord>();
 	redis = new Map<string, DuelReservation & { claimed?: boolean }>();
 	ledger: EssenceLedgerEntry[] = [];
+	// The shared achievements catalog (seeded like the evolution-types migration) and unlocks.
+	achievementCatalog: CatalogLightningAchievement[] = [
+		{ id: 1101, code: "LIGHTNING_FIRST", name: "First lightning", essenceReward: 50 },
+		{ id: 1102, code: "LIGHTNING_PODIUM", name: "Podium", essenceReward: 100 },
+		{ id: 1103, code: "LIGHTNING_CHAMPION", name: "Champion of the trial", essenceReward: 200 },
+		{ id: 1104, code: "LIGHTNING_UNBEATEN", name: "Unbeaten", essenceReward: 300 },
+		{ id: 1105, code: "LIGHTNING_CHAMPION_5", name: "Five-time champion", essenceReward: 500 },
+	];
+	unlocks: LightningAchievementGrant[] = [];
 	banned = new Set<string>();
 	legal: DeckValidation = { legal: true };
 	events: string[] = [];
@@ -279,6 +293,10 @@ export class World {
 		},
 		listResults: async (tournamentId) =>
 			this.results.filter((r) => r.tournamentId === tournamentId).map((r) => ({ ...r })),
+		countWins: async (userId, excludingTournamentId) =>
+			this.results.filter(
+				(r) => r.userId === userId && r.position === 1 && r.tournamentId !== excludingTournamentId,
+			).length,
 		addToRanking: async (userId, season, points, won) => {
 			const key = `${userId}|${season}`;
 			const row = this.rankings.get(key) ?? { userId, season, points: 0, won: 0, played: 0 };
@@ -343,6 +361,24 @@ export class World {
 		},
 		balanceOf: async (userId) =>
 			this.ledger.filter((e) => e.userId === userId).reduce((sum, e) => sum + e.delta, 0),
+	};
+
+	readonly achievementGrants: LightningAchievementGrants = {
+		findByCodes: async (codes) =>
+			this.achievementCatalog.filter((row) => codes.includes(row.code)).map((row) => ({ ...row })),
+		lockPlayer: async (userId) => {
+			this.events.push(`lock-achievements:${userId}`);
+		},
+		heldAchievementIds: async (userId, ids) =>
+			new Set(
+				this.unlocks
+					.filter((u) => u.userId === userId && ids.includes(u.achievementId))
+					.map((u) => u.achievementId),
+			),
+		grant: async (grant) => {
+			this.events.push(`unlock:${grant.userId}:${grant.achievementId}`);
+			this.unlocks.push({ ...grant });
+		},
 	};
 
 	readonly players: PlayerDirectory = {
@@ -421,6 +457,8 @@ export class World {
 		this.gameRepository,
 		this.resultRepository,
 		this.ledgerRepository,
+		this.achievementGrants,
+		this.log,
 	);
 
 	seedTournament(overrides: Partial<LightningTournament> & Partial<NewLightningTournament> = {}) {
@@ -564,6 +602,7 @@ export class World {
 			byes: [...this.byes],
 			rankings: new Map([...this.rankings].map(([k, v]) => [k, { ...v }])),
 			ledger: [...this.ledger],
+			unlocks: [...this.unlocks],
 		};
 	}
 
@@ -575,5 +614,6 @@ export class World {
 		this.byes = s.byes;
 		this.rankings = s.rankings;
 		this.ledger = s.ledger;
+		this.unlocks = s.unlocks;
 	}
 }

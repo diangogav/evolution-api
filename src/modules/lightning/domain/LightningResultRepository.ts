@@ -1,4 +1,5 @@
 import type { QueryableManager } from "../../../shared/persistence/QueryableManager";
+import { UnlockedLightningAchievement } from "./lightningAchievements";
 
 export type LightningResult = {
 	tournamentId: string;
@@ -11,6 +12,8 @@ export type LightningResult = {
 	tiebreak: number;
 	pointsAwarded: number;
 	essenceAwarded: number;
+	/** What this tournament unlocked for the player, kept for the ceremony. */
+	achievements: UnlockedLightningAchievement[];
 };
 
 export type LightningRanking = {
@@ -25,6 +28,12 @@ export type LightningRanking = {
 export interface LightningResultRepository {
 	insertResults(results: LightningResult[], manager: QueryableManager): Promise<void>;
 	listResults(tournamentId: string, manager?: QueryableManager): Promise<LightningResult[]>;
+	/** Tournaments the player won, other than the given one. */
+	countWins(
+		userId: string,
+		excludingTournamentId: string,
+		manager: QueryableManager,
+	): Promise<number>;
 	/** Adds one tournament's outcome to the player's season row, creating it when missing. */
 	addToRanking(
 		userId: string,

@@ -83,6 +83,7 @@ describe("GetLightningTournament", () => {
 			tiebreak: 0,
 			pointsAwarded: 10,
 			essenceAwarded: 50,
+			achievements: [],
 		});
 
 		const detail = await getTournament.run({ tournamentId: TOURNAMENT_ID, now: ENDS_AT });
