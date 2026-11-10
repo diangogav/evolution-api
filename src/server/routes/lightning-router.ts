@@ -1,0 +1,451 @@
+import { bearer } from "@elysiajs/bearer";
+import { Elysia, t } from "elysia";
+
+import { config } from "../../config";
+import { HttpCardAlternatesSource } from "../../modules/community-decks/infrastructure/HttpCardAlternatesSource";
+import { HttpFormatListSource } from "../../modules/community-decks/infrastructure/HttpFormatListSource";
+import { getJson, getText } from "../../modules/community-decks/infrastructure/httpGet";
+import { CancelLightningTournament } from "../../modules/lightning/application/CancelLightningTournament";
+import { CreateLightningTournament } from "../../modules/lightning/application/CreateLightningTournament";
+import { EnterLightningTournament } from "../../modules/lightning/application/EnterLightningTournament";
+import { GetLightningRankings } from "../../modules/lightning/application/GetLightningRankings";
+import { GetLightningTournament } from "../../modules/lightning/application/GetLightningTournament";
+import { GetMyLightningState } from "../../modules/lightning/application/GetMyLightningState";
+import { ListLightningTournaments } from "../../modules/lightning/application/ListLightningTournaments";
+import { PauseLightningEntry } from "../../modules/lightning/application/PauseLightningEntry";
+import { ResumeLightningEntry } from "../../modules/lightning/application/ResumeLightningEntry";
+import { WithdrawLightningEntry } from "../../modules/lightning/application/WithdrawLightningEntry";
+import { CommunityDeckLegalityChecker } from "../../modules/lightning/infrastructure/CommunityDeckLegalityChecker";
+import { LightningEntryPostgresRepository } from "../../modules/lightning/infrastructure/LightningEntryPostgresRepository";
+import { LightningGamePostgresRepository } from "../../modules/lightning/infrastructure/LightningGamePostgresRepository";
+import { LightningResultPostgresRepository } from "../../modules/lightning/infrastructure/LightningResultPostgresRepository";
+import {
+	CancelLightningTournamentBodySchema,
+	CreateLightningTournamentBodySchema,
+	EnterLightningBodySchema,
+	LightningEntrySchema,
+	LightningRankingListSchema,
+	LightningTournamentDetailSchema,
+	LightningTournamentListSchema,
+	LightningTournamentSchema,
+	LightningTournamentStatusSchema,
+	MyLightningStateSchema,
+} from "../../modules/lightning/infrastructure/LightningSchemas";
+import { LightningTournamentPostgresRepository } from "../../modules/lightning/infrastructure/LightningTournamentPostgresRepository";
+import { PlayerDirectoryPostgresRepository } from "../../modules/lightning/infrastructure/PlayerDirectoryPostgresRepository";
+import { BunRedisReservationStore } from "../../modules/reserved-duel/infrastructure/BunRedisReservationStore";
+import { ReservedDuelPostgresReader } from "../../modules/reserved-duel/infrastructure/ReservedDuelPostgresReader";
+import { CosmeticsTransactionRunner } from "../../modules/rewards/infrastructure/CosmeticsTransactionRunner";
+import { Pino } from "../../shared/logger/infrastructure/Pino";
+import { redisClient } from "../../shared/redis/redisClient";
+import { type AdminAuthorizer, adminAuthorizer } from "../auth/AdminAuthorizer";
+import { requireUser as defaultRequireUser } from "../auth/requireUser";
+import { buildApplyLightningGame } from "../composition/buildLightning";
+import { ErrorSchema, errorResponses, jsonOk } from "../openapi/responses";
+
+type Runner<T> = Pick<T, Extract<keyof T, "run">>;
+
+export interface LightningRouterDependencies {
+	readonly authorizer: AdminAuthorizer;
+	readonly requireUser: typeof defaultRequireUser;
+	readonly clock: () => Date;
+	readonly defaultSeason: number;
+	readonly list: Runner<ListLightningTournaments>;
+	readonly get: Runner<GetLightningTournament>;
+	readonly rankings: Runner<GetLightningRankings>;
+	readonly enter: Runner<EnterLightningTournament>;
+	readonly withdraw: Runner<WithdrawLightningEntry>;
+	readonly pause: Runner<PauseLightningEntry>;
+	readonly resume: Runner<ResumeLightningEntry>;
+	readonly myState: Runner<GetMyLightningState>;
+	readonly create: Runner<CreateLightningTournament>;
+	readonly cancel: Runner<CancelLightningTournament>;
+}
+
+const ID = "8f14e45f-ceea-467a-9f0e-6b9e1c6a1a2b";
+
+const tournamentExample = {
+	id: ID,
+	name: "Friday Lightning",
+	format: "edison" as const,
+	status: "running" as const,
+	season: 7,
+	registrationOpensAt: "2026-11-13T19:00:00.000Z",
+	startsAt: "2026-11-13T20:00:00.000Z",
+	endsAt: "2026-11-13T21:00:00.000Z",
+	turnTimeSeconds: 90,
+	lobbyTimeoutSeconds: 90,
+	minPlayers: 4,
+	maxPlayers: 64,
+	pointsByPosition: { positions: [10, 7, 5, 3], others: 1 },
+	essenceByPosition: { positions: [100, 50, 25], others: 0 },
+	cancelledReason: null,
+	createdAt: "2026-11-09T12:00:00.000Z",
+};
+
+const entryExample = {
+	userId: "6f1c2a9e-0d4b-4c1e-9a57-3b2d8e7f6a10",
+	status: "active" as const,
+	presence: "idle" as const,
+	score: 3,
+	wins: 1,
+	draws: 0,
+	losses: 1,
+	gamesPlayed: 2,
+	noShows: 0,
+	registeredAt: "2026-11-13T19:12:00.000Z",
+};
+
+const opponent = { userId: "1b9d6bcd-bbfd-4b2d-9b5d-ab8dfbbd4bed", username: "Chazz_666" };
+
+const unprocessable = (description: string) => ({
+	422: { description, content: { "text/plain": { schema: ErrorSchema } } },
+});
+const conflict = (description: string) => ({
+	409: { description, content: { "text/plain": { schema: ErrorSchema } } },
+});
+
+export function createLightningRouter(deps: LightningRouterDependencies) {
+	const playerInput = (userId: string, id: string) => ({
+		tournamentId: id,
+		userId,
+		now: deps.clock(),
+	});
+
+	return new Elysia({ prefix: "/lightning" })
+		.use(bearer())
+		.get("/", ({ query }) => deps.list.run(query.status ? { status: query.status } : {}), {
+			query: t.Object({
+				status: t.Optional(LightningTournamentStatusSchema),
+			}),
+			detail: {
+				tags: ["Lightning"],
+				summary: "List lightning tournaments",
+				description:
+					"Without a status: every tournament not over yet (scheduled, registration, running, finishing), soonest start first, with its active entry count. With `completed` or `cancelled`: the 50 most recent. Public: no credentials required.",
+				responses: {
+					200: jsonOk(LightningTournamentListSchema, "Tournaments", [
+						{ ...tournamentExample, players: 12 },
+					]),
+					...errorResponses(422),
+				},
+			},
+		})
+		.get(
+			"/rankings",
+			({ query }) =>
+				deps.rankings.run({ season: query.season ?? deps.defaultSeason, limit: query.limit }),
+			{
+				query: t.Object({
+					season: t.Optional(
+						t.Integer({ minimum: 1, description: "Defaults to the current season" }),
+					),
+					limit: t.Integer({ minimum: 1, maximum: 100, default: 50 }),
+				}),
+				detail: {
+					tags: ["Lightning"],
+					summary: "Lightning season ranking",
+					description:
+						"Season points earned in lightning tournaments, most points first, with tournaments won and played. Public: no credentials required.",
+					responses: {
+						200: jsonOk(LightningRankingListSchema, "Season ranking", [
+							{
+								position: 1,
+								userId: opponent.userId,
+								username: opponent.username,
+								points: 27,
+								tournamentsWon: 2,
+								tournamentsPlayed: 4,
+							},
+						]),
+						...errorResponses(422),
+					},
+				},
+			},
+		)
+		.get("/:id", ({ params }) => deps.get.run({ tournamentId: params.id, now: deps.clock() }), {
+			params: t.Object({ id: t.String() }),
+			detail: {
+				tags: ["Lightning"],
+				summary: "Get a lightning tournament",
+				description:
+					"The tournament with its standings (live until completed, then the final results with the season points and essence each position earned) and the rooms of the games being played, which spectators join with `w,<roomId>`. Public: no credentials required.",
+				responses: {
+					200: jsonOk(LightningTournamentDetailSchema, "The tournament", {
+						...tournamentExample,
+						players: 12,
+						standings: [
+							{
+								position: 1,
+								userId: opponent.userId,
+								username: opponent.username,
+								status: "active",
+								score: 6,
+								wins: 2,
+								draws: 0,
+								losses: 0,
+								gamesPlayed: 2,
+								tiebreak: 3,
+								pointsAwarded: null,
+								essenceAwarded: null,
+							},
+						],
+						watchable: [
+							{
+								reservationId: "Xy3kP9aQ2mNb7RtL",
+								roomId: 4213,
+								startedAt: "2026-11-13T20:31:00.000Z",
+								players: [opponent, { userId: entryExample.userId, username: "Jaden" }],
+							},
+						],
+					}),
+					...errorResponses(404),
+				},
+			},
+		})
+		.post(
+			"/",
+			({ bearer: token, body }) => {
+				const admin = deps.authorizer.requireAdmin(token);
+				return deps.create.run({
+					name: body.name,
+					format: body.format,
+					season: body.season ?? deps.defaultSeason,
+					registrationOpensAt: new Date(body.registrationOpensAt),
+					startsAt: new Date(body.startsAt),
+					endsAt: new Date(body.endsAt),
+					turnTimeSeconds: body.turnTimeSeconds,
+					lobbyTimeoutSeconds: body.lobbyTimeoutSeconds,
+					minPlayers: body.minPlayers,
+					maxPlayers: body.maxPlayers,
+					pointsByPosition: body.pointsByPosition,
+					essenceByPosition: body.essenceByPosition,
+					createdBy: admin.userId,
+					now: deps.clock(),
+				});
+			},
+			{
+				body: CreateLightningTournamentBodySchema,
+				detail: {
+					tags: ["Lightning Admin"],
+					summary: "Create a lightning tournament",
+					description:
+						"Schedules a tournament. Defaults: 90 s per turn, 90 s to join each room, 4 to 64 players, season points 10/7/5/3 then 1 for every other player with a game, no essence. The defaults are stored on the tournament, so changing them later never rewrites it. Registration opens at once when its time already passed.",
+					security: [{ bearerAuth: [] }],
+					responses: {
+						200: jsonOk(LightningTournamentSchema, "The scheduled tournament", {
+							...tournamentExample,
+							status: "scheduled",
+						}),
+						...errorResponses(401, 403),
+						...unprocessable("Invalid body, a window out of order or in the past, or bad bounds"),
+					},
+				},
+			},
+		)
+		.post(
+			"/:id/cancel",
+			({ bearer: token, params, body }) => {
+				deps.authorizer.requireAdmin(token);
+				return deps.cancel.run({ tournamentId: params.id, reason: body.reason, now: deps.clock() });
+			},
+			{
+				params: t.Object({ id: t.String() }),
+				body: CancelLightningTournamentBodySchema,
+				detail: {
+					tags: ["Lightning Admin"],
+					summary: "Cancel a lightning tournament",
+					description:
+						"Cancels a tournament that has not completed: live games are voided and their reservations revoked, and nothing is awarded.",
+					security: [{ bearerAuth: [] }],
+					responses: {
+						200: jsonOk(LightningTournamentSchema, "The cancelled tournament", {
+							...tournamentExample,
+							status: "cancelled",
+							cancelledReason: "Server maintenance",
+						}),
+						...errorResponses(401, 403, 404, 422),
+						...conflict("The tournament already completed or was cancelled"),
+					},
+				},
+			},
+		)
+		.guard({}, (app) =>
+			app
+				.use(deps.requireUser)
+				.post(
+					"/:id/entries",
+					({ userId, params, body }) =>
+						deps.enter.run({ ...playerInput(userId, params.id), deck: body.deck }),
+					{
+						params: t.Object({ id: t.String() }),
+						body: EnterLightningBodySchema,
+						detail: {
+							tags: ["Lightning"],
+							summary: "Enter a lightning tournament",
+							description:
+								"Registers the player with a deck, checked against the format's list (sizes, copies, legality). The server requires exactly these lists at every duel of the tournament. Accepted during registration and, late, while the tournament runs. A player who withdrew may enter again with a new deck and keeps their score.",
+							security: [{ bearerAuth: [] }],
+							responses: {
+								200: jsonOk(LightningEntrySchema, "The entry", {
+									...entryExample,
+									score: 0,
+									wins: 0,
+									losses: 0,
+									gamesPlayed: 0,
+								}),
+								...errorResponses(401, 403, 404),
+								...conflict("Already entered"),
+								...unprocessable(
+									"Illegal deck (with the reason), tournament full, or registration closed",
+								),
+							},
+						},
+					},
+				)
+				.delete(
+					"/:id/entries/me",
+					({ userId, params }) => deps.withdraw.run(playerInput(userId, params.id)),
+					{
+						params: t.Object({ id: t.String() }),
+						detail: {
+							tags: ["Lightning"],
+							summary: "Withdraw from a lightning tournament",
+							description:
+								"Leaves the tournament: the player is never paired again. A game already paired or live runs its course and counts for both players.",
+							security: [{ bearerAuth: [] }],
+							responses: {
+								200: jsonOk(LightningEntrySchema, "The withdrawn entry", {
+									...entryExample,
+									status: "withdrawn",
+									presence: "away",
+								}),
+								...errorResponses(401, 403, 404),
+								...unprocessable("The tournament is over, or the entry was removed"),
+							},
+						},
+					},
+				)
+				.post(
+					"/:id/entries/me/pause",
+					({ userId, params }) => deps.pause.run(playerInput(userId, params.id)),
+					{
+						params: t.Object({ id: t.String() }),
+						detail: {
+							tags: ["Lightning"],
+							summary: "Pause my lightning entry",
+							description:
+								"Marks the player away so pairing skips them; the client sends it when the player leaves the tournament page. Idempotent.",
+							security: [{ bearerAuth: [] }],
+							responses: {
+								200: jsonOk(LightningEntrySchema, "The paused entry", {
+									...entryExample,
+									presence: "away",
+								}),
+								...errorResponses(401, 403, 404),
+								...conflict("A game of the player is paired or live"),
+								...unprocessable("The tournament is over, or the entry is not active"),
+							},
+						},
+					},
+				)
+				.post(
+					"/:id/entries/me/resume",
+					({ userId, params }) => deps.resume.run(playerInput(userId, params.id)),
+					{
+						params: t.Object({ id: t.String() }),
+						detail: {
+							tags: ["Lightning"],
+							summary: "Resume my lightning entry",
+							description:
+								'"I\'m back": an away player (paused, or parked after missing a room) waits for a pairing again, from now. Idempotent.',
+							security: [{ bearerAuth: [] }],
+							responses: {
+								200: jsonOk(LightningEntrySchema, "The waiting entry", entryExample),
+								...errorResponses(401, 403, 404),
+								...unprocessable("The tournament is over, or the entry is not active"),
+							},
+						},
+					},
+				)
+				.get("/:id/me", ({ userId, params }) => deps.myState.run(playerInput(userId, params.id)), {
+					params: t.Object({ id: t.String() }),
+					detail: {
+						tags: ["Lightning"],
+						summary: "Get my lightning state",
+						description:
+							"What the waiting room polls (every 3 s while open). The player's finished game is applied first, so its result shows right away. `state` is the entry's presence: `paired` comes with `game` (room password, seat, opponent), `playing` once the duel started, `idle` while waiting, `away` after a pause or a missed room. `lastGame` is the latest result while nothing is pending. `entry` is null when the player did not enter.",
+						security: [{ bearerAuth: [] }],
+						responses: {
+							200: jsonOk(MyLightningStateSchema, "The player's state", {
+								tournament: tournamentExample,
+								players: 12,
+								entry: { ...entryExample, presence: "paired" },
+								state: "paired",
+								game: {
+									reservationId: "Xy3kP9aQ2mNb7RtL",
+									password: "rv#Xy3kP9aQ2mNb7RtL",
+									seat: 1,
+									roomId: null,
+									opponent,
+								},
+								lastGame: null,
+								position: 4,
+							}),
+							...errorResponses(401, 403, 404),
+						},
+					},
+				}),
+		);
+}
+
+const tournaments = new LightningTournamentPostgresRepository();
+const entries = new LightningEntryPostgresRepository();
+const games = new LightningGamePostgresRepository();
+const results = new LightningResultPostgresRepository();
+const records = new ReservedDuelPostgresReader();
+const players = new PlayerDirectoryPostgresRepository();
+const transactions = new CosmeticsTransactionRunner();
+const logger = new Pino();
+// Lists change a few times a year; an hour keeps registrations off the network.
+const LIST_CACHE_MS = 60 * 60 * 1000;
+
+export const lightningRouter = createLightningRouter({
+	authorizer: adminAuthorizer,
+	requireUser: defaultRequireUser,
+	clock: () => new Date(),
+	defaultSeason: config.season,
+	list: new ListLightningTournaments(tournaments),
+	get: new GetLightningTournament(tournaments, entries, games, results, records, players),
+	rankings: new GetLightningRankings(results),
+	enter: new EnterLightningTournament(
+		tournaments,
+		entries,
+		new CommunityDeckLegalityChecker(
+			new HttpFormatListSource(getText),
+			new HttpCardAlternatesSource(getJson),
+			LIST_CACHE_MS,
+		),
+		transactions,
+	),
+	withdraw: new WithdrawLightningEntry(tournaments, entries, transactions),
+	pause: new PauseLightningEntry(tournaments, entries, transactions),
+	resume: new ResumeLightningEntry(tournaments, entries, transactions),
+	myState: new GetMyLightningState(
+		tournaments,
+		entries,
+		games,
+		records,
+		players,
+		buildApplyLightningGame(logger),
+		transactions,
+	),
+	create: new CreateLightningTournament(tournaments),
+	cancel: new CancelLightningTournament(
+		tournaments,
+		games,
+		new BunRedisReservationStore(redisClient),
+		transactions,
+		logger,
+	),
+});

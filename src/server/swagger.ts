@@ -36,6 +36,11 @@ const TAGS = [
 	{ name: "Statistics", description: "Global and historical duel statistics" },
 	{ name: "Ban Lists", description: "Ban lists played during each season" },
 	{ name: "Community Decks", description: "Legal community decklists synced from YGOPRODeck" },
+	{
+		name: "Lightning",
+		description:
+			"Short arenas: register with a deck, get paired continuously by score, standings and season ranking",
+	},
 	{ name: "Cosmetics", description: "Cosmetics catalog, entitlements and player loadouts" },
 	{
 		name: "Rewards",
@@ -58,12 +63,17 @@ const TAGS = [
 		name: "Event Stats",
 		description: "Event catalog and per event run, wave, deck and duel stats (admin only)",
 	},
+	{
+		name: "Lightning Admin",
+		description: "Scheduling and cancelling lightning tournaments (admin only)",
+	},
 ];
 
 const TAG_GROUPS = [
 	{ name: "Account", tags: ["Authentication", "User Management", "Player Reports"] },
 	{ name: "Ranked", tags: ["Leaderboard", "Ranked", "Statistics", "Ban Lists", "Achievements"] },
 	{ name: "Decks", tags: ["Community Decks"] },
+	{ name: "Play", tags: ["Lightning"] },
 	{ name: "Cosmetics", tags: ["Cosmetics"] },
 	{ name: "Rewards", tags: ["Rewards"] },
 	{
@@ -74,6 +84,7 @@ const TAG_GROUPS = [
 			"Cosmetics Admin",
 			"Activity Stats",
 			"Event Stats",
+			"Lightning Admin",
 			"Player Reports Admin",
 		],
 	},

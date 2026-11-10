@@ -22,6 +22,7 @@ import { leaderboardRouter } from "./routes/leaderboard-router";
 import { emoteBarRouter } from "./routes/emote-bar-router";
 import { botLoadoutRouter } from "./routes/bot-loadout-router";
 import { eventRunsRouter, eventsRouter } from "./routes/event-run-router";
+import { lightningRouter } from "./routes/lightning-router";
 import { loadoutRouter } from "./routes/loadout-router";
 import { meCosmeticsRouter } from "./routes/me-cosmetics-router";
 import { missionsRouter } from "./routes/missions-router";
@@ -124,6 +125,7 @@ export function mountApiV1Routes(app: Elysia) {
 			.use(eventsRouter)
 			.use(eventRunsRouter)
 			.use(communityDecksRouter)
+			.use(lightningRouter)
 			.use(playerReportsRouter)
 			.use(adminPlayerReportsRouter);
 	});

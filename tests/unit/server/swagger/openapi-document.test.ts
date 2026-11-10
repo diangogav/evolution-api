@@ -67,6 +67,13 @@ const PROTECTED_OPERATIONS = [
 	"GET /api/v1/admin/stats/activity",
 	"GET /api/v1/admin/events/",
 	"GET /api/v1/admin/events/{eventId}/stats",
+	"POST /api/v1/lightning/",
+	"POST /api/v1/lightning/{id}/cancel",
+	"POST /api/v1/lightning/{id}/entries",
+	"DELETE /api/v1/lightning/{id}/entries/me",
+	"POST /api/v1/lightning/{id}/entries/me/pause",
+	"POST /api/v1/lightning/{id}/entries/me/resume",
+	"GET /api/v1/lightning/{id}/me",
 ];
 
 // Operations whose success has no body; they declare it with `emptyOk`.
@@ -140,6 +147,19 @@ describe("OpenAPI document", () => {
 
 	it("serves community decks and their formats publicly", () => {
 		for (const key of ["GET /api/v1/community-decks/", "GET /api/v1/community-decks/formats"]) {
+			const found = operations.find((operation) => operation.key === key);
+
+			expect(found).toBeDefined();
+			expect(found?.operation.security).toBeUndefined();
+		}
+	});
+
+	it("serves the lightning list, detail and ranking publicly", () => {
+		for (const key of [
+			"GET /api/v1/lightning/",
+			"GET /api/v1/lightning/{id}",
+			"GET /api/v1/lightning/rankings",
+		]) {
 			const found = operations.find((operation) => operation.key === key);
 
 			expect(found).toBeDefined();
