@@ -35,7 +35,7 @@ Admin   DELETE /lightning/{id}/chat/{messageId}       → API    soft delete →
 |---|---|---|
 | `id` | `bigserial` PK | also the SSE event id; strictly increasing, so "after id N" is a range scan |
 | `tournament_id` | `uuid` FK → `lightning_tournaments` | `ON DELETE CASCADE` |
-| `user_id` | `uuid` | author |
+| `user_id` | `varchar` FK → `users` | author, `ON DELETE CASCADE` (same key type as the other `lightning_*` user columns) |
 | `body` | `varchar(200)` | `CHECK (char_length(body) BETWEEN 1 AND 200)` |
 | `created_at` | `timestamptz` default `now()` | |
 | `deleted_at`, `deleted_by` | nullable | soft delete by an admin |
