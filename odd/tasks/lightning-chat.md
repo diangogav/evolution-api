@@ -23,7 +23,7 @@ Design: `docs/design/lightning-chat.md` (written 2026-11-10; not yet reviewed).
 | T3 | api | Use cases `PostLightningChatMessage` (tournament state, entrant or admin, rate limit, insert, publish), `GetLightningChatHistory`, `DeleteLightningChatMessage`; `LightningChatPublisher` port | S2, S3, S6 | delegated | none | done | f310d82 |
 | T4 | api | Redis fan-out: publisher on the shared client, `LightningChatHub` with its own subscriber connection, per-tournament local registry, subscribe on first stream, unsubscribe on last | S5 | delegated | 4 concurrency (subscribe/unsubscribe races) | done | 55f73c9 |
 | T5 | api | Routes: history, post, admin delete, SSE stream (replay + buffered live events, heartbeat, headers, stream limits); TypeBox schemas and OpenAPI | S4, S7 | delegated | 3 shared contract (additive) | done | 4df1612, 7221e82 |
-| T6 | api | Docs: architecture index, operations note (one extra Redis connection per instance) | S4 | delegated | none | pending | |
+| T6 | api | Docs: architecture index, operations note (one extra Redis connection per instance) | S4 | delegated | none | done | 8903db2 |
 | T7 | client | `ChatMessageList` presentational (props instead of the global `chatStore`), duel chat unchanged | S7 | delegated | 2 shared UI | pending | |
 | T8 | client | Chat ports, HTTP API, `fetch`-based SSE feed with backoff and `Last-Event-ID`, store, lazy panel in the tournament page | S4, S7 | delegated | none | pending | |
 | T9 | all | Migration in dev, local end-to-end with two clients and two API instances | S1–S7 | inline | 5 | pending | |
@@ -32,3 +32,4 @@ Design: `docs/design/lightning-chat.md` (written 2026-11-10; not yet reviewed).
 
 - L1 (2026-11-10): design written.
 - L2 (2026-11-10): chat use cases and Redis fan-out done; the author's `admin` flag is the current `users.role`, read with the username in one `PlayerDirectory.authorsOf` query per page.
+- L3 (2026-11-10): API routes and SSE stream done. Deviations from the first design, now in the design doc: a `reset` event when the replay passes 200, no replay without `Last-Event-ID` (the client loads the history first), at most 5 s of waiting for the subscription before replaying, `limit` (1–50) on the history, and 500 (not 503) for a post while Redis is down. `POST` asks the admin authorizer's new non-throwing `isAdmin`; the hub is closed on `SIGINT`/`SIGTERM` in `src/index.ts`.
