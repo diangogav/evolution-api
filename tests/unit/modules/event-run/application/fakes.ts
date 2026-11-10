@@ -318,6 +318,7 @@ export class World {
 	record(reservationId: string, overrides: Partial<ReservedDuelRecord> = {}): void {
 		this.records.set(reservationId, {
 			reservationId,
+			roomId: null,
 			joinedAt: NOW,
 			startedAt: null,
 			endedAt: null,

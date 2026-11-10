@@ -6,6 +6,8 @@ export type ReservedDuelOutcome = (typeof RESERVED_DUEL_OUTCOMES)[number];
 
 export type ReservedDuelRecord = {
 	reservationId: string;
+	/** The server room playing the reservation; what spectators join with `w,<roomId>`. */
+	roomId: number | null;
 	joinedAt: Date | null;
 	startedAt: Date | null;
 	endedAt: Date | null;

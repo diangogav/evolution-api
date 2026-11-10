@@ -192,6 +192,7 @@ describe("EventDuelPostgresRepository", () => {
 		const ended = new Date("2026-10-31T19:40:00Z");
 		const record = {
 			reservationId: "R",
+			roomId: 1,
 			joinedAt: ended,
 			startedAt: ended,
 			endedAt: ended,

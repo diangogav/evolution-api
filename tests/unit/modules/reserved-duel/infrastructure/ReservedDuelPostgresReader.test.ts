@@ -15,6 +15,7 @@ describe("ReservedDuelPostgresReader", () => {
 		const manager = managerReturning([
 			{
 				reservation_id: "R1",
+				room_id: "4213",
 				joined_at: ended,
 				started_at: ended,
 				ended_at: ended,
@@ -25,6 +26,7 @@ describe("ReservedDuelPostgresReader", () => {
 			},
 			{
 				reservation_id: "R2",
+				room_id: 7,
 				joined_at: null,
 				started_at: null,
 				ended_at: null,
@@ -39,11 +41,13 @@ describe("ReservedDuelPostgresReader", () => {
 
 		const [sql, params] = manager.query.mock.calls[0];
 		expect(sql).toStartWith("SELECT");
+		expect(compact(sql)).toContain("room_id");
 		expect(compact(sql)).toContain("FROM reserved_duels WHERE reservation_id = ANY($1)");
 		expect(params).toEqual([["R1", "R2"]]);
 		expect(records).toEqual([
 			{
 				reservationId: "R1",
+				roomId: 4213,
 				joinedAt: ended,
 				startedAt: ended,
 				endedAt: ended,
@@ -54,6 +58,7 @@ describe("ReservedDuelPostgresReader", () => {
 			},
 			{
 				reservationId: "R2",
+				roomId: 7,
 				joinedAt: null,
 				startedAt: null,
 				endedAt: null,

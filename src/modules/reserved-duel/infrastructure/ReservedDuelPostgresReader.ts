@@ -4,11 +4,12 @@ import { ReservedDuelOutcome, ReservedDuelRecord } from "../domain/ReservedDuelR
 import { ReservedDuelRecordReader } from "../domain/ReservedDuelRecordReader";
 
 // `reserved_duels` belongs to the duel server: read-only here, and only by reservation id.
-const FIND_RECORDS_QUERY = `SELECT reservation_id, joined_at, started_at, ended_at, outcome,
-	winner_seat, abandoned_by_seat, reason FROM reserved_duels WHERE reservation_id = ANY($1)`;
+const FIND_RECORDS_QUERY = `SELECT reservation_id, room_id, joined_at, started_at, ended_at,
+	outcome, winner_seat, abandoned_by_seat, reason FROM reserved_duels WHERE reservation_id = ANY($1)`;
 
 type RecordRow = {
 	reservation_id: string;
+	room_id: number | string | null;
 	joined_at: Date | null;
 	started_at: Date | null;
 	ended_at: Date | null;
@@ -19,7 +20,7 @@ type RecordRow = {
 };
 
 const toDate = (value: Date | null): Date | null => (value ? new Date(value) : null);
-const toSeat = (value: number | string | null): number | null =>
+const toNumber = (value: number | string | null): number | null =>
 	value === null ? null : Number(value);
 
 export class ReservedDuelPostgresReader implements ReservedDuelRecordReader {
@@ -31,12 +32,13 @@ export class ReservedDuelPostgresReader implements ReservedDuelRecordReader {
 		const rows = await runQuery<RecordRow>(FIND_RECORDS_QUERY, [reservationIds], manager);
 		return rows.map((row) => ({
 			reservationId: row.reservation_id,
+			roomId: toNumber(row.room_id),
 			joinedAt: toDate(row.joined_at),
 			startedAt: toDate(row.started_at),
 			endedAt: toDate(row.ended_at),
 			outcome: row.outcome,
-			winnerSeat: toSeat(row.winner_seat),
-			abandonedBySeat: toSeat(row.abandoned_by_seat),
+			winnerSeat: toNumber(row.winner_seat),
+			abandonedBySeat: toNumber(row.abandoned_by_seat),
 			reason: row.reason,
 		}));
 	}
