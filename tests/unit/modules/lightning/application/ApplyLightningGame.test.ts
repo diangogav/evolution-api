@@ -215,4 +215,14 @@ describe("ApplyLightningGame — Swiss games", () => {
 		expect(world.games.get(game.reservationId)).toMatchObject({ status: "voided" });
 		expect(world.entry(ALICE)).toMatchObject({ score: 0, gamesPlayed: 0, presence: "idle" });
 	});
+
+	it("leaves a long Swiss game to the round deadline instead of voiding it as stale", async () => {
+		const world = new World();
+		world.seedRunning([ALICE, BOB]);
+		const game = world.seedGame(ALICE, BOB, { round: 1 });
+		world.record(game.reservationId, { startedAt: RUNNING_AT });
+
+		expect(await world.applyGame.applyGame(game, world.manager, later(STALE_MS + 1))).toBe("live");
+		expect(world.games.get(game.reservationId)?.status).toBe("pending");
+	});
 });

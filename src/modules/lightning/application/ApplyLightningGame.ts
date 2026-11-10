@@ -17,7 +17,8 @@ export type ApplyGameOutcome = "applied" | "stale" | "live" | "skipped";
 /**
  * Applies the duel server's record of one pairing to both entries, at most once: the game
  * row leaves `pending` exactly once, whichever caller gets there first. Callers hold the
- * tournament row lock, so the worker and the players' own "/me" reads never race.
+ * tournament row lock, so the worker and the players' own "/me" reads never race. Only Swiss
+ * games carry a round, so the game itself says which rules score it.
  */
 export class ApplyLightningGame {
 	constructor(
@@ -35,7 +36,10 @@ export class ApplyLightningGame {
 		now: Date,
 	): Promise<ApplyGameOutcome> {
 		const [record] = await this.records.findRecords([game.reservationId], manager);
-		const resolution = resolveLightningGame(game, record ?? null, now, this.staleAfterMs);
+		// A Swiss round has its own deadline, which closes a hung game as a draw; voiding it as
+		// stale would only re-issue the same table.
+		const staleAfterMs = game.round === null ? this.staleAfterMs : Number.POSITIVE_INFINITY;
+		const resolution = resolveLightningGame(game, record ?? null, now, staleAfterMs);
 		if (!resolution) {
 			if (record?.startedAt) await this.markPlaying(game, manager);
 			return "live";
@@ -58,7 +62,6 @@ export class ApplyLightningGame {
 		);
 		if (marked === "skipped") return "skipped";
 
-		// Only Swiss games carry a round, so the game itself says which rules score it.
 		const swiss = game.round !== null;
 		for (const seat of [0, 1] as const) {
 			const userId = seat === 0 ? game.seat0UserId : game.seat1UserId;
