@@ -153,3 +153,66 @@ describe("ApplyLightningGame", () => {
 		expect(world.log.error).toHaveBeenCalledTimes(1);
 	});
 });
+
+describe("ApplyLightningGame — Swiss games", () => {
+	it("gives the present seat the win and the absent one a lost game with a strike", async () => {
+		const world = new World();
+		world.seedRunning([ALICE, BOB]);
+		const game = world.seedGame(ALICE, BOB, { round: 1 });
+		world.record(game.reservationId, {
+			startedAt: null,
+			endedAt: RUNNING_AT,
+			outcome: "abandoned",
+			abandonedBySeat: 1,
+			reason: "lobby_timeout",
+		});
+
+		expect(await world.applyGame.applyGame(game, world.manager, later(60_000))).toBe("applied");
+
+		expect(world.entry(ALICE)).toMatchObject({
+			score: 3,
+			wins: 1,
+			gamesPlayed: 1,
+			presence: "idle",
+		});
+		expect(world.entry(BOB)).toMatchObject({
+			score: 0,
+			losses: 1,
+			gamesPlayed: 1,
+			noShows: 1,
+			presence: "idle",
+			status: "active",
+		});
+		expect(world.games.get(game.reservationId)).toMatchObject({ resolution: "no_show" });
+	});
+
+	it("counts an unclaimed reservation as a loss for both and drops a player at the second strike", async () => {
+		const world = new World();
+		world.seedRunning([ALICE, BOB]);
+		world.seedEntry(BOB, { noShows: 1 });
+		const game = world.seedGame(ALICE, BOB, { round: 2 });
+
+		await world.applyGame.applyGame(game, world.manager, later(UNCLAIMED_RESERVATION_MS + 1));
+
+		expect(world.entry(ALICE)).toMatchObject({ losses: 1, noShows: 1, status: "active" });
+		expect(world.entry(BOB)).toMatchObject({ losses: 1, noShows: 2, status: "removed" });
+		expect(world.entry(BOB)?.presence).not.toBe("away");
+	});
+
+	it("voids an infrastructure failure without scoring, leaving the pair for a new reservation", async () => {
+		const world = new World();
+		world.seedRunning([ALICE, BOB]);
+		const game = world.seedGame(ALICE, BOB, { round: 1 });
+		world.record(game.reservationId, {
+			startedAt: null,
+			endedAt: RUNNING_AT,
+			outcome: "abandoned",
+			reason: "server_restart",
+		});
+
+		expect(await world.applyGame.applyGame(game, world.manager, later(60_000))).toBe("applied");
+
+		expect(world.games.get(game.reservationId)).toMatchObject({ status: "voided" });
+		expect(world.entry(ALICE)).toMatchObject({ score: 0, gamesPlayed: 0, presence: "idle" });
+	});
+});

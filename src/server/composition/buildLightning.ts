@@ -1,8 +1,11 @@
 import { config } from "../../config";
 import { ApplyLightningGame } from "../../modules/lightning/application/ApplyLightningGame";
+import { CloseSwissRound } from "../../modules/lightning/application/CloseSwissRound";
 import { CompleteLightningTournament } from "../../modules/lightning/application/CompleteLightningTournament";
 import { PairLightningPlayers } from "../../modules/lightning/application/PairLightningPlayers";
+import { PairSwissRound } from "../../modules/lightning/application/PairSwissRound";
 import { ProcessLightningTick } from "../../modules/lightning/application/ProcessLightningTick";
+import { LightningByePostgresRepository } from "../../modules/lightning/infrastructure/LightningByePostgresRepository";
 import { LightningEntryPostgresRepository } from "../../modules/lightning/infrastructure/LightningEntryPostgresRepository";
 import { LightningGamePostgresRepository } from "../../modules/lightning/infrastructure/LightningGamePostgresRepository";
 import { LightningResultPostgresRepository } from "../../modules/lightning/infrastructure/LightningResultPostgresRepository";
@@ -34,13 +37,22 @@ export function buildLightningWorker(logger: Logger): LightningWorker {
 	const tournaments = new LightningTournamentPostgresRepository();
 	const entries = new LightningEntryPostgresRepository();
 	const games = new LightningGamePostgresRepository();
+	const reservations = new BunRedisReservationStore(redisClient);
 	const tick = new ProcessLightningTick(
 		new LightningUnitOfWork(),
 		tournaments,
 		entries,
 		games,
 		buildApplyLightningGame(logger),
-		new PairLightningPlayers(entries, games, new BunRedisReservationStore(redisClient)),
+		new PairLightningPlayers(entries, games, reservations),
+		new CloseSwissRound(tournaments, entries, games, reservations, logger),
+		new PairSwissRound(
+			tournaments,
+			entries,
+			games,
+			new LightningByePostgresRepository(),
+			reservations,
+		),
 		new CompleteLightningTournament(
 			tournaments,
 			entries,

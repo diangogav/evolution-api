@@ -1,7 +1,7 @@
 import { Logger } from "../../../shared/logger/domain/Logger";
 import type { QueryableManager } from "../../../shared/persistence/QueryableManager";
 import { ReservationStore, ReservedDuelRecordReader } from "../../reserved-duel";
-import { recordGameOutcome } from "../domain/LightningEntry";
+import { recordGameOutcome, recordSwissGameOutcome } from "../domain/LightningEntry";
 import { LightningEntryRepository } from "../domain/LightningEntryRepository";
 import { LightningGame } from "../domain/LightningGame";
 import { LightningGameRepository } from "../domain/LightningGameRepository";
@@ -58,12 +58,16 @@ export class ApplyLightningGame {
 		);
 		if (marked === "skipped") return "skipped";
 
+		// Only Swiss games carry a round, so the game itself says which rules score it.
+		const swiss = game.round !== null;
 		for (const seat of [0, 1] as const) {
 			const userId = seat === 0 ? game.seat0UserId : game.seat1UserId;
 			const entry = await this.entries.findOne(game.tournamentId, userId, manager);
 			if (!entry) continue;
 			await this.entries.update(
-				recordGameOutcome(entry, outcomeForSeat(resolution, seat), now),
+				swiss
+					? recordSwissGameOutcome(entry, outcomeForSeat(resolution, seat, "swiss"), now)
+					: recordGameOutcome(entry, outcomeForSeat(resolution, seat), now),
 				manager,
 			);
 		}

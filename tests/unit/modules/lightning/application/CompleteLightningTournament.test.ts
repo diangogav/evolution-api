@@ -77,4 +77,27 @@ describe("CompleteLightningTournament", () => {
 		expect(world.results).toEqual([]);
 		expect(world.rankings.size).toBe(0);
 	});
+
+	it("ranks a Swiss tournament by score, then Buchholz ahead of wins", async () => {
+		const world = new World();
+		const tournament = world.seedTournament({ system: "swiss", status: "finishing" });
+		// BOB and CAROL tie on 3: BOB drew three times with the leader, CAROL beat the last one.
+		world.seedEntry(ALICE, { score: 9, draws: 3, wins: 2, gamesPlayed: 5 });
+		world.seedEntry(BOB, { score: 3, draws: 3, gamesPlayed: 3 });
+		world.seedEntry(CAROL, { score: 3, wins: 1, gamesPlayed: 1 });
+		world.seedEntry(DAVE, { score: 0, losses: 1, gamesPlayed: 1 });
+		const applied = (seat0: string, seat1: string, resolution: "draw" | "seat0_win") =>
+			world.seedGame(seat0, seat1, { status: "applied", resolution, round: 1, appliedAt: ENDS_AT });
+		for (let i = 0; i < 3; i++) applied(BOB, ALICE, "draw");
+		applied(CAROL, DAVE, "seat0_win");
+
+		await world.completeTournament.complete(tournament, world.manager, ENDS_AT);
+
+		expect(world.results.map((r) => [r.userId, r.tiebreak])).toEqual([
+			[ALICE, 9],
+			[BOB, 27],
+			[CAROL, 0],
+			[DAVE, 3],
+		]);
+	});
 });

@@ -2,8 +2,10 @@ import { mock } from "bun:test";
 
 import type { DeckValidation } from "../../../../../src/modules/community-decks";
 import { ApplyLightningGame } from "../../../../../src/modules/lightning/application/ApplyLightningGame";
+import { CloseSwissRound } from "../../../../../src/modules/lightning/application/CloseSwissRound";
 import { CompleteLightningTournament } from "../../../../../src/modules/lightning/application/CompleteLightningTournament";
 import { PairLightningPlayers } from "../../../../../src/modules/lightning/application/PairLightningPlayers";
+import { PairSwissRound } from "../../../../../src/modules/lightning/application/PairSwissRound";
 import {
 	LightningBye,
 	LightningByeRepository,
@@ -365,6 +367,24 @@ export class World {
 		this.nextReservationId,
 	);
 
+	readonly pairSwissRound = new PairSwissRound(
+		this.tournamentRepository,
+		this.entryRepository,
+		this.gameRepository,
+		this.byeRepository,
+		this.store,
+		this.nextReservationId,
+	);
+
+	readonly closeSwissRound = new CloseSwissRound(
+		this.tournamentRepository,
+		this.entryRepository,
+		this.gameRepository,
+		this.store,
+		this.log,
+		this.nextReservationId,
+	);
+
 	readonly completeTournament = new CompleteLightningTournament(
 		this.tournamentRepository,
 		this.entryRepository,
@@ -398,6 +418,21 @@ export class World {
 	) {
 		const tournament = this.seedTournament({ status: "running" });
 		for (const userId of users) this.seedEntry(userId, { idleSince: STARTS_AT, ...overrides });
+		return tournament;
+	}
+
+	/** A running Swiss tournament of three rounds, before round one, every player waiting. */
+	seedSwiss(
+		users: string[] = [ALICE, BOB, CAROL, DAVE],
+		overrides: Partial<LightningTournament> = {},
+	) {
+		const tournament = this.seedTournament({
+			system: "swiss",
+			rounds: 3,
+			status: "running",
+			...overrides,
+		});
+		for (const userId of users) this.seedEntry(userId, { idleSince: STARTS_AT });
 		return tournament;
 	}
 

@@ -48,7 +48,7 @@ export class CompleteLightningTournament {
 		const standings = computeStandings(
 			entries.filter((entry) => qualifiesForStandings(entry, { final: true })),
 			games,
-			{ opponentScores: scoresOf(entries) },
+			{ opponentScores: scoresOf(entries), system: tournament.system },
 		);
 
 		const results: LightningResult[] = standings.map((standing) => ({
