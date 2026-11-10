@@ -7,7 +7,7 @@ One text channel per lightning tournament, inside the client, so the players of 
 | Question | Decision | Why |
 |---|---|---|
 | Where | In-app, not a Discord thread | players already sit in the waiting room; a link out loses them |
-| Transport | `POST` to send, one SSE stream per tournament to receive | one-way push is all a chat feed needs; plain HTTP passes nginx and the existing bearer auth |
+| Transport | `POST` to send, one SSE stream per tournament to receive | one-way push is all a chat feed needs; plain HTTP keeps the existing bearer auth |
 | Source of truth | Postgres first, then fan-out | a message the stream missed is never lost: reconnection replays from the table |
 | Fan-out | Redis pub/sub, one channel per tournament | the API runs on several instances; the instance that takes the `POST` is rarely the one holding the reader's stream |
 | Who reads | any signed-in player who is not banned | spectators follow the tournament too |
@@ -57,8 +57,8 @@ Message view: `{ id, tournamentId, author: { userId, username, admin }, body, cr
 
 - Events: `message` (the message view) and `deleted` (`{ id }`). The SSE `id:` field is the message id for `message`; `deleted` carries no id so it does not move the replay cursor.
 - Reconnection: the client sends `Last-Event-ID`; the API first streams every non-deleted message with a greater id (capped at 200; beyond that the client reloads the history), then live events. Live events that arrive during the replay are buffered and deduplicated by id.
-- Heartbeat: an SSE comment (`: ping`) every 25 s, under nginx's default 60 s `proxy_read_timeout`.
-- Headers: `Cache-Control: no-cache`, `X-Accel-Buffering: no` (turns nginx buffering off for this response only).
+- Heartbeat: an SSE comment (`: ping`) every 25 s, so idle proxies do not close the connection.
+- Headers: `Cache-Control: no-cache`, `X-Accel-Buffering: no` (no proxy buffering for this response).
 - Limits per instance: 3 open streams per user and 2,000 in total; above either the API answers 429.
 - The client reads the stream with `fetch` and a `ReadableStream`, not `EventSource`: it needs the `Authorization` header and control of `Last-Event-ID`.
 
@@ -82,10 +82,6 @@ Message view: `{ id, tournamentId, author: { userId, username, admin }, body, cr
 - The duel chat's `ChatMessageList` reads the global `chatStore` directly; it becomes presentational (messages and callbacks as props) so the duel and the tournament share it.
 - Panel in the tournament page, loaded lazily: the bundle is already over its budget.
 - The stream opens only while the tournament page is visible and closes on leave or when the tab is hidden.
-
-## nginx
-
-Required on the server block in front of the API: `proxy_http_version 1.1` on the proxied location and HTTP/2 on the TLS listener (without it the browser's six-connections-per-host limit counts the open stream against every other request). Buffering and timeouts need no change (see [Stream](#stream)).
 
 ## Failure modes
 

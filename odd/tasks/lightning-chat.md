@@ -13,7 +13,6 @@ Design: `docs/design/lightning-chat.md` (written 2026-11-10; not yet reviewed).
 - S5 Fan-out: channel `lightning:chat:{tournamentId}` on a dedicated subscriber connection (a subscribed Bun `RedisClient` takes no other commands); publish after commit, a lost publish is recovered by replay.
 - S6 Moderation: `requireUser` (ban check) on every route, 5 messages per 10 s per user and tournament (429), admin delete pushed live.
 - S7 HTTP contract: `GET /lightning/{id}/chat?before=`, `GET /lightning/{id}/chat/stream`, `POST /lightning/{id}/chat {body}`, `DELETE /lightning/{id}/chat/{messageId}` (admin); message view `{ id, tournamentId, author: { userId, username, admin }, body, createdAt }`.
-- S8 nginx (production, owned by the user): `proxy_http_version 1.1` and HTTP/2 on the API server block. Not yet checked.
 
 ## Tasks
 
@@ -24,11 +23,11 @@ Design: `docs/design/lightning-chat.md` (written 2026-11-10; not yet reviewed).
 | T3 | api | Use cases `PostLightningChatMessage` (tournament state, entrant or admin, rate limit, insert, publish), `GetLightningChatHistory`, `DeleteLightningChatMessage`; `LightningChatPublisher` port | S2, S3, S6 | delegated | none | pending | |
 | T4 | api | Redis fan-out: publisher on the shared client, `LightningChatHub` with its own subscriber connection, per-tournament local registry, subscribe on first stream, unsubscribe on last | S5 | delegated | 4 concurrency (subscribe/unsubscribe races) | pending | |
 | T5 | api | Routes: history, post, admin delete, SSE stream (replay + buffered live events, heartbeat, headers, stream limits); TypeBox schemas and OpenAPI | S4, S7 | delegated | 3 shared contract (additive) | pending | |
-| T6 | api | Docs: architecture and README index, operations note (nginx, Redis connections) | S4, S8 | delegated | none | pending | |
+| T6 | api | Docs: architecture index, operations note (one extra Redis connection per instance) | S4 | delegated | none | pending | |
 | T7 | client | `ChatMessageList` presentational (props instead of the global `chatStore`), duel chat unchanged | S7 | delegated | 2 shared UI | pending | |
 | T8 | client | Chat ports, HTTP API, `fetch`-based SSE feed with backoff and `Last-Event-ID`, store, lazy panel in the tournament page | S4, S7 | delegated | none | pending | |
-| T9 | all | Migration in dev, local end-to-end with two clients and two API instances; user checks nginx | S1–S8 | inline | 5 | pending | |
+| T9 | all | Migration in dev, local end-to-end with two clients and two API instances | S1–S7 | inline | 5 | pending | |
 
 ## Log
 
-- L1 (2026-11-10): design written; nginx confirmed as the production proxy, config not yet checked.
+- L1 (2026-11-10): design written.
