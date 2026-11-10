@@ -45,6 +45,16 @@ describe("EnterLightningTournament", () => {
 		expect(world.entry(ALICE)?.idleSince).toEqual(RUNNING_AT);
 	});
 
+	it("closes Swiss entries at the start: no late registration", async () => {
+		const { world, enter } = setup();
+		world.seedTournament({ system: "swiss", status: "registration" });
+		await enter.run(at(REGISTRATION_AT));
+
+		world.seedTournament({ system: "swiss", status: "running" });
+		await expect(enter.run(at(RUNNING_AT, BOB))).rejects.toThrow(UnprocessableError);
+		expect(world.entry(BOB)).toBeUndefined();
+	});
+
 	it("answers 404 for an unknown tournament and 422 when registration is not open", async () => {
 		const { world, enter } = setup();
 

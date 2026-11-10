@@ -6,7 +6,7 @@ import { WithdrawLightningEntry } from "../../../../../src/modules/lightning/app
 import { ConflictError } from "../../../../../src/shared/errors/ConflictError";
 import { NotFoundError } from "../../../../../src/shared/errors/NotFoundError";
 import { UnprocessableError } from "../../../../../src/shared/errors/UnprocessableError";
-import { ALICE, BOB, RUNNING_AT, TOURNAMENT_ID, World } from "./fakes";
+import { ALICE, BOB, CAROL, RUNNING_AT, TOURNAMENT_ID, World } from "./fakes";
 
 function setup() {
 	const world = new World();
@@ -86,5 +86,27 @@ describe("ResumeLightningEntry", () => {
 
 		world.seedEntry(BOB, { status: "removed", presence: "away" });
 		await expect(resume.run({ ...input, userId: BOB })).rejects.toThrow(UnprocessableError);
+	});
+});
+
+describe("Swiss entries", () => {
+	it("refuses to pause: Swiss has no pause, a player who stops drops", async () => {
+		const { world, pause } = setup();
+		world.seedSwiss([ALICE, BOB]);
+
+		await expect(pause.run(input)).rejects.toThrow(UnprocessableError);
+		expect(world.entry(ALICE)?.presence).toBe("idle");
+	});
+
+	it("drops a waiting player without parking them away, and keeps a live game counting", async () => {
+		const { world, withdraw } = setup();
+		world.seedSwiss([ALICE, BOB, CAROL]);
+		world.seedGame(BOB, CAROL, { round: 1 });
+
+		expect((await withdraw.run(input)).status).toBe("withdrawn");
+		await withdraw.run({ ...input, userId: BOB });
+
+		expect(world.entry(ALICE)).toMatchObject({ status: "withdrawn", presence: "idle" });
+		expect(world.entry(BOB)).toMatchObject({ status: "withdrawn", presence: "paired" });
 	});
 });

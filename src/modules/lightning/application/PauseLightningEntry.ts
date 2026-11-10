@@ -8,7 +8,8 @@ import { lockPlayerEntry } from "./lockOpenTournament";
 import { LightningEntryInput } from "./WithdrawLightningEntry";
 
 // The client sends this when the player leaves the tournament page: pairing skips an away
-// player, so nobody waits in a room for someone who is not looking.
+// player, so nobody waits in a room for someone who is not looking. Swiss pairs everyone
+// every round, so it has no pause: a player who cannot go on withdraws.
 export class PauseLightningEntry {
 	constructor(
 		private readonly tournaments: LightningTournamentRepository,
@@ -18,13 +19,16 @@ export class PauseLightningEntry {
 
 	async run(input: LightningEntryInput): Promise<LightningEntryView> {
 		return this.transactions.run(async (manager) => {
-			const { entry } = await lockPlayerEntry(
+			const { tournament, entry } = await lockPlayerEntry(
 				this.tournaments,
 				this.entries,
 				input.tournamentId,
 				input.userId,
 				manager,
 			);
+			if (tournament.system === "swiss") {
+				throw new UnprocessableError("Swiss tournaments have no pause; withdraw to drop out");
+			}
 			if (entry.status !== "active") {
 				throw new UnprocessableError("Your entry is no longer active");
 			}

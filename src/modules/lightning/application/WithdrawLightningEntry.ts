@@ -10,7 +10,7 @@ export type LightningEntryInput = { tournamentId: string; userId: string; now: D
 /**
  * Leaves the tournament. A game already paired or being played keeps running: its record is
  * applied when it arrives, so the opponent's result counts, and the withdrawn player is never
- * paired again.
+ * paired again. Swiss has no away state, so a dropped Swiss player simply stops being paired.
  */
 export class WithdrawLightningEntry {
 	constructor(
@@ -21,7 +21,7 @@ export class WithdrawLightningEntry {
 
 	async run(input: LightningEntryInput): Promise<LightningEntryView> {
 		return this.transactions.run(async (manager) => {
-			const { entry } = await lockPlayerEntry(
+			const { tournament, entry } = await lockPlayerEntry(
 				this.tournaments,
 				this.entries,
 				input.tournamentId,
@@ -33,10 +33,11 @@ export class WithdrawLightningEntry {
 			}
 			if (entry.status === "withdrawn") return toEntryView(entry);
 			const inGame = entry.presence === "paired" || entry.presence === "playing";
+			const parked = tournament.system === "swiss" ? ("idle" as const) : ("away" as const);
 			const withdrawn = {
 				...entry,
 				status: "withdrawn" as const,
-				presence: inGame ? entry.presence : ("away" as const),
+				presence: inGame ? entry.presence : parked,
 				idleSince: inGame ? entry.idleSince : null,
 			};
 			await this.entries.update(withdrawn, manager);

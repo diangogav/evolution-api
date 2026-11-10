@@ -37,7 +37,7 @@ export class EnterLightningTournament {
 		if (!UUID.test(input.tournamentId)) throw notFound();
 		const tournament = await this.tournaments.findById(input.tournamentId);
 		if (!tournament) throw notFound();
-		if (!acceptsEntries(tournament.status)) {
+		if (!acceptsEntries(tournament.status, tournament.system)) {
 			throw new UnprocessableError("Registration is not open for this tournament");
 		}
 		const validation = await this.legality.check(tournament.format, input.deck);
@@ -46,7 +46,7 @@ export class EnterLightningTournament {
 		return this.transactions.run(async (manager) => {
 			const locked = await this.tournaments.findByIdForUpdate(input.tournamentId, manager);
 			if (!locked) throw notFound();
-			if (!acceptsEntries(locked.status)) {
+			if (!acceptsEntries(locked.status, locked.system)) {
 				throw new UnprocessableError("Registration is not open for this tournament");
 			}
 			const running = locked.status === "running";
