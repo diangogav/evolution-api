@@ -34,11 +34,23 @@ function view(id: number): LightningChatMessageView {
 }
 
 class FakeSubscriber implements ChatSubscriberClient {
+	onconnect: (() => void) | null = null;
+	onclose: ((error: Error) => void) | null = null;
+	private connected = false;
 	private readonly handlers = new Map<string, (message: string, channel: string) => void>();
 
 	async subscribe(channel: string, listener: (message: string, channel: string) => void) {
+		if (!this.connected) {
+			this.connected = true;
+			this.onconnect?.();
+		}
 		this.handlers.set(channel, listener);
 		return 1;
+	}
+
+	/** Redis restarted and the client reconnected on its own. */
+	reconnect() {
+		this.onconnect?.();
 	}
 
 	async unsubscribe(channel: string) {
@@ -321,6 +333,21 @@ describe("lightning chat — stream", () => {
 			{ useCase: "replay", input: { tournamentId: ID, afterId: null } },
 			{ useCase: "replay", input: { tournamentId: ID, afterId: 10 } },
 		]);
+		await reader.cancel();
+	});
+
+	it("sends a reset without an id when the subscription comes back after Redis reconnects", async () => {
+		const { app, subscriber } = buildApp();
+
+		const response = await app.handle(send("GET", `/${ID}/chat/stream`, "u-1"));
+		const reader = (response.body as ReadableStream<Uint8Array>).getReader();
+		const state = { text: "" };
+		subscriber.reconnect();
+		await readUntil(reader, (text) => text.includes("reset"), state);
+		subscriber.deliver({ type: "message", message: view(8) });
+		await readUntil(reader, (text) => text.includes("id: 8"), state);
+
+		expect(state.text).toBe(`event: reset\ndata: {}\n\n${frame(8)}`);
 		await reader.cancel();
 	});
 
