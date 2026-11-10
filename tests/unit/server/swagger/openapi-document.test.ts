@@ -75,12 +75,16 @@ const PROTECTED_OPERATIONS = [
 	"POST /api/v1/lightning/{id}/entries/me/resume",
 	"GET /api/v1/lightning/{id}/me",
 	"GET /api/v1/lightning/me/active",
+	"GET /api/v1/lightning/{id}/chat",
+	"POST /api/v1/lightning/{id}/chat",
+	"DELETE /api/v1/lightning/{id}/chat/{messageId}",
 ];
 
 // Operations whose success has no body; they declare it with `emptyOk`.
 const EMPTY_BODY_OPERATIONS = [
 	"POST /api/v1/users/change-username",
 	"POST /api/v1/users/change-account-password",
+	"DELETE /api/v1/lightning/{id}/chat/{messageId}",
 ];
 
 // Operations that still lack a 2xx application/json schema. This list only

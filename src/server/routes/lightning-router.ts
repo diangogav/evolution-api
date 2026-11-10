@@ -7,17 +7,22 @@ import { HttpFormatListSource } from "../../modules/community-decks/infrastructu
 import { getJson, getText } from "../../modules/community-decks/infrastructure/httpGet";
 import { CancelLightningTournament } from "../../modules/lightning/application/CancelLightningTournament";
 import { CreateLightningTournament } from "../../modules/lightning/application/CreateLightningTournament";
+import { DeleteLightningChatMessage } from "../../modules/lightning/application/DeleteLightningChatMessage";
 import { EnterLightningTournament } from "../../modules/lightning/application/EnterLightningTournament";
+import { GetLightningChatHistory } from "../../modules/lightning/application/GetLightningChatHistory";
 import { GetLightningRankings } from "../../modules/lightning/application/GetLightningRankings";
 import { GetLightningTournament } from "../../modules/lightning/application/GetLightningTournament";
 import { GetMyActiveLightningEntries } from "../../modules/lightning/application/GetMyActiveLightningEntries";
 import { GetMyLightningState } from "../../modules/lightning/application/GetMyLightningState";
 import { ListLightningTournaments } from "../../modules/lightning/application/ListLightningTournaments";
 import { PauseLightningEntry } from "../../modules/lightning/application/PauseLightningEntry";
+import { PostLightningChatMessage } from "../../modules/lightning/application/PostLightningChatMessage";
 import { ResumeLightningEntry } from "../../modules/lightning/application/ResumeLightningEntry";
 import { WithdrawLightningEntry } from "../../modules/lightning/application/WithdrawLightningEntry";
+import { BunRedisChatRateLimiter } from "../../modules/lightning/infrastructure/BunRedisChatRateLimiter";
 import { CommunityDeckLegalityChecker } from "../../modules/lightning/infrastructure/CommunityDeckLegalityChecker";
 import { LightningByePostgresRepository } from "../../modules/lightning/infrastructure/LightningByePostgresRepository";
+import { LightningChatMessagePostgresRepository } from "../../modules/lightning/infrastructure/LightningChatMessagePostgresRepository";
 import { LightningEntryPostgresRepository } from "../../modules/lightning/infrastructure/LightningEntryPostgresRepository";
 import { LightningGamePostgresRepository } from "../../modules/lightning/infrastructure/LightningGamePostgresRepository";
 import { LightningResultPostgresRepository } from "../../modules/lightning/infrastructure/LightningResultPostgresRepository";
@@ -26,6 +31,8 @@ import {
 	CancelLightningTournamentBodySchema,
 	CreateLightningTournamentBodySchema,
 	EnterLightningBodySchema,
+	LightningChatHistorySchema,
+	LightningChatMessageSchema,
 	LightningEntrySchema,
 	LightningRankingListSchema,
 	LightningTournamentDetailSchema,
@@ -33,23 +40,29 @@ import {
 	LightningTournamentSchema,
 	LightningTournamentStatusSchema,
 	MyLightningStateSchema,
+	PostLightningChatBodySchema,
 } from "../../modules/lightning/infrastructure/LightningSchemas";
 import { LightningTournamentPostgresRepository } from "../../modules/lightning/infrastructure/LightningTournamentPostgresRepository";
 import { PlayerDirectoryPostgresRepository } from "../../modules/lightning/infrastructure/PlayerDirectoryPostgresRepository";
+import { RedisLightningChatPublisher } from "../../modules/lightning/infrastructure/RedisLightningChatPublisher";
 import { BunRedisReservationStore } from "../../modules/reserved-duel/infrastructure/BunRedisReservationStore";
 import { ReservedDuelPostgresReader } from "../../modules/reserved-duel/infrastructure/ReservedDuelPostgresReader";
 import { CosmeticsTransactionRunner } from "../../modules/rewards/infrastructure/CosmeticsTransactionRunner";
 import { Pino } from "../../shared/logger/infrastructure/Pino";
 import { redisClient } from "../../shared/redis/redisClient";
-import { type AdminAuthorizer, adminAuthorizer } from "../auth/AdminAuthorizer";
+import {
+	type AdminAuthorizer,
+	type AdminRoleChecker,
+	adminAuthorizer,
+} from "../auth/AdminAuthorizer";
 import { requireUser as defaultRequireUser } from "../auth/requireUser";
 import { buildApplyLightningGame } from "../composition/buildLightning";
-import { ErrorSchema, errorResponses, jsonOk } from "../openapi/responses";
+import { emptyOk, ErrorSchema, errorResponses, jsonOk } from "../openapi/responses";
 
 type Runner<T> = Pick<T, Extract<keyof T, "run">>;
 
 export interface LightningRouterDependencies {
-	readonly authorizer: AdminAuthorizer;
+	readonly authorizer: AdminAuthorizer & AdminRoleChecker;
 	readonly requireUser: typeof defaultRequireUser;
 	readonly clock: () => Date;
 	readonly defaultSeason: number;
@@ -64,6 +77,9 @@ export interface LightningRouterDependencies {
 	readonly myActive: Runner<GetMyActiveLightningEntries>;
 	readonly create: Runner<CreateLightningTournament>;
 	readonly cancel: Runner<CancelLightningTournament>;
+	readonly chatHistory: Runner<GetLightningChatHistory>;
+	readonly chatPost: Runner<PostLightningChatMessage>;
+	readonly chatDelete: Runner<DeleteLightningChatMessage>;
 }
 
 const ID = "8f14e45f-ceea-467a-9f0e-6b9e1c6a1a2b";
@@ -116,6 +132,14 @@ const entryExample = {
 };
 
 const opponent = { userId: "1b9d6bcd-bbfd-4b2d-9b5d-ab8dfbbd4bed", username: "Chazz_666" };
+
+const chatMessageExample = {
+	id: 1042,
+	tournamentId: ID,
+	author: { userId: opponent.userId, username: opponent.username, admin: false },
+	body: "gl hf everyone",
+	createdAt: "2026-11-13T20:05:00.000Z",
+};
 
 const unprocessable = (description: string) => ({
 	422: { description, content: { "text/plain": { schema: ErrorSchema } } },
@@ -319,6 +343,101 @@ export function createLightningRouter(deps: LightningRouterDependencies) {
 		.guard({}, (app) =>
 			app
 				.use(deps.requireUser)
+				.get(
+					"/:id/chat",
+					({ params, query }) =>
+						deps.chatHistory.run({
+							tournamentId: params.id,
+							before: query.before ?? null,
+							limit: query.limit,
+						}),
+					{
+						params: t.Object({ id: t.String() }),
+						query: t.Object({
+							before: t.Optional(
+								t.Integer({
+									minimum: 1,
+									description: "Messages with a lower id; omit for the newest",
+								}),
+							),
+							limit: t.Integer({ minimum: 1, maximum: 50, default: 50 }),
+						}),
+						detail: {
+							tags: ["Lightning"],
+							summary: "Read the tournament chat",
+							description:
+								"A page of the tournament chat, oldest first: the newest messages, or those before `before` to page back. A message an admin hid comes back as `{ id, deleted: true }` so the client drops it. Any signed-in player who is not banned may read.",
+							security: [{ bearerAuth: [] }],
+							responses: {
+								200: jsonOk(LightningChatHistorySchema, "Chat messages, oldest first", [
+									{ id: 1041, deleted: true },
+									chatMessageExample,
+								]),
+								...errorResponses(401, 403, 404, 422),
+							},
+						},
+					},
+				)
+				.post(
+					"/:id/chat",
+					async ({ userId, bearer: token, params, body, set }) => {
+						const view = await deps.chatPost.run({
+							tournamentId: params.id,
+							userId,
+							isAdmin: deps.authorizer.isAdmin(token),
+							body: body.body,
+						});
+						set.status = 201;
+						return view;
+					},
+					{
+						params: t.Object({ id: t.String() }),
+						body: PostLightningChatBodySchema,
+						detail: {
+							tags: ["Lightning"],
+							summary: "Write in the tournament chat",
+							description:
+								"Posts a message and pushes it to every open stream of the tournament. Entrants (any entry status) and admins may write while the tournament is in registration, running or finishing. The body is trimmed and must keep 1-200 characters without control characters. At most 5 messages per 10 s per player and tournament.",
+							security: [{ bearerAuth: [] }],
+							responses: {
+								201: jsonOk(LightningChatMessageSchema, "The stored message", chatMessageExample),
+								...errorResponses(401, 404, 429),
+								403: {
+									description: "Banned, or not an entrant of the tournament",
+									content: { "text/plain": { schema: ErrorSchema } },
+								},
+								...conflict("The tournament is not open for chat"),
+								...unprocessable("Empty, too long, or with control characters"),
+							},
+						},
+					},
+				)
+				.delete(
+					"/:id/chat/:messageId",
+					async ({ bearer: token, params, set }) => {
+						const admin = deps.authorizer.requireAdmin(token);
+						await deps.chatDelete.run({
+							tournamentId: params.id,
+							messageId: params.messageId,
+							adminUserId: admin.userId,
+						});
+						set.status = 204;
+					},
+					{
+						params: t.Object({ id: t.String(), messageId: t.Integer({ minimum: 1 }) }),
+						detail: {
+							tags: ["Lightning Admin"],
+							summary: "Hide a tournament chat message",
+							description:
+								"Hides the message for every reader and pushes a `deleted` event to the open streams. Idempotent: hiding a hidden message answers 204 again without a second event.",
+							security: [{ bearerAuth: [] }],
+							responses: {
+								204: emptyOk("The message is hidden"),
+								...errorResponses(401, 403, 404, 422),
+							},
+						},
+					},
+				)
 				// Static segments win over `/:id` in Elysia's router, whatever the registration order.
 				.get("/me/active", ({ userId }) => deps.myActive.run({ userId }), {
 					detail: {
@@ -489,6 +608,9 @@ const records = new ReservedDuelPostgresReader();
 const players = new PlayerDirectoryPostgresRepository();
 const transactions = new CosmeticsTransactionRunner();
 const logger = new Pino();
+const chatMessages = new LightningChatMessagePostgresRepository();
+const chatPublisher = new RedisLightningChatPublisher(redisClient);
+
 // Lists change a few times a year; an hour keeps registrations off the network.
 const LIST_CACHE_MS = 60 * 60 * 1000;
 
@@ -533,4 +655,15 @@ export const lightningRouter = createLightningRouter({
 		transactions,
 		logger,
 	),
+	chatHistory: new GetLightningChatHistory(tournaments, chatMessages, players),
+	chatPost: new PostLightningChatMessage(
+		tournaments,
+		entries,
+		chatMessages,
+		new BunRedisChatRateLimiter(redisClient),
+		players,
+		chatPublisher,
+		logger,
+	),
+	chatDelete: new DeleteLightningChatMessage(chatMessages, chatPublisher, logger),
 });

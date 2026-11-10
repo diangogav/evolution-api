@@ -1,5 +1,6 @@
 import { t } from "elysia";
 
+import { LIGHTNING_CHAT_BODY_MAX_LENGTH } from "../domain/LightningChatMessage";
 import { LIGHTNING_ENTRY_STATUSES, LIGHTNING_PRESENCES } from "../domain/LightningEntry";
 import { LIGHTNING_GAME_RESOLUTIONS } from "../domain/LightningGame";
 import {
@@ -297,4 +298,33 @@ export const CreateLightningTournamentBodySchema = t.Object({
 
 export const CancelLightningTournamentBodySchema = t.Object({
 	reason: t.String({ minLength: 1, maxLength: 200 }),
+});
+
+export const LightningChatMessageSchema = t.Object({
+	id: t.Integer({ description: "Strictly increasing; also the SSE event id" }),
+	tournamentId: t.String({ format: "uuid" }),
+	author: t.Object({
+		userId: t.String(),
+		username: t.String(),
+		admin: t.Boolean({ description: "The author holds the admin role now" }),
+	}),
+	body: t.String(),
+	createdAt: DateTime(),
+});
+
+export const DeletedLightningChatMessageSchema = t.Object(
+	{ id: t.Integer(), deleted: t.Literal(true) },
+	{ description: "A message an admin hid: drop it by id" },
+);
+
+export const LightningChatHistorySchema = t.Array(
+	t.Union([LightningChatMessageSchema, DeletedLightningChatMessageSchema]),
+	{ description: "Oldest first" },
+);
+
+export const PostLightningChatBodySchema = t.Object({
+	body: t.String({
+		maxLength: LIGHTNING_CHAT_BODY_MAX_LENGTH,
+		description: "1-200 characters after trimming, no control characters",
+	}),
 });
