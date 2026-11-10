@@ -126,6 +126,7 @@ knows the new ref until the others restart; the others keep signing it, which is
 | `REWARDS_WORKER_INTERVAL_MS` | Optional | `3000` | Pause between ticks. |
 | `REWARDS_WORKER_LAG_MS` | Optional | `5000` | Rows younger than this are left for a later tick, so a match whose duels are still being written is never read half-complete. |
 | `REWARDS_WORKER_BATCH_SIZE` | Optional | `200` | Maximum rows drained per source per tick. |
+| `REWARDS_ACHIEVEMENT_WINDOW_HOURS` | Optional | `168` | How far back, by `unlocked_at`, the worker looks for unlocked achievements whose essence is not credited yet. A row committed later than this after its unlock time is never paid automatically. |
 
 How the worker works, and how to backfill or repair it, is in [rewards.md](rewards.md#the-worker).
 

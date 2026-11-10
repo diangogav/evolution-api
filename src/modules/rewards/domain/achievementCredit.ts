@@ -6,9 +6,7 @@ import { EssenceLedgerEntry, essenceLedgerEntry } from "./EssenceLedgerEntry";
 // so re-reading the row can never credit it twice. An achievement with no essence
 // reward pays nothing and leaves no ledger row. The lightning module credits its own
 // unlocks with this same entry, so the worker reaching them later is a no-op.
-export function achievementCredit(
-	unlock: Pick<UnlockedAchievement, "sourceId" | "userId" | "essenceReward">,
-): EssenceLedgerEntry | null {
+export function achievementCredit(unlock: UnlockedAchievement): EssenceLedgerEntry | null {
 	const delta = unlock.essenceReward;
 	if (delta <= 0) return null;
 	return essenceLedgerEntry({

@@ -73,6 +73,7 @@ export const config = {
 		intervalMs: Number(process.env.REWARDS_WORKER_INTERVAL_MS ?? 3000),
 		lagMs: Number(process.env.REWARDS_WORKER_LAG_MS ?? 5000),
 		batchSize: Number(process.env.REWARDS_WORKER_BATCH_SIZE ?? 200),
+		achievementWindowHours: Number(process.env.REWARDS_ACHIEVEMENT_WINDOW_HOURS ?? 168),
 	},
 	eventRunWorker: {
 		enabled: process.env.EVENT_RUN_WORKER_ENABLED === "true",
