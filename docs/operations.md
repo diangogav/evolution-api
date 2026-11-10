@@ -63,7 +63,7 @@ same four names for the local Postgres container.
 
 | Name | Required | Default | Purpose |
 | --- | --- | --- | --- |
-| `REDIS_URL` | Required | — | Connection string for the single shared Redis client (`src/shared/redis/redisClient.ts`), backing ranked game tickets. |
+| `REDIS_URL` | Required | — | Connection string for the shared Redis client (`src/shared/redis/redisClient.ts`), backing ranked game tickets, duel reservations and the lightning chat (rate limit and publish), and for the lightning chat subscriber connection. |
 
 ### JWT / auth
 
@@ -271,7 +271,8 @@ found in this repository.
 - **Startup order** (`src/index.ts`): shared Postgres DataSource `connect()` → cosmetics Postgres DataSource `initialize()` → Redis `connect()` → Elysia server `listen()`. Each connection is awaited, but a failure is only logged (`.catch(error => logger.error(error))`) — it is not fatal. The HTTP server still starts and listens even if Postgres or Redis failed to connect at boot; a failed connection then surfaces later, per request.
 - **Missing required env vars crash startup, not at request time.** `src/config/index.ts` and `src/evolution-types/src/config` are imported eagerly when the process starts; a missing `ensureEnvVariable`-validated variable throws synchronously with `Environment variable <NAME> is not set` before any DataSource or server code runs. `POSTGRES_*` variables are the exception — they are read directly without `ensureEnvVariable`, so a missing or wrong Postgres variable does not crash at startup; it only fails later, when the shared DataSource tries to connect.
 - **Annulment switch**: `ANNULMENT_ENABLED` gates `AnnulMatchesUseCase` and `UnannulMatchesUseCase` (`src/server/routes/admin-moderation-router.ts`). See [domain/match-annulment.md](domain/match-annulment.md) for the full flow and idempotency guarantees.
-- **Redis dependency**: the `ticket` module (`BunRedisRankedTicketRepository`) is the only consumer of Redis. If `REDIS_URL` is wrong or Redis is unreachable, only ranked-ticket endpoints are affected — every other module uses the Postgres DataSources instead (see [architecture.md](architecture.md#data)).
+- **Redis dependency**: ranked tickets (`ticket`), duel reservations (`reserved-duel`, used by event runs and lightning games) and the lightning chat use Redis. If `REDIS_URL` is wrong or Redis is unreachable, those features fail; every other module uses the Postgres DataSources (see [architecture.md](architecture.md#data)). Chat posts then fail at the rate limit, open chat streams stay open without live events, and the chat history still loads.
+- **Lightning chat stream** (`GET /lightning/{id}/chat/stream`): each API instance opens one extra Redis connection, dedicated to the chat subscriptions (a subscribed connection takes no other commands), on the first stream it serves; the connection ends with the process. The stream is Server-Sent Events: whatever sits in front of the API must not buffer the response (the API sends `X-Accel-Buffering: no` and `Cache-Control: no-cache`) and must allow idle reads longer than the 25 s heartbeat (`: ping`). An instance holds at most 3 streams per user and 2,000 in total, then answers 429; the streams of an instance drop when it restarts, and clients reconnect with `Last-Event-ID`.
 
 - **Removed variables and rollback**: versions before the removal of tournaments and SendGrid require
   `TOURNAMENTS_API_URL`, `TOURNAMENTS_WEBHOOK_URL` and the three `SENDGRID_*` variables at startup. Remove them

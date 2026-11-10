@@ -46,19 +46,22 @@ Index `(tournament_id, id)`. Usernames and the author's `admin` flag (the curren
 
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/lightning/{id}/chat?before={messageId}` | page of 50, newest last; deleted messages come back as `{ id, deleted: true }` so the client can drop them |
+| GET | `/lightning/{id}/chat?before={messageId}&limit={n}` | page of `limit` (1–50, default 50), newest last; deleted messages come back as `{ id, deleted: true }` so the client can drop them |
 | GET | `/lightning/{id}/chat/stream` | `text/event-stream`; see [Stream](#stream) |
 | POST | `/lightning/{id}/chat` | `{ body }` → 201 with the message view; 404 unknown tournament; 403 not an entrant; 409 tournament not open for chat; 422 empty or too long; 429 rate limited |
-| DELETE | `/lightning/{id}/chat/{messageId}` (admin) | soft delete; 204; idempotent |
+| DELETE | `/lightning/{id}/chat/{messageId}` (admin) | soft delete; 204; idempotent; 403 not an admin; 404 unknown message or another tournament's |
 
 Message view: `{ id, tournamentId, author: { userId, username, admin }, body, createdAt }`.
 
 ## Stream
 
-- Events: `message` (the message view) and `deleted` (`{ id }`). The SSE `id:` field is the message id for `message`; `deleted` carries no id so it does not move the replay cursor.
-- Reconnection: the client sends `Last-Event-ID`; the API first streams every non-deleted message with a greater id (capped at 200; beyond that the client reloads the history), then live events. Live events that arrive during the replay are buffered and deduplicated by id.
+- Events: `message` (the message view), `deleted` (`{ id }`) and `reset` (`{}`). The SSE `id:` field is the message id for `message`; `deleted` and `reset` carry no id so they do not move the replay cursor.
+- Opening: an unknown tournament answers 404 before the stream opens. Without `Last-Event-ID` (or with one that is not a message id) the stream sends only live events: the client loads the history with `GET` first.
+- Reconnection: the client sends `Last-Event-ID`; the API first streams every non-deleted message with a greater id, then live events. Beyond 200 it sends the first 200 and then `reset`, and the client reloads the history. Live events that arrive during the replay are buffered and deduplicated by id.
+- The stream waits at most 5 s for its channel subscription before replaying: with Redis unreachable it still opens, without live events.
 - Heartbeat: an SSE comment (`: ping`) every 25 s, so idle proxies do not close the connection.
-- Headers: `Cache-Control: no-cache`, `X-Accel-Buffering: no` (no proxy buffering for this response).
+- Headers: `Content-Type: text/event-stream; charset=utf-8`, `Cache-Control: no-cache`, `Connection: keep-alive`, `X-Accel-Buffering: no` (no proxy buffering for this response).
+- Closing: the request's abort signal or the body being cancelled unregisters the stream and stops its heartbeat.
 - Limits per instance: 3 open streams per user and 2,000 in total; above either the API answers 429.
 - The client reads the stream with `fetch` and a `ReadableStream`, not `EventSource`: it needs the `Authorization` header and control of `Last-Event-ID`.
 
@@ -88,7 +91,7 @@ Message view: `{ id, tournamentId, author: { userId, username, admin }, body, cr
 
 | Failure | Effect |
 |---|---|
-| Redis down | `POST` fails at the rate limit (503); streams stay open but get no live events; history still loads |
+| Redis down | `POST` fails at the rate limit (500); streams stay open but get no live events; history still loads |
 | Publish lost | readers see the message on reconnection or history reload |
 | Instance restart | its streams drop; clients reconnect to another instance and replay after `Last-Event-ID` |
 | Client misses a `deleted` event | the next history load returns the message as deleted |

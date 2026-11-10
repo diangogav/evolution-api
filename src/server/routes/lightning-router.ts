@@ -10,6 +10,7 @@ import { CreateLightningTournament } from "../../modules/lightning/application/C
 import { DeleteLightningChatMessage } from "../../modules/lightning/application/DeleteLightningChatMessage";
 import { EnterLightningTournament } from "../../modules/lightning/application/EnterLightningTournament";
 import { GetLightningChatHistory } from "../../modules/lightning/application/GetLightningChatHistory";
+import { GetLightningChatReplay } from "../../modules/lightning/application/GetLightningChatReplay";
 import { GetLightningRankings } from "../../modules/lightning/application/GetLightningRankings";
 import { GetLightningTournament } from "../../modules/lightning/application/GetLightningTournament";
 import { GetMyActiveLightningEntries } from "../../modules/lightning/application/GetMyActiveLightningEntries";
@@ -22,7 +23,9 @@ import { WithdrawLightningEntry } from "../../modules/lightning/application/With
 import { BunRedisChatRateLimiter } from "../../modules/lightning/infrastructure/BunRedisChatRateLimiter";
 import { CommunityDeckLegalityChecker } from "../../modules/lightning/infrastructure/CommunityDeckLegalityChecker";
 import { LightningByePostgresRepository } from "../../modules/lightning/infrastructure/LightningByePostgresRepository";
+import { LightningChatHub } from "../../modules/lightning/infrastructure/LightningChatHub";
 import { LightningChatMessagePostgresRepository } from "../../modules/lightning/infrastructure/LightningChatMessagePostgresRepository";
+import { LightningChatStreams } from "../../modules/lightning/infrastructure/LightningChatStreams";
 import { LightningEntryPostgresRepository } from "../../modules/lightning/infrastructure/LightningEntryPostgresRepository";
 import { LightningGamePostgresRepository } from "../../modules/lightning/infrastructure/LightningGamePostgresRepository";
 import { LightningResultPostgresRepository } from "../../modules/lightning/infrastructure/LightningResultPostgresRepository";
@@ -80,6 +83,7 @@ export interface LightningRouterDependencies {
 	readonly chatHistory: Runner<GetLightningChatHistory>;
 	readonly chatPost: Runner<PostLightningChatMessage>;
 	readonly chatDelete: Runner<DeleteLightningChatMessage>;
+	readonly chatStream: Pick<LightningChatStreams, "open">;
 }
 
 const ID = "8f14e45f-ceea-467a-9f0e-6b9e1c6a1a2b";
@@ -140,6 +144,17 @@ const chatMessageExample = {
 	body: "gl hf everyone",
 	createdAt: "2026-11-13T20:05:00.000Z",
 };
+
+const CHAT_STREAM_DESCRIPTION = [
+	"Server-Sent Events of the tournament chat. Read it with `fetch` (it needs the bearer header), not `EventSource`. Any signed-in player who is not banned may read.",
+	"",
+	"- `event: message`, `id: <messageId>`, data the message view (same shape as the history items). The `id` moves the reader's cursor.",
+	'- `event: deleted`, no `id`, data `{"id": <messageId>}`: an admin hid that message, drop it.',
+	"- `event: reset`, no `id`, data `{}`: more messages were missed than the replay carries; reload the history with `GET /lightning/{id}/chat`.",
+	"- `: ping` comment every 25 s to keep idle proxies from closing the connection.",
+	"",
+	"With a `Last-Event-ID` header (a message id) the stream first replays the non-deleted messages after it, oldest first (at most 200, then `reset`), and then live events, without gaps or duplicates. Without it only live events are sent: load the history first. A user holds at most 3 open streams per instance and an instance at most 2,000; beyond that the API answers 429.",
+].join("\n");
 
 const unprocessable = (description: string) => ({
 	422: { description, content: { "text/plain": { schema: ErrorSchema } } },
@@ -438,6 +453,48 @@ export function createLightningRouter(deps: LightningRouterDependencies) {
 						},
 					},
 				)
+				.get(
+					"/:id/chat/stream",
+					({ userId, params, request }) =>
+						deps.chatStream.open({
+							tournamentId: params.id,
+							userId,
+							lastEventId: request.headers.get("last-event-id"),
+							signal: request.signal,
+						}),
+					{
+						params: t.Object({ id: t.String() }),
+						detail: {
+							tags: ["Lightning"],
+							summary: "Stream the tournament chat",
+							description: CHAT_STREAM_DESCRIPTION,
+							security: [{ bearerAuth: [] }],
+							parameters: [
+								{
+									name: "Last-Event-ID",
+									in: "header",
+									required: false,
+									description:
+										"The last message id the client holds; the stream replays what follows it",
+									schema: { type: "string" },
+								},
+							],
+							responses: {
+								200: {
+									description: "An open event stream",
+									content: {
+										"text/event-stream": {
+											schema: t.String({ description: "Server-Sent Events, UTF-8" }),
+											example:
+												'event: message\nid: 1042\ndata: {"id":1042,"tournamentId":"8f14e45f-ceea-467a-9f0e-6b9e1c6a1a2b","author":{"userId":"1b9d6bcd-bbfd-4b2d-9b5d-ab8dfbbd4bed","username":"Chazz_666","admin":false},"body":"gl hf everyone","createdAt":"2026-11-13T20:05:00.000Z"}\n\nevent: deleted\ndata: {"id":1041}\n\n: ping\n\n',
+										},
+									},
+								},
+								...errorResponses(401, 403, 404, 429),
+							},
+						},
+					},
+				)
 				// Static segments win over `/:id` in Elysia's router, whatever the registration order.
 				.get("/me/active", ({ userId }) => deps.myActive.run({ userId }), {
 					detail: {
@@ -611,6 +668,12 @@ const logger = new Pino();
 const chatMessages = new LightningChatMessagePostgresRepository();
 const chatPublisher = new RedisLightningChatPublisher(redisClient);
 
+/**
+ * The one chat hub of this process: it holds the Redis subscriber connection (opened on the
+ * first stream) and every local stream. The entry point closes it on shutdown.
+ */
+export const lightningChatHub = new LightningChatHub(logger);
+
 // Lists change a few times a year; an hour keeps registrations off the network.
 const LIST_CACHE_MS = 60 * 60 * 1000;
 
@@ -666,4 +729,9 @@ export const lightningRouter = createLightningRouter({
 		logger,
 	),
 	chatDelete: new DeleteLightningChatMessage(chatMessages, chatPublisher, logger),
+	chatStream: new LightningChatStreams(
+		lightningChatHub,
+		new GetLightningChatReplay(tournaments, chatMessages, players),
+		logger,
+	),
 });
