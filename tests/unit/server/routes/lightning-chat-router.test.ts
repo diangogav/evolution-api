@@ -34,11 +34,23 @@ function view(id: number): LightningChatMessageView {
 }
 
 class FakeSubscriber implements ChatSubscriberClient {
+	onconnect: (() => void) | null = null;
+	onclose: ((error: Error) => void) | null = null;
+	private connected = false;
 	private readonly handlers = new Map<string, (message: string, channel: string) => void>();
 
 	async subscribe(channel: string, listener: (message: string, channel: string) => void) {
+		if (!this.connected) {
+			this.connected = true;
+			this.onconnect?.();
+		}
 		this.handlers.set(channel, listener);
 		return 1;
+	}
+
+	/** Redis restarted and the client reconnected on its own. */
+	reconnect() {
+		this.onconnect?.();
 	}
 
 	async unsubscribe(channel: string) {
@@ -167,6 +179,7 @@ async function readUntil(
 }
 
 const frame = (id: number) => `event: message\nid: ${id}\ndata: ${JSON.stringify(view(id))}\n\n`;
+const OPEN = ": open\n\n";
 
 describe("lightning chat — history", () => {
 	it("answers 401 without a token and 403 for a banned player", async () => {
@@ -290,7 +303,9 @@ describe("lightning chat — stream", () => {
 		expect(response.headers.get("content-type")).toStartWith("text/event-stream");
 		expect(response.headers.get("cache-control")).toBe("no-cache");
 		expect(response.headers.get("x-accel-buffering")).toBe("no");
-		expect(await readUntil(reader, (text) => text.includes("id: 5"), { text: "" })).toBe(frame(5));
+		expect(await readUntil(reader, (text) => text.includes("id: 5"), { text: "" })).toBe(
+			`${OPEN}${frame(5)}`,
+		);
 		expect(calls).toEqual([{ useCase: "replay", input: { tournamentId: ID, afterId: null } }]);
 		await reader.cancel();
 	});
@@ -315,12 +330,46 @@ describe("lightning chat — stream", () => {
 		await readUntil(reader, (text) => text.includes("id: 14"), state);
 
 		expect(state.text).toBe(
-			`${frame(11)}${frame(12)}event: deleted\ndata: {"id":11}\n\n${frame(13)}${frame(14)}`,
+			`${OPEN}${frame(11)}${frame(12)}event: deleted\ndata: {"id":11}\n\n${frame(13)}${frame(14)}`,
 		);
 		expect(calls).toEqual([
 			{ useCase: "replay", input: { tournamentId: ID, afterId: null } },
 			{ useCase: "replay", input: { tournamentId: ID, afterId: 10 } },
 		]);
+		await reader.cancel();
+	});
+
+	it("writes an opening comment first, so the headers go out before any event", async () => {
+		const { app, replay } = buildApp();
+		replay.answer = { messages: [view(3)], truncated: false };
+
+		const empty = await app.handle(send("GET", `/${ID}/chat/stream`, "u-1"));
+		const replaying = await app.handle(
+			send("GET", `/${ID}/chat/stream`, "u-1", { headers: { "Last-Event-ID": "2" } }),
+		);
+		const firstChunk = async (response: Response) => {
+			const reader = (response.body as ReadableStream<Uint8Array>).getReader();
+			const { value } = await reader.read();
+			await reader.cancel();
+			return new TextDecoder().decode(value);
+		};
+
+		expect(await firstChunk(empty)).toBe(OPEN);
+		expect(await firstChunk(replaying)).toBe(OPEN);
+	});
+
+	it("sends a reset without an id when the subscription comes back after Redis reconnects", async () => {
+		const { app, subscriber } = buildApp();
+
+		const response = await app.handle(send("GET", `/${ID}/chat/stream`, "u-1"));
+		const reader = (response.body as ReadableStream<Uint8Array>).getReader();
+		const state = { text: "" };
+		subscriber.reconnect();
+		await readUntil(reader, (text) => text.includes("reset"), state);
+		subscriber.deliver({ type: "message", message: view(8) });
+		await readUntil(reader, (text) => text.includes("id: 8"), state);
+
+		expect(state.text).toBe(`${OPEN}event: reset\ndata: {}\n\n${frame(8)}`);
 		await reader.cancel();
 	});
 
@@ -346,7 +395,7 @@ describe("lightning chat — stream", () => {
 		const reader = (response.body as ReadableStream<Uint8Array>).getReader();
 		const text = await readUntil(reader, (t) => t.includes("reset"), { text: "" });
 
-		expect(text).toBe(`${frame(3)}event: reset\ndata: {}\n\n`);
+		expect(text).toBe(`${OPEN}${frame(3)}event: reset\ndata: {}\n\n`);
 		await reader.cancel();
 	});
 
@@ -359,7 +408,7 @@ describe("lightning chat — stream", () => {
 
 		expect(heartbeats.size).toBe(1);
 		expect(await readUntil(reader, (text) => text.includes("ping"), { text: "" })).toBe(
-			": ping\n\n",
+			`${OPEN}: ping\n\n`,
 		);
 		await reader.cancel();
 	});
@@ -399,7 +448,9 @@ describe("lightning chat — stream", () => {
 		expect(response.status).toBe(200);
 		expect(hub.listenerCount()).toBe(0);
 		expect(heartbeats.size).toBe(0);
-		expect((await (response.body as ReadableStream).getReader().read()).done).toBe(true);
+		const reader = (response.body as ReadableStream<Uint8Array>).getReader();
+		expect(new TextDecoder().decode((await reader.read()).value)).toBe(OPEN);
+		expect((await reader.read()).done).toBe(true);
 	});
 
 	it("unregisters and stops the heartbeat when the reader cancels the stream", async () => {

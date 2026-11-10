@@ -1,11 +1,11 @@
 import { describe, expect, it, mock } from "bun:test";
 
-import { LightningChatEvent } from "../../../../../src/modules/lightning/domain/LightningChatPublisher";
 import {
 	ChatSubscriberClient,
 	LIGHTNING_CHAT_STREAMS_PER_USER,
 	LIGHTNING_CHAT_STREAMS_TOTAL,
 	LightningChatHub,
+	LightningChatHubEvent,
 } from "../../../../../src/modules/lightning/infrastructure/LightningChatHub";
 
 const TOURNAMENT_A = "8f14e45f-ceea-467a-9f0e-6b9e1c6a1a2b";
@@ -13,43 +13,81 @@ const TOURNAMENT_B = "9e14e45f-ceea-467a-9f0e-6b9e1c6a1a2b";
 const CHANNEL_A = `lightning:chat:${TOURNAMENT_A}`;
 
 type Pending = { resolve: () => void; reject: (error: Error) => void };
+type Callback = (message: string, channel: string) => void;
 
-// A subscriber whose calls stay pending until the test settles them, to replay races.
+// Mirrors Bun's RedisClient: callbacks stay registered client-side across a reconnect while
+// the server forgets every subscription, and subscribe appends a callback without deduping.
+// Calls stay pending until the test settles them when `manual` is set, to replay races.
 class FakeSubscriber implements ChatSubscriberClient {
 	calls: string[] = [];
 	pending: Pending[] = [];
 	manual = false;
 	failNext: Error | null = null;
 	closed = false;
-	private readonly handlers = new Map<string, (message: string, channel: string) => void>();
+	onconnect: (() => void) | null = null;
+	onclose: ((error: Error) => void) | null = null;
+	private connected = false;
+	private readonly callbacks = new Map<string, Callback[]>();
+	private readonly serverChannels = new Set<string>();
 
-	subscribe(channel: string, listener: (message: string, channel: string) => void) {
+	subscribe(channel: string, listener: Callback) {
+		this.connect();
 		this.calls.push(`subscribe:${channel}`);
-		return this.reply(() => this.handlers.set(channel, listener)).then(() => 1);
+		return this.reply(() => {
+			this.callbacks.set(channel, [...(this.callbacks.get(channel) ?? []), listener]);
+			this.serverChannels.add(channel);
+		}).then(() => 1);
 	}
 
 	unsubscribe(channel: string) {
+		this.connect();
 		this.calls.push(`unsubscribe:${channel}`);
-		return this.reply(() => this.handlers.delete(channel));
+		return this.reply(() => {
+			this.callbacks.delete(channel);
+			this.serverChannels.delete(channel);
+		});
 	}
 
 	close() {
 		this.closed = true;
 	}
 
+	/** Redis restarted and Bun reconnected on its own. */
+	reconnect() {
+		this.serverChannels.clear();
+		this.onconnect?.();
+	}
+
+	/** Bun ran out of reconnection attempts. */
+	giveUp(error = new Error("connection lost")) {
+		this.serverChannels.clear();
+		this.onclose?.(error);
+	}
+
 	deliver(channel: string, payload: unknown) {
+		if (!this.serverChannels.has(channel)) return;
 		const raw = typeof payload === "string" ? payload : JSON.stringify(payload);
-		this.handlers.get(channel)?.(raw, channel);
+		for (const callback of this.callbacks.get(channel) ?? []) callback(raw, channel);
 	}
 
 	isSubscribed(channel: string) {
-		return this.handlers.has(channel);
+		return this.serverChannels.has(channel) && this.callbackCount(channel) > 0;
+	}
+
+	callbackCount(channel: string) {
+		return this.callbacks.get(channel)?.length ?? 0;
 	}
 
 	async settleNext() {
 		const next = this.pending.shift();
 		next?.resolve();
 		await flush();
+	}
+
+	private connect() {
+		if (this.connected) return;
+		this.connected = true;
+		this.onconnect?.();
 	}
 
 	private reply(apply: () => void): Promise<void> {
@@ -80,13 +118,18 @@ async function flush() {
 
 function setup() {
 	const subscriber = new FakeSubscriber();
-	const created = mock(() => subscriber);
+	const subscribers = [subscriber];
+	let used = 0;
+	const created = mock(() => {
+		if (used === subscribers.length) subscribers.push(new FakeSubscriber());
+		return subscribers[used++];
+	});
 	const logger = { error: mock((_error: string | Error) => undefined) };
 	const hub = new LightningChatHub(logger, created);
-	return { subscriber, created, logger, hub };
+	return { subscriber, subscribers, created, logger, hub };
 }
 
-const message = (id: number, tournamentId = TOURNAMENT_A): LightningChatEvent => ({
+const message = (id: number, tournamentId = TOURNAMENT_A): LightningChatHubEvent => ({
 	type: "message",
 	message: {
 		id,
@@ -126,9 +169,9 @@ describe("LightningChatHub", () => {
 
 	it("delivers each event to every listener of its tournament only", async () => {
 		const { subscriber, hub } = setup();
-		const a: LightningChatEvent[] = [];
-		const b: LightningChatEvent[] = [];
-		const other: LightningChatEvent[] = [];
+		const a: LightningChatHubEvent[] = [];
+		const b: LightningChatHubEvent[] = [];
+		const other: LightningChatHubEvent[] = [];
 		hub.register(TOURNAMENT_A, "u-1", (event) => a.push(event));
 		hub.register(TOURNAMENT_A, "u-2", (event) => b.push(event));
 		hub.register(TOURNAMENT_B, "u-3", (event) => other.push(event));
@@ -145,7 +188,7 @@ describe("LightningChatHub", () => {
 
 	it("drops and logs payloads that are not chat events of the channel's tournament", async () => {
 		const { subscriber, logger, hub } = setup();
-		const received: LightningChatEvent[] = [];
+		const received: LightningChatHubEvent[] = [];
 		hub.register(TOURNAMENT_A, "u-1", (event) => received.push(event));
 		await hub.whenSettled(TOURNAMENT_A);
 
@@ -161,7 +204,7 @@ describe("LightningChatHub", () => {
 
 	it("keeps delivering to the other listeners when one throws", async () => {
 		const { subscriber, logger, hub } = setup();
-		const received: LightningChatEvent[] = [];
+		const received: LightningChatHubEvent[] = [];
 		hub.register(TOURNAMENT_A, "u-1", () => {
 			throw new Error("stream closed");
 		});
@@ -197,7 +240,7 @@ describe("LightningChatHub", () => {
 
 		first();
 		await flush();
-		const received: LightningChatEvent[] = [];
+		const received: LightningChatHubEvent[] = [];
 		hub.register(TOURNAMENT_A, "u-2", (event) => received.push(event));
 		await subscriber.settleNext();
 		await subscriber.settleNext();
@@ -297,7 +340,7 @@ describe("LightningChatHub", () => {
 
 	it("closes the subscriber connection and drops every listener", async () => {
 		const { subscriber, hub } = setup();
-		const received: LightningChatEvent[] = [];
+		const received: LightningChatHubEvent[] = [];
 		hub.register(TOURNAMENT_A, "u-1", (event) => received.push(event));
 		await hub.whenSettled(TOURNAMENT_A);
 
@@ -307,5 +350,188 @@ describe("LightningChatHub", () => {
 		expect(subscriber.closed).toBe(true);
 		expect(received).toEqual([]);
 		expect(hub.listenerCount()).toBe(0);
+	});
+
+	describe("when Redis drops the connection", () => {
+		const reset = (tournamentId = TOURNAMENT_A): LightningChatHubEvent => ({
+			type: "reset",
+			tournamentId,
+		});
+
+		it("sends no reset and no extra call on the first connect", async () => {
+			const { subscriber, hub } = setup();
+			const received: LightningChatHubEvent[] = [];
+			hub.register(TOURNAMENT_A, "u-1", (event) => received.push(event));
+			await hub.whenSettled(TOURNAMENT_A);
+
+			expect(subscriber.calls).toEqual([`subscribe:${CHANNEL_A}`]);
+			expect(received).toEqual([]);
+		});
+
+		it("re-subscribes every listened channel after a reconnect, delivering each message once", async () => {
+			const { subscriber, hub } = setup();
+			const a: LightningChatHubEvent[] = [];
+			const b: LightningChatHubEvent[] = [];
+			hub.register(TOURNAMENT_A, "u-1", (event) => a.push(event));
+			hub.register(TOURNAMENT_B, "u-2", (event) => b.push(event));
+			await hub.whenSettled(TOURNAMENT_A);
+			await hub.whenSettled(TOURNAMENT_B);
+			subscriber.calls = [];
+
+			subscriber.reconnect();
+			await hub.whenSettled(TOURNAMENT_A);
+			await hub.whenSettled(TOURNAMENT_B);
+			subscriber.deliver(CHANNEL_A, message(1));
+
+			const channelB = `lightning:chat:${TOURNAMENT_B}`;
+			for (const channel of [CHANNEL_A, channelB]) {
+				expect(subscriber.calls.filter((call) => call.endsWith(channel))).toEqual([
+					`unsubscribe:${channel}`,
+					`subscribe:${channel}`,
+				]);
+				expect(subscriber.callbackCount(channel)).toBe(1);
+			}
+			expect(a).toEqual([reset(), message(1)]);
+			expect(b).toEqual([reset(TOURNAMENT_B)]);
+		});
+
+		it("hears live events on a stream opened after the reconnect", async () => {
+			const { subscriber, hub } = setup();
+			hub.register(TOURNAMENT_A, "u-1", () => undefined);
+			await hub.whenSettled(TOURNAMENT_A);
+			subscriber.reconnect();
+
+			const received: LightningChatHubEvent[] = [];
+			hub.register(TOURNAMENT_A, "u-2", (event) => received.push(event));
+			await hub.whenSettled(TOURNAMENT_A);
+			subscriber.deliver(CHANNEL_A, message(2));
+
+			expect(received.filter((event): boolean => event.type === "message")).toEqual([message(2)]);
+		});
+
+		it("refreshes a subscribe that was in flight when the connection dropped", async () => {
+			const { subscriber, hub } = setup();
+			subscriber.manual = true;
+			const received: LightningChatHubEvent[] = [];
+			hub.register(TOURNAMENT_A, "u-1", (event) => received.push(event));
+			await flush();
+
+			subscriber.reconnect();
+			await subscriber.settleNext();
+			await subscriber.settleNext();
+			await subscriber.settleNext();
+			await hub.whenSettled(TOURNAMENT_A);
+			subscriber.deliver(CHANNEL_A, message(3));
+
+			expect(subscriber.calls).toEqual([
+				`subscribe:${CHANNEL_A}`,
+				`unsubscribe:${CHANNEL_A}`,
+				`subscribe:${CHANNEL_A}`,
+			]);
+			expect(received).toEqual([reset(), message(3)]);
+		});
+
+		it("drops the stale callback of a channel whose listeners left during the reconnect", async () => {
+			const { subscriber, hub } = setup();
+			const unregister = hub.register(TOURNAMENT_A, "u-1", () => undefined);
+			await hub.whenSettled(TOURNAMENT_A);
+			subscriber.calls = [];
+
+			subscriber.reconnect();
+			unregister();
+			await hub.whenSettled(TOURNAMENT_A);
+
+			expect(subscriber.calls).toEqual([`unsubscribe:${CHANNEL_A}`]);
+			expect(subscriber.callbackCount(CHANNEL_A)).toBe(0);
+		});
+
+		it("retries a failed re-subscribe on the next registration and resets the listeners then", async () => {
+			const { subscriber, logger, hub } = setup();
+			const received: LightningChatHubEvent[] = [];
+			hub.register(TOURNAMENT_A, "u-1", (event) => received.push(event));
+			await hub.whenSettled(TOURNAMENT_A);
+
+			subscriber.failNext = new Error("loading dataset");
+			subscriber.reconnect();
+			await hub.whenSettled(TOURNAMENT_A);
+			expect(received).toEqual([]);
+			expect(String(logger.error.mock.calls[0][0])).toContain("loading dataset");
+
+			hub.register(TOURNAMENT_A, "u-2", () => undefined);
+			await hub.whenSettled(TOURNAMENT_A);
+			subscriber.deliver(CHANNEL_A, message(4));
+
+			expect(subscriber.callbackCount(CHANNEL_A)).toBe(1);
+			expect(received).toEqual([reset(), message(4)]);
+		});
+
+		it("replaces a subscriber that gave up, re-subscribing listened channels and resetting their listeners", async () => {
+			const { subscribers, created, logger, hub } = setup();
+			const received: LightningChatHubEvent[] = [];
+			hub.register(TOURNAMENT_A, "u-1", (event) => received.push(event));
+			await hub.whenSettled(TOURNAMENT_A);
+
+			subscribers[0].giveUp(new Error("max retries"));
+			await hub.whenSettled(TOURNAMENT_A);
+			subscribers[1].deliver(CHANNEL_A, message(5));
+
+			expect(created).toHaveBeenCalledTimes(2);
+			expect(subscribers[1].calls).toEqual([`subscribe:${CHANNEL_A}`]);
+			expect(received).toEqual([reset(), message(5)]);
+			expect(String(logger.error.mock.calls[0][0])).toContain("max retries");
+		});
+
+		it("opens a new subscriber for the next stream after one gave up with no listeners", async () => {
+			const { subscribers, created, hub } = setup();
+			const unregister = hub.register(TOURNAMENT_A, "u-1", () => undefined);
+			await hub.whenSettled(TOURNAMENT_A);
+			unregister();
+			await hub.whenSettled(TOURNAMENT_A);
+
+			subscribers[0].giveUp();
+			await flush();
+			expect(created).toHaveBeenCalledTimes(1);
+			const received: LightningChatHubEvent[] = [];
+			hub.register(TOURNAMENT_A, "u-2", (event) => received.push(event));
+			await hub.whenSettled(TOURNAMENT_A);
+			subscribers[1].deliver(CHANNEL_A, message(6));
+
+			expect(received).toEqual([message(6)]);
+		});
+
+		it("does not count a subscribe that completes on a subscriber that already gave up", async () => {
+			const { subscribers, hub } = setup();
+			subscribers[0].manual = true;
+			const received: LightningChatHubEvent[] = [];
+			hub.register(TOURNAMENT_A, "u-1", (event) => received.push(event));
+			await flush();
+
+			subscribers[0].giveUp();
+			await subscribers[0].settleNext();
+			await hub.whenSettled(TOURNAMENT_A);
+			subscribers[1].deliver(CHANNEL_A, message(7));
+
+			expect(subscribers[1].calls).toEqual([`subscribe:${CHANNEL_A}`]);
+			expect(received).toEqual([reset(), message(7)]);
+		});
+
+		it("ignores connection events of a subscriber it replaced or closed", async () => {
+			const { subscribers, created, hub } = setup();
+			hub.register(TOURNAMENT_A, "u-1", () => undefined);
+			await hub.whenSettled(TOURNAMENT_A);
+			subscribers[0].giveUp();
+			await hub.whenSettled(TOURNAMENT_A);
+
+			subscribers[0].reconnect();
+			subscribers[0].giveUp();
+			await hub.whenSettled(TOURNAMENT_A);
+			expect(created).toHaveBeenCalledTimes(2);
+			expect(subscribers[0].calls).toEqual([`subscribe:${CHANNEL_A}`]);
+
+			hub.close();
+			subscribers[1].giveUp();
+			await flush();
+			expect(created).toHaveBeenCalledTimes(2);
+		});
 	});
 });

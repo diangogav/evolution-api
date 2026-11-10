@@ -1,9 +1,8 @@
 import { TooManyRequestsError } from "../../../shared/errors/TooManyRequestsError";
 import { Logger } from "../../../shared/logger/domain/Logger";
 import { GetLightningChatReplay } from "../application/GetLightningChatReplay";
-import { LightningChatEvent } from "../domain/LightningChatPublisher";
 import { formatSseComment, formatSseEvent } from "./formatSseEvent";
-import { LightningChatHub } from "./LightningChatHub";
+import { LightningChatHub, LightningChatHubEvent } from "./LightningChatHub";
 
 /** Idle proxies close quiet connections; a comment this often keeps the stream open. */
 export const LIGHTNING_CHAT_HEARTBEAT_MS = 25_000;
@@ -78,8 +77,8 @@ export class LightningChatStreams {
 		const { tournamentId, userId, signal } = input;
 		await this.replay.run({ tournamentId, afterId: null });
 
-		let held: LightningChatEvent[] | null = [];
-		let deliver!: (event: LightningChatEvent) => void;
+		let held: LightningChatHubEvent[] | null = [];
+		let deliver!: (event: LightningChatHubEvent) => void;
 		const unregister = this.hub.tryRegister(tournamentId, userId, (event) => {
 			if (held) held.push(event);
 			else deliver(event);
@@ -128,6 +127,10 @@ export class LightningChatStreams {
 
 		let cursor = afterId ?? 0;
 		deliver = (event) => {
+			if (event.type === "reset") {
+				write(formatSseEvent({ event: "reset", data: "{}" }));
+				return;
+			}
 			if (event.type === "deleted") {
 				write(formatSseEvent({ event: "deleted", data: JSON.stringify({ id: event.id }) }));
 				return;
@@ -155,6 +158,9 @@ export class LightningChatStreams {
 		}
 		signal.addEventListener("abort", close);
 
+		// Bun sends the response headers with the first body bytes, so a stream with nothing
+		// to replay would leave the reader's fetch pending until the first event or heartbeat.
+		write(formatSseComment("open"));
 		for (const message of replayed.messages) deliver({ type: "message", message });
 		if (replayed.truncated) {
 			write(formatSseEvent({ event: "reset", data: "{}" }));

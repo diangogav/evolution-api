@@ -14,13 +14,23 @@ export const LIGHTNING_CHAT_STREAMS_PER_USER = 3;
 /** Open chat streams one instance holds in total. */
 export const LIGHTNING_CHAT_STREAMS_TOTAL = 2000;
 
-export type LightningChatListener = (event: LightningChatEvent) => void;
+/**
+ * A chat event, or `reset`: the tournament's live events may have had a gap, so the reader
+ * reloads the history.
+ */
+export type LightningChatHubEvent = LightningChatEvent | { type: "reset"; tournamentId: string };
+
+export type LightningChatListener = (event: LightningChatHubEvent) => void;
 
 /** The part of a Bun RedisClient the hub needs; a subscribed client accepts nothing else. */
 export interface ChatSubscriberClient {
 	subscribe(channel: string, listener: (message: string, channel: string) => void): Promise<number>;
 	unsubscribe(channel: string): Promise<void>;
 	close(): void;
+	/** Fires on every connection, including each automatic reconnection. */
+	onconnect: (() => void) | null;
+	/** Fires once the client stops reconnecting; it is unusable afterwards. */
+	onclose: ((error: Error) => void) | null;
 }
 
 type Registration = { userId: string; listener: LightningChatListener };
@@ -34,12 +44,21 @@ type Registration = { userId: string; listener: LightningChatListener };
  * calls for one channel run strictly one after another, and each call compares the
  * subscription with the listeners present when it runs, so any interleaving of register
  * and unregister settles on "subscribed exactly when someone listens".
+ *
+ * Redis forgets every subscription when the connection drops. After a reconnection the hub
+ * subscribes each channel again, and after a client that stopped reconnecting it opens a
+ * new one; either way the listeners of a channel get a `reset` once it is subscribed again,
+ * since events published in between never reached them.
  */
 export class LightningChatHub {
 	private readonly listeners = new Map<string, Set<Registration>>();
 	private readonly perUser = new Map<string, number>();
 	private total = 0;
 	private readonly subscribed = new Set<string>();
+	/** Channels whose subscription may predate a reconnection, to drop and subscribe again. */
+	private readonly stale = new Set<string>();
+	/** Tournaments whose listeners get a `reset` once their channel is subscribed again. */
+	private readonly needsReset = new Set<string>();
 	private readonly queues = new Map<string, Promise<void>>();
 	private client: ChatSubscriberClient | null = null;
 	private closed = false;
@@ -107,6 +126,8 @@ export class LightningChatHub {
 		this.perUser.clear();
 		this.total = 0;
 		this.subscribed.clear();
+		this.stale.clear();
+		this.needsReset.clear();
 		this.client?.close();
 		this.client = null;
 	}
@@ -114,7 +135,10 @@ export class LightningChatHub {
 	private remove(tournamentId: string, registration: Registration): void {
 		const set = this.listeners.get(tournamentId);
 		if (!set?.delete(registration)) return;
-		if (set.size === 0) this.listeners.delete(tournamentId);
+		if (set.size === 0) {
+			this.listeners.delete(tournamentId);
+			this.needsReset.delete(tournamentId);
+		}
 		this.total -= 1;
 		const left = this.listenerCountOf(registration.userId) - 1;
 		if (left > 0) this.perUser.set(registration.userId, left);
@@ -134,26 +158,91 @@ export class LightningChatHub {
 	// tournament tries again.
 	private async reconcile(tournamentId: string): Promise<void> {
 		if (this.closed) return;
-		const wanted = this.listeners.has(tournamentId);
 		const channel = lightningChatChannel(tournamentId);
+		let action = "unsubscribe from";
 		try {
+			if (this.stale.has(tournamentId)) {
+				// Bun keeps a channel's callbacks across a reconnection although Redis dropped the
+				// subscription, and subscribe adds a callback even when it is already there, so
+				// the old one goes first or every message would arrive twice.
+				if (this.subscribed.has(tournamentId)) {
+					await this.subscriber().unsubscribe(channel);
+					this.subscribed.delete(tournamentId);
+				}
+				this.stale.delete(tournamentId);
+			}
+			const wanted = this.listeners.has(tournamentId);
 			if (wanted && !this.subscribed.has(tournamentId)) {
-				await this.subscriber().subscribe(channel, this.onMessage);
-				if (this.closed) return;
+				action = "subscribe to";
+				const client = this.subscriber();
+				await client.subscribe(channel, this.onMessage);
+				// A client replaced meanwhile is gone; the reconcile queued with the
+				// replacement subscribes on the new one.
+				if (this.closed || client !== this.client) return;
 				this.subscribed.add(tournamentId);
+				this.resetListeners(tournamentId);
 			} else if (!wanted && this.subscribed.has(tournamentId)) {
 				this.subscribed.delete(tournamentId);
 				await this.subscriber().unsubscribe(channel);
 			}
 		} catch (error) {
-			const action = wanted ? "subscribe to" : "unsubscribe from";
 			this.logger.error(`Lightning chat could not ${action} ${channel}: ${errorMessage(error)}`);
 		}
 	}
 
 	private subscriber(): ChatSubscriberClient {
-		if (!this.client) this.client = this.createClient();
+		if (!this.client) {
+			const client = this.createClient();
+			let connections = 0;
+			client.onconnect = () => {
+				connections += 1;
+				if (connections > 1) this.onReconnect(client);
+			};
+			client.onclose = (error) => this.onGiveUp(client, error);
+			this.client = client;
+		}
 		return this.client;
+	}
+
+	private onReconnect(client: ChatSubscriberClient): void {
+		if (this.closed || client !== this.client) return;
+		// Includes channels with a call in flight: a subscribe sent before the drop may
+		// complete without a subscription behind it.
+		const affected = new Set([...this.subscribed, ...this.queues.keys(), ...this.listeners.keys()]);
+		for (const tournamentId of affected) {
+			this.stale.add(tournamentId);
+			if (this.listeners.has(tournamentId)) this.needsReset.add(tournamentId);
+			this.sync(tournamentId);
+		}
+	}
+
+	private onGiveUp(client: ChatSubscriberClient, error: Error): void {
+		if (this.closed || client !== this.client) return;
+		this.logger.error(`Lightning chat subscriber closed: ${errorMessage(error)}`);
+		this.client = null;
+		this.subscribed.clear();
+		this.stale.clear();
+		for (const tournamentId of this.listeners.keys()) {
+			this.needsReset.add(tournamentId);
+			this.sync(tournamentId);
+		}
+	}
+
+	private resetListeners(tournamentId: string): void {
+		if (!this.needsReset.delete(tournamentId)) return;
+		this.notify(tournamentId, { type: "reset", tournamentId });
+	}
+
+	private notify(tournamentId: string, event: LightningChatHubEvent): void {
+		// A copy: a listener may unregister itself, or another, while it runs.
+		for (const { listener } of [...(this.listeners.get(tournamentId) ?? [])]) {
+			try {
+				listener(event);
+			} catch (error) {
+				const channel = lightningChatChannel(tournamentId);
+				this.logger.error(`Lightning chat listener failed on ${channel}: ${errorMessage(error)}`);
+			}
+		}
 	}
 
 	private readonly onMessage = (message: string, channel: string): void => {
@@ -164,14 +253,7 @@ export class LightningChatHub {
 			this.logger.error(`Lightning chat dropped an unreadable event on ${channel}`);
 			return;
 		}
-		// A copy: a listener may unregister itself, or another, while it runs.
-		for (const { listener } of [...(this.listeners.get(tournamentId) ?? [])]) {
-			try {
-				listener(event);
-			} catch (error) {
-				this.logger.error(`Lightning chat listener failed on ${channel}: ${errorMessage(error)}`);
-			}
-		}
+		this.notify(tournamentId, event);
 	};
 }
 
