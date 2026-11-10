@@ -149,12 +149,8 @@ export class World {
 		startWaiting: async (tournamentId, now) => {
 			this.events.push(`start-waiting:${tournamentId}`);
 			for (const entry of this.entriesOf(tournamentId)) {
-				if (entry.status !== "active") continue;
-				this.entries.set(this.entryKey(tournamentId, entry.userId), {
-					...entry,
-					presence: "idle",
-					idleSince: now,
-				});
+				if (entry.status !== "active" || entry.presence !== "idle") continue;
+				this.entries.set(this.entryKey(tournamentId, entry.userId), { ...entry, idleSince: now });
 			}
 		},
 		removeBanned: async (tournamentId) => {
