@@ -4,6 +4,7 @@ import { PostgresTypeORM } from "./evolution-types/src/PostgresTypeORM";
 import { createCatalogChangeNotifier } from "./modules/assets/infrastructure/createCatalogChangeNotifier";
 import { CosmeticPostgresRepository } from "./modules/catalog/infrastructure/CosmeticPostgresRepository";
 import { buildRewardsWorker } from "./modules/rewards/infrastructure/buildRewardsWorker";
+import { lightningChatHub } from "./server/routes/lightning-router";
 import { Server } from "./server/server";
 import { Pino } from "./shared/logger/infrastructure/Pino";
 import { redisClient } from "./shared/redis/redisClient";
@@ -33,4 +34,11 @@ void (async () => {
 	}
 	const server = new Server(logger);
 	server.start();
+	const shutdown = () => {
+		// Closes the chat subscriber connection, which the shared client does not own.
+		lightningChatHub.close();
+		process.exit(0);
+	};
+	process.on("SIGINT", shutdown);
+	process.on("SIGTERM", shutdown);
 })();

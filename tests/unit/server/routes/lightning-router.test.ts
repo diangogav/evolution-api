@@ -68,6 +68,7 @@ function buildApp() {
 		chatHistory: { run: record("chatHistory", []) as never },
 		chatPost: { run: record("chatPost", {}) as never },
 		chatDelete: { run: record("chatDelete", undefined) as never },
+		chatStream: { open: record("chatStream", new Response("")) as never },
 	};
 	const app = new Elysia().onError(mapDomainErrorStatus).use(createLightningRouter(deps));
 	return { app, calls };

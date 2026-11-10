@@ -78,6 +78,7 @@ const PROTECTED_OPERATIONS = [
 	"GET /api/v1/lightning/{id}/chat",
 	"POST /api/v1/lightning/{id}/chat",
 	"DELETE /api/v1/lightning/{id}/chat/{messageId}",
+	"GET /api/v1/lightning/{id}/chat/stream",
 ];
 
 // Operations whose success has no body; they declare it with `emptyOk`.
@@ -86,6 +87,10 @@ const EMPTY_BODY_OPERATIONS = [
 	"POST /api/v1/users/change-account-password",
 	"DELETE /api/v1/lightning/{id}/chat/{messageId}",
 ];
+
+// Operations that answer with a Server-Sent Events stream instead of a JSON body; they
+// declare a 2xx text/event-stream response.
+const STREAM_OPERATIONS = ["GET /api/v1/lightning/{id}/chat/stream"];
 
 // Operations that still lack a 2xx application/json schema. This list only
 // shrinks: documenting an operation's response requires removing it here.
@@ -229,11 +234,29 @@ describe("OpenAPI document", () => {
 	});
 
 	it("declares a success response schema on every operation not pending one", () => {
-		const exempt = new Set([...EMPTY_BODY_OPERATIONS, ...PENDING_RESPONSE_SCHEMAS]);
+		const exempt = new Set([
+			...EMPTY_BODY_OPERATIONS,
+			...STREAM_OPERATIONS,
+			...PENDING_RESPONSE_SCHEMAS,
+		]);
 		const undocumented = operations
 			.filter(({ key, operation }) => !exempt.has(key) && !hasJsonSuccessSchema(operation))
 			.map(({ key }) => key);
 		expect(undocumented).toEqual([]);
+	});
+
+	it("declares a text/event-stream success on every stream operation", () => {
+		const byKey = new Map(operations.map(({ key, operation }) => [key, operation]));
+		const invalid = STREAM_OPERATIONS.filter((key) => {
+			const operation = byKey.get(key);
+			return (
+				operation === undefined ||
+				!successResponses(operation).some(
+					(response) => response.content?.["text/event-stream"]?.schema !== undefined,
+				)
+			);
+		});
+		expect(invalid).toEqual([]);
 	});
 
 	it("declares empty-body successes without content", () => {
