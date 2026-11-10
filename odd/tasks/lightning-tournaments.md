@@ -25,8 +25,8 @@ Design: `docs/design/lightning-tournaments.md` (written 2026-11-09; not yet revi
 | T5 | api | Use cases: `CreateLightningTournament`, `CancelLightningTournament`, `EnterLightningTournament` (deck validation via community-decks), `WithdrawEntry`, `PauseEntry` / `ResumeEntry`, `GetMyLightningState` (applies pending first), `GetLightningTournament`, `ListLightningTournaments`, `GetLightningRankings`, `ApplyLightningGame`, `PairLightningPlayers`, `CompleteLightningTournament`, `ProcessLightningTick` | S1, S4, S7 | delegated | 4 concurrency (tournament row lock) | done | a28a93c, ac4fa46, eb99e56 |
 | T6 | api | Repositories, unit of work with advisory lock, `LightningWorker` + `buildLightningWorker`, config flags, started from `index.ts`, `server.ts`, `worker.ts` | S4 | delegated | 4 | done (JTP list added to community-decks for entry checks) | 9c271f5, d4591c0, 538d1f2 |
 | T7 | api | Router + TypeBox schemas, admin routes via `adminAuthorizer`, OpenAPI ratchet, docs index | S1 | delegated | none | done | 4fe72f5, 8f6e9ef |
-| T8 | client | `duelOverlayStore.startReservedDuel(password, deck)` generalising the event seam | S1 | delegated | 6 (shared overlay) | pending | |
-| T9 | client | `lightning` feature: API client, `LightningFeed` polling port, store, list + detail + waiting room + result inline, nav entry, home card, i18n en/es-419 | S1, S5 | delegated | none | pending | |
+| T8 | client | `duelOverlayStore.startReservedDuel(password, deck)` generalising the event seam | S1 | delegated | 6 (shared overlay) | done (`feat/lightning-tournaments` in evolution-card-game) | 3e083549 |
+| T9 | client | `lightning` feature: API client, `LightningFeed` polling port, store, list + detail + waiting room + result inline, nav entry, home card, i18n en/es-419 | S1, S5 | delegated | none | done; season rankings UI not built (API method exists) | 1b78ed0a, d270c238, 87060aa5 |
 | T10 | all | Local end-to-end with two accounts (register → paired → duel → applied → completed), deploy order: server → evolution-types migration → API migrations → API → client | S1-S7 | inline | 5 | pending | |
 
 ## Log
