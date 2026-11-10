@@ -85,6 +85,16 @@ export function lightningTournament(input: NewLightningTournament): LightningTou
 	if (!LIGHTNING_FORMATS.includes(input.format)) {
 		throw new InvalidLightningTournamentError(`unknown format "${input.format}"`);
 	}
+	// An unparseable date compares false against everything, which would pass every check below.
+	for (const [label, date] of [
+		["registrationOpensAt", input.registrationOpensAt],
+		["startsAt", input.startsAt],
+		["endsAt", input.endsAt],
+	] as const) {
+		if (Number.isNaN(date.getTime())) {
+			throw new InvalidLightningTournamentError(`${label} is not a valid date`);
+		}
+	}
 	if (!Number.isInteger(input.season) || input.season < 1) {
 		throw new InvalidLightningTournamentError("season must be a positive integer");
 	}

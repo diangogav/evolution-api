@@ -94,6 +94,9 @@ describe("lightningTournament", () => {
 			{ pointsByPosition: { positions: [10, -1], others: 1 } },
 			{ essenceByPosition: { positions: [1.5], others: 0 } },
 			{ season: 0 },
+			{ startsAt: new Date("not a date") },
+			{ endsAt: new Date(Number.NaN) },
+			{ registrationOpensAt: new Date("") },
 		];
 
 		for (const override of cases) {
