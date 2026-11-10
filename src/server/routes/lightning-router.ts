@@ -82,7 +82,7 @@ const tournamentExample = {
 	minPlayers: 4,
 	maxPlayers: 64,
 	pointsByPosition: { positions: [10, 7, 5, 3], others: 1 },
-	essenceByPosition: { positions: [100, 50, 25], others: 0 },
+	essenceByPosition: { positions: [300, 200, 100], others: 25 },
 	cancelledReason: null,
 	createdAt: "2026-11-09T12:00:00.000Z",
 	system: "arena" as const,

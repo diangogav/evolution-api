@@ -31,7 +31,8 @@ export type LiveLightningTournamentStatus = (typeof LIVE_LIGHTNING_TOURNAMENT_ST
 export type PrizeTable = { positions: number[]; others: number };
 
 export const DEFAULT_POINTS_BY_POSITION: PrizeTable = { positions: [10, 7, 5, 3], others: 1 };
-export const DEFAULT_ESSENCE_BY_POSITION: PrizeTable = { positions: [], others: 0 };
+// `others` pays every ranked player below the podium: finishing a tournament always earns essence.
+export const DEFAULT_ESSENCE_BY_POSITION: PrizeTable = { positions: [300, 200, 100], others: 25 };
 
 // The turn times the server's rule parser can express exactly: whole seconds, one minute up.
 export const MIN_TURN_TIME_SECONDS = 60;

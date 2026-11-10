@@ -52,6 +52,15 @@ describe("lightningTournament", () => {
 		expect(tournament.pointsByPosition).not.toBe(DEFAULT_POINTS_BY_POSITION);
 	});
 
+	it("pays 300, 200 and 100 essence to the podium and 25 to every other ranked player by default", () => {
+		const tournament = lightningTournament(input);
+
+		expect(tournament.essenceByPosition).toEqual({ positions: [300, 200, 100], others: 25 });
+		expect(prizeForPosition(tournament.essenceByPosition, 1)).toBe(300);
+		expect(prizeForPosition(tournament.essenceByPosition, 3)).toBe(100);
+		expect(prizeForPosition(tournament.essenceByPosition, 4)).toBe(25);
+	});
+
 	it("opens registration at once when the window already started", () => {
 		const open = lightningTournament({ ...input, registrationOpensAt: NOW });
 

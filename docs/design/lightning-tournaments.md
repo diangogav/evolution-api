@@ -145,7 +145,7 @@ Standings from `lightning_entries` (active and withdrawn with `games_played > 0`
 - Essence through `essence_ledger` with a new kind `lightning_tournament` (its own `ALTER TYPE … ADD VALUE` migration) and `reference_key = lightning:<tournamentId>:<userId>`; the unique (user, kind, reference_key) index makes a retry harmless.
 - Trophies (achievements with `code: null`) stay manual for admins in v1.
 
-Default `points_by_position`: 1st 10, 2nd 7, 3rd 5, 4th 3, every other participant with at least one game 1. Defaults are stored on the tournament row at creation, so changing them later never rewrites history.
+Default `points_by_position`: 1st 10, 2nd 7, 3rd 5, 4th 3, every other participant with at least one game 1. Default `essence_by_position`: 1st 300, 2nd 200, 3rd 100, every other participant with at least one game 25. Defaults are stored on the tournament row at creation, so changing them later never rewrites history.
 
 ## Endpoints (bearer, `banGuard`, OpenAPI ratchet)
 
