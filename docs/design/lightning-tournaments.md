@@ -108,7 +108,7 @@ Runs every 5 s per `running` tournament, inside a transaction holding `SELECT �
 
 1. Candidates: `status = active AND presence = idle`.
 2. Sort by `score DESC, idle_since ASC`.
-3. Walk the list pairing adjacent players; skip a pair whose `last_opponent_id` matches when another partner exists within the next three positions, otherwise accept the rematch. An odd player stays idle for the next tick (no byes; the arena gives no points for waiting).
+3. Walk the list: each player takes the best-placed idle player who is not their last opponent, however far down the list. When only the last opponent is idle, the player waits for someone else to finish. The one exception is a tournament with only two playable entries left (active and not away): they may face each other again, or they would wait forever. An odd player stays idle for the next tick (no byes; the arena gives no points for waiting).
 4. Per pair: generate a reservation id, issue the reservation (`SET … EX NX`), insert `lightning_games`, set both entries `presence = paired`, `last_opponent_id`. The Redis write happens after the row inserts in the same tick; if it fails the transaction rolls back and the pair is retried next tick.
 
 The policy (steps 2–3) is `domain/pairIdlePlayers.ts`, pure and unit-tested; a Swiss or rating-aware policy replaces it without touching the tick.

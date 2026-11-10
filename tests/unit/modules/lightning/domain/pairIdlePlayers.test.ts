@@ -37,7 +37,7 @@ describe("pairIdlePlayers", () => {
 		expect(pairs(result)).toEqual(["a-b"]);
 	});
 
-	it("avoids an immediate rematch when another partner sits within the next three positions", () => {
+	it("pairs each player with the next one who is not their last opponent", () => {
 		const result = pairIdlePlayers([
 			candidate("a", 6, 0, "b"),
 			candidate("b", 6, 1, "a"),
@@ -58,7 +58,7 @@ describe("pairIdlePlayers", () => {
 		expect(pairs(result)).toEqual(["a-c"]);
 	});
 
-	it("accepts the rematch when no other partner is close enough", () => {
+	it("looks as far down the list as it takes to avoid a rematch", () => {
 		const result = pairIdlePlayers([
 			candidate("a", 9, 0, "b"),
 			candidate("b", 9, 1, "a"),
@@ -68,13 +68,28 @@ describe("pairIdlePlayers", () => {
 			candidate("f", 0, 1),
 		]);
 
-		expect(pairs(result)[0]).toBe("a-b");
+		expect(pairs(result)[0]).toBe("a-f");
 	});
 
-	it("accepts the rematch when only two players are idle", () => {
-		expect(pairs(pairIdlePlayers([candidate("a", 3, 0, "b"), candidate("b", 0, 0, "a")]))).toEqual([
-			"a-b",
-		]);
+	it("leaves two players who just faced each other waiting for someone else", () => {
+		expect(pairIdlePlayers([candidate("a", 3, 0, "b"), candidate("b", 0, 0, "a")])).toEqual([]);
+	});
+
+	it("pairs a rematch when the tournament allows it", () => {
+		const result = pairIdlePlayers([candidate("a", 3, 0, "b"), candidate("b", 0, 0, "a")], {
+			allowRematch: true,
+		});
+
+		expect(pairs(result)).toEqual(["a-b"]);
+	});
+
+	it("still prefers a new opponent when rematches are allowed", () => {
+		const result = pairIdlePlayers(
+			[candidate("a", 6, 0, "b"), candidate("b", 6, 1, "a"), candidate("c", 3)],
+			{ allowRematch: true },
+		);
+
+		expect(pairs(result)).toEqual(["a-c"]);
 	});
 
 	it("treats a missing idle timestamp as waiting the longest and breaks full ties by user id", () => {

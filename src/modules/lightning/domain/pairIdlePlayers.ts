@@ -8,27 +8,28 @@ export type PairingCandidate = {
 /** Seat 0 is the better-placed player of the pair. */
 export type Pairing = { seat0: string; seat1: string };
 
-// How far down the list a player looks for someone other than their last opponent before
-// accepting the rematch. Small on purpose: the arena pairs by score, not by novelty.
-const REMATCH_LOOKAHEAD = 3;
+export type PairingOptions = {
+	/** Whether two players who just met may face each other again when nobody else is idle. */
+	allowRematch?: boolean;
+};
 
 /**
- * Pairs idle players by score (highest first), the longest wait first among equals. Walks
- * the sorted list pairing neighbours, skipping an immediate rematch when another partner
- * sits close enough. An odd player waits for the next tick: there are no byes.
+ * Pairs idle players by score (highest first), the longest wait first among equals. Each
+ * player takes the best-placed idle player who is not their last opponent. When only the
+ * last opponent is left, the player waits for someone else to finish, unless rematches are
+ * allowed. An odd player waits for the next tick: there are no byes.
  */
-export function pairIdlePlayers(candidates: PairingCandidate[]): Pairing[] {
+export function pairIdlePlayers(
+	candidates: PairingCandidate[],
+	options: PairingOptions = {},
+): Pairing[] {
 	const remaining = [...candidates].sort(byScoreThenWait);
 	const pairs: Pairing[] = [];
 	while (remaining.length >= 2) {
 		const player = remaining.shift() as PairingCandidate;
-		let partnerIndex = 0;
-		if (isRematch(player, remaining[0])) {
-			const alternative = remaining
-				.slice(1, 1 + REMATCH_LOOKAHEAD)
-				.findIndex((other) => !isRematch(player, other));
-			if (alternative >= 0) partnerIndex = alternative + 1;
-		}
+		let partnerIndex = remaining.findIndex((other) => !isRematch(player, other));
+		if (partnerIndex < 0 && options.allowRematch) partnerIndex = 0;
+		if (partnerIndex < 0) continue;
 		const [partner] = remaining.splice(partnerIndex, 1);
 		pairs.push({ seat0: player.userId, seat1: partner.userId });
 	}

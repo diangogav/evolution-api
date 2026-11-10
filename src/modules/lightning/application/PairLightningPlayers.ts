@@ -34,7 +34,12 @@ export class PairLightningPlayers {
 		const entries = await this.entries.listByTournament(tournament.id, manager);
 		const byUser = new Map(entries.map((entry) => [entry.userId, entry]));
 		const idle = entries.filter((entry) => entry.status === "active" && entry.presence === "idle");
-		const pairs = pairIdlePlayers(idle);
+		// A rematch is the only game left when nobody else can play: everyone else has left,
+		// been removed or stepped away. Otherwise the pair waits for a new opponent.
+		const playable = entries.filter(
+			(entry) => entry.status === "active" && entry.presence !== "away",
+		);
+		const pairs = pairIdlePlayers(idle, { allowRematch: playable.length <= 2 });
 
 		const issued: DuelReservation[] = [];
 		for (const { seat0, seat1 } of pairs) {

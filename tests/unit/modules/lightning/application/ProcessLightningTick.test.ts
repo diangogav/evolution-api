@@ -82,7 +82,7 @@ describe("ProcessLightningTick", () => {
 		});
 	});
 
-	it("applies finished games, then pairs the freed players", async () => {
+	it("applies finished games and keeps the freed pair waiting for new opponents", async () => {
 		const { world, tick } = setup();
 		world.seedRunning([ALICE, BOB, CAROL, DAVE]);
 		const game = world.seedGame(ALICE, BOB);
@@ -91,9 +91,24 @@ describe("ProcessLightningTick", () => {
 
 		const result = await tick.run(RUNNING_AT);
 
-		expect(result).toMatchObject({ applied: 1, paired: 1 });
-		expect(world.entry(ALICE)).toMatchObject({ score: 3, presence: "paired", lastOpponentId: BOB });
-		expect(world.entry(BOB)).toMatchObject({ presence: "paired", lastOpponentId: ALICE });
+		expect(result).toMatchObject({ applied: 1, paired: 0 });
+		expect(world.entry(ALICE)).toMatchObject({ score: 3, presence: "idle", lastOpponentId: BOB });
+		expect(world.entry(BOB)).toMatchObject({ presence: "idle", lastOpponentId: ALICE });
+	});
+
+	it("pairs freed players across finished games in the same tick", async () => {
+		const { world, tick } = setup();
+		world.seedRunning([ALICE, BOB, CAROL, DAVE]);
+		const first = world.seedGame(ALICE, BOB);
+		const second = world.seedGame(CAROL, DAVE);
+		world.record(first.reservationId, decided(0));
+		world.record(second.reservationId, decided(0));
+
+		const result = await tick.run(RUNNING_AT);
+
+		expect(result).toMatchObject({ applied: 2, paired: 2 });
+		expect(world.entry(ALICE)?.lastOpponentId).not.toBe(BOB);
+		expect(world.entry(CAROL)?.lastOpponentId).not.toBe(DAVE);
 	});
 
 	it("stops pairing at ends_at, finishes the live games and completes when none is left", async () => {

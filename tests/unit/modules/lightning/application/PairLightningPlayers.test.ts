@@ -54,6 +54,31 @@ describe("PairLightningPlayers", () => {
 		);
 	});
 
+	it("keeps two players who just met waiting while someone else is still playing", async () => {
+		const world = new World();
+		const tournament = world.seedRunning([ALICE, BOB, CAROL]);
+		world.seedEntry(ALICE, { lastOpponentId: BOB });
+		world.seedEntry(BOB, { lastOpponentId: ALICE });
+		world.seedEntry(CAROL, { presence: "playing", idleSince: null });
+
+		const paired = await world.pairPlayers.pair(tournament, world.manager, RUNNING_AT);
+
+		expect(paired).toBe(0);
+		expect(world.entry(ALICE)).toMatchObject({ presence: "idle" });
+	});
+
+	it("lets the last two players of a tournament face each other again", async () => {
+		const world = new World();
+		const tournament = world.seedRunning([ALICE, BOB, CAROL]);
+		world.seedEntry(ALICE, { lastOpponentId: BOB });
+		world.seedEntry(BOB, { lastOpponentId: ALICE });
+		world.seedEntry(CAROL, { presence: "away", idleSince: null });
+
+		const paired = await world.pairPlayers.pair(tournament, world.manager, RUNNING_AT);
+
+		expect(paired).toBe(1);
+	});
+
 	it("considers only active idle players", async () => {
 		const world = new World();
 		const tournament = world.seedRunning([ALICE, BOB, CAROL, DAVE]);
