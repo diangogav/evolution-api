@@ -1,5 +1,6 @@
 import { LightningEntry } from "./LightningEntry";
 import { LightningGame } from "./LightningGame";
+import { LightningSystem } from "./LightningTournament";
 
 export type StandingEntry = Pick<
 	LightningEntry,
@@ -23,15 +24,17 @@ export type Standing = {
 const PLAYED = new Set(["seat0_win", "seat1_win", "draw"]);
 
 /**
- * Ranks the given entries by score, wins, Buchholz and registration time. Opponents who
- * are not among the ranked entries (removed, or filtered out by the caller) still count
- * for Buchholz through `opponentScores`.
+ * Ranks the given entries by score, wins, Buchholz and registration time; Swiss puts Buchholz
+ * ahead of wins, because every player plays the same rounds and strength of schedule is the
+ * meaningful tiebreak. Opponents who are not among the ranked entries (removed, or filtered
+ * out by the caller) still count for Buchholz through `opponentScores`.
  */
 export function computeStandings(
 	entries: StandingEntry[],
 	games: AppliedGame[],
-	options: { opponentScores?: ReadonlyMap<string, number> } = {},
+	options: { opponentScores?: ReadonlyMap<string, number>; system?: LightningSystem } = {},
 ): Standing[] {
+	const swiss = options.system === "swiss";
 	const scores = new Map(options.opponentScores ?? []);
 	for (const entry of entries) scores.set(entry.userId, entry.score);
 
@@ -47,8 +50,8 @@ export function computeStandings(
 		.sort(
 			(a, b) =>
 				b.entry.score - a.entry.score ||
-				b.entry.wins - a.entry.wins ||
-				b.tiebreak - a.tiebreak ||
+				(swiss ? b.tiebreak - a.tiebreak : b.entry.wins - a.entry.wins) ||
+				(swiss ? b.entry.wins - a.entry.wins : b.tiebreak - a.tiebreak) ||
 				a.entry.registeredAt.getTime() - b.entry.registeredAt.getTime() ||
 				a.entry.userId.localeCompare(b.entry.userId),
 		)

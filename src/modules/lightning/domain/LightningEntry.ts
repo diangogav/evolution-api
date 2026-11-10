@@ -31,6 +31,8 @@ export const WIN_POINTS = 3;
 export const DRAW_POINTS = 1;
 // The third missed room removes the entry: an absent player blocks an opponent each time.
 export const MAX_NO_SHOWS = 3;
+// A Swiss no-show already costs the game, and every missed table blocks a round barrier.
+export const MAX_SWISS_NO_SHOWS = 2;
 
 export function newLightningEntry(input: {
 	tournamentId: string;
@@ -111,4 +113,29 @@ export function recordGameOutcome(
 			};
 		}
 	}
+}
+
+// Swiss has no away state: between rounds every active player waits for the next pairing, so
+// a missed room is a lost game with a strike, and the second strike drops the player.
+export function recordSwissGameOutcome(
+	entry: LightningEntry,
+	outcome: EntryGameOutcome,
+	now: Date,
+): LightningEntry {
+	if (outcome !== "no_show") return recordGameOutcome(entry, outcome, now);
+	const lost = recordGameOutcome(entry, "loss", now);
+	const noShows = entry.noShows + 1;
+	const removed = noShows >= MAX_SWISS_NO_SHOWS && entry.status === "active";
+	return { ...lost, noShows, status: removed ? "removed" : entry.status };
+}
+
+// A bye is a won game with no opponent: it counts as played, so a player whose only result is
+// a bye still ranks, and it adds nothing to anyone's Buchholz because no game row exists.
+export function recordBye(entry: LightningEntry): LightningEntry {
+	return {
+		...entry,
+		score: entry.score + WIN_POINTS,
+		wins: entry.wins + 1,
+		gamesPlayed: entry.gamesPlayed + 1,
+	};
 }

@@ -107,4 +107,19 @@ describe("computeStandings", () => {
 
 		expect(standings).toHaveLength(2);
 	});
+
+	it("orders Swiss by score, then Buchholz ahead of wins", () => {
+		const entries = [
+			entry("wins", { score: 4, wins: 1, draws: 1, gamesPlayed: 2 }),
+			entry("strong", { score: 4, wins: 0, draws: 4, gamesPlayed: 4 }),
+			entry("x", { score: 9 }),
+		];
+		const games = [game("strong", "x", "draw"), game("wins", "y", "seat0_win")];
+
+		const arena = computeStandings(entries, games);
+		const swiss = computeStandings(entries, games, { system: "swiss" });
+
+		expect(arena.map((s) => s.userId)).toEqual(["x", "wins", "strong"]);
+		expect(swiss.map((s) => s.userId)).toEqual(["x", "strong", "wins"]);
+	});
 });

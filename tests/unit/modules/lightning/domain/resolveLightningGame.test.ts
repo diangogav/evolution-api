@@ -4,6 +4,7 @@ import type { ReservedDuelRecord } from "../../../../../src/modules/reserved-due
 import {
 	outcomeOfResolvedGame,
 	outcomeForSeat,
+	noShowSeatsOf,
 	resolveLightningGame,
 	UNCLAIMED_RESERVATION_MS,
 } from "../../../../../src/modules/lightning/domain/resolveLightningGame";
@@ -177,5 +178,46 @@ describe("outcomeOfResolvedGame", () => {
 		expect(outcomeOfResolvedGame(noShow, absentSeat1, 0)).toBe("void");
 		expect(outcomeOfResolvedGame(noShow, absentSeat1, 1)).toBe("no_show");
 		expect(outcomeOfResolvedGame(game("no_show", "unclaimed"), null, 0)).toBe("no_show");
+	});
+});
+
+describe("Swiss outcomes", () => {
+	const base = { reason: "", stale: false, unclaimed: false };
+
+	it("gives the present seat the win when the other one missed the room", () => {
+		const noShow = { ...base, resolution: "no_show" as const, noShowSeats: [1] };
+
+		expect(outcomeForSeat(noShow, 0, "swiss")).toBe("win");
+		expect(outcomeForSeat(noShow, 1, "swiss")).toBe("no_show");
+	});
+
+	it("keeps both seats absent, and every other resolution as in the arena", () => {
+		const unclaimed = { ...base, resolution: "no_show" as const, noShowSeats: [0, 1] };
+		const win1 = { ...base, resolution: "seat1_win" as const, noShowSeats: [] };
+
+		expect(outcomeForSeat(unclaimed, 0, "swiss")).toBe("no_show");
+		expect(outcomeForSeat(unclaimed, 1, "swiss")).toBe("no_show");
+		expect(outcomeForSeat(win1, 0, "swiss")).toBe("loss");
+	});
+
+	it("reads back a resolved Swiss no-show for each seat", () => {
+		const game = { resolution: "no_show" as const, reason: "lobby_timeout" };
+		const absentSeat1 = record({ startedAt: null, outcome: "abandoned", abandonedBySeat: 1 });
+
+		expect(outcomeOfResolvedGame(game, absentSeat1, 0, "swiss")).toBe("win");
+		expect(outcomeOfResolvedGame(game, absentSeat1, 1, "swiss")).toBe("no_show");
+		expect(outcomeOfResolvedGame({ ...game, reason: "unclaimed" }, null, 0, "swiss")).toBe(
+			"no_show",
+		);
+	});
+});
+
+describe("noShowSeatsOf", () => {
+	it("names the seat that missed the room, both for an unclaimed reservation, none otherwise", () => {
+		const absent = record({ startedAt: null, outcome: "abandoned", abandonedBySeat: 0 });
+
+		expect(noShowSeatsOf({ resolution: "no_show", reason: "lobby_timeout" }, absent)).toEqual([0]);
+		expect(noShowSeatsOf({ resolution: "no_show", reason: "unclaimed" }, null)).toEqual([0, 1]);
+		expect(noShowSeatsOf({ resolution: "draw", reason: "draw" }, record())).toEqual([]);
 	});
 });

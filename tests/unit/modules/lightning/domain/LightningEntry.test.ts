@@ -2,8 +2,11 @@ import { describe, expect, it } from "bun:test";
 
 import {
 	MAX_NO_SHOWS,
+	MAX_SWISS_NO_SHOWS,
 	newLightningEntry,
+	recordBye,
 	recordGameOutcome,
+	recordSwissGameOutcome,
 } from "../../../../../src/modules/lightning/domain/LightningEntry";
 
 const NOW = new Date("2026-11-10T20:00:00Z");
@@ -102,5 +105,72 @@ describe("recordGameOutcome", () => {
 			score: 3,
 			presence: "idle",
 		});
+	});
+});
+
+describe("recordSwissGameOutcome", () => {
+	const entry = {
+		...newLightningEntry({ tournamentId: "t", userId: "u", deck, now: NOW, running: false }),
+		presence: "playing" as const,
+	};
+
+	it("scores results like the arena and leaves the player waiting for the next round", () => {
+		expect(recordSwissGameOutcome(entry, "win", LATER)).toMatchObject({
+			score: 3,
+			wins: 1,
+			gamesPlayed: 1,
+			presence: "idle",
+		});
+		expect(recordSwissGameOutcome(entry, "draw", LATER)).toMatchObject({ score: 1, draws: 1 });
+		expect(recordSwissGameOutcome(entry, "loss", LATER)).toMatchObject({
+			score: 0,
+			losses: 1,
+			gamesPlayed: 1,
+		});
+		expect(recordSwissGameOutcome(entry, "void", LATER)).toMatchObject({
+			score: 0,
+			gamesPlayed: 0,
+			presence: "idle",
+		});
+	});
+
+	it("counts a missed room as a lost game with a strike, never parking the player away", () => {
+		expect(recordSwissGameOutcome(entry, "no_show", LATER)).toMatchObject({
+			status: "active",
+			presence: "idle",
+			losses: 1,
+			gamesPlayed: 1,
+			noShows: 1,
+		});
+	});
+
+	it("removes the player at the second missed room", () => {
+		const struck = recordSwissGameOutcome(entry, "no_show", LATER);
+
+		expect(recordSwissGameOutcome(struck, "no_show", LATER)).toMatchObject({
+			status: "removed",
+			noShows: MAX_SWISS_NO_SHOWS,
+			losses: 2,
+		});
+	});
+
+	it("keeps a withdrawn player withdrawn after a missed room", () => {
+		const withdrawn = { ...entry, status: "withdrawn" as const, noShows: 1 };
+
+		expect(recordSwissGameOutcome(withdrawn, "no_show", LATER).status).toBe("withdrawn");
+	});
+});
+
+describe("recordBye", () => {
+	it("counts the bye as a won game without touching presence", () => {
+		const entry = newLightningEntry({
+			tournamentId: "t",
+			userId: "u",
+			deck,
+			now: NOW,
+			running: false,
+		});
+
+		expect(recordBye(entry)).toEqual({ ...entry, score: 3, wins: 1, gamesPlayed: 1 });
 	});
 });

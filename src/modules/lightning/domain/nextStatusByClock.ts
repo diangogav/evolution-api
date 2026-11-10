@@ -1,7 +1,8 @@
-import { LightningTournamentStatus } from "./LightningTournament";
+import { LightningSystem, LightningTournamentStatus } from "./LightningTournament";
 
 export type ClockTransitionInput = {
 	status: LightningTournamentStatus;
+	system?: LightningSystem;
 	registrationOpensAt: Date;
 	startsAt: Date;
 	endsAt: Date;
@@ -34,6 +35,8 @@ function step(
 			if (now < input.startsAt.getTime()) return status;
 			return input.activeEntries >= input.minPlayers ? "running" : "cancelled";
 		case "running":
+			// A Swiss end is only an estimate: the last round closing ends it, not the clock.
+			if (input.system === "swiss") return status;
 			return now >= input.endsAt.getTime() ? "finishing" : status;
 		case "finishing":
 			return input.liveGames === 0 ? "completed" : status;

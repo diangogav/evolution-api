@@ -1,6 +1,7 @@
 import { ReservedDuelRecord } from "../../reserved-duel";
 import { EntryGameOutcome } from "./LightningEntry";
 import { LightningGame, LightningGameResolution } from "./LightningGame";
+import { LightningSystem } from "./LightningTournament";
 
 export type GameResolution = {
 	resolution: LightningGameResolution;
@@ -71,7 +72,13 @@ export function resolveLightningGame(
 	return resolved("no_show", reason, { noShowSeats: [record.abandonedBySeat] });
 }
 
-export function outcomeForSeat(resolution: GameResolution, seat: 0 | 1): EntryGameOutcome {
+// In the arena the present seat of a no-show simply plays someone else; a Swiss round has no
+// one else to offer, so the present seat takes the win.
+export function outcomeForSeat(
+	resolution: GameResolution,
+	seat: 0 | 1,
+	system: LightningSystem = "arena",
+): EntryGameOutcome {
 	switch (resolution.resolution) {
 		case "seat0_win":
 			return seat === 0 ? "win" : "loss";
@@ -80,29 +87,44 @@ export function outcomeForSeat(resolution: GameResolution, seat: 0 | 1): EntryGa
 		case "draw":
 			return "draw";
 		case "no_show":
-			return resolution.noShowSeats.includes(seat) ? "no_show" : "void";
+			if (resolution.noShowSeats.includes(seat)) return "no_show";
+			return system === "swiss" ? "win" : "void";
 		case "void":
 			return "void";
 	}
 }
 
 /**
- * What a seat recorded from a game already resolved. The game row keeps the resolution,
- * not which seat missed the room, so a no-show reads it back from the server's record (an
- * unclaimed reservation has none: both seats missed it).
+ * The seats that missed the room of a resolved no-show. The game row keeps the resolution,
+ * not the seat, so it is read back from the server's record (an unclaimed reservation has
+ * none: both seats missed it).
  */
+export function noShowSeatsOf(
+	game: { resolution: LightningGameResolution | null; reason: string | null },
+	record: ReservedDuelRecord | null,
+): number[] {
+	if (game.resolution !== "no_show") return [];
+	if (game.reason === "unclaimed") return [0, 1];
+	const absent = record?.abandonedBySeat ?? null;
+	return absent === null ? [0, 1] : [absent];
+}
+
+/** What a seat recorded from a game already resolved. */
 export function outcomeOfResolvedGame(
 	game: { resolution: LightningGameResolution; reason: string | null },
 	record: ReservedDuelRecord | null,
 	seat: 0 | 1,
+	system: LightningSystem = "arena",
 ): EntryGameOutcome {
-	if (game.resolution !== "no_show") {
-		return outcomeForSeat(
-			{ resolution: game.resolution, reason: "", noShowSeats: [], stale: false, unclaimed: false },
-			seat,
-		);
-	}
-	const absent = game.reason === "unclaimed" ? null : (record?.abandonedBySeat ?? null);
-	if (absent === null) return "no_show";
-	return absent === seat ? "no_show" : "void";
+	return outcomeForSeat(
+		{
+			resolution: game.resolution,
+			reason: game.reason ?? "",
+			noShowSeats: noShowSeatsOf(game, record),
+			stale: false,
+			unclaimed: false,
+		},
+		seat,
+		system,
+	);
 }

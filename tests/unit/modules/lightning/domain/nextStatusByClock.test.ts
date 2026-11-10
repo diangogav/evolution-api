@@ -57,4 +57,12 @@ describe("nextStatusByClock", () => {
 		expect(next("completed", at("2026-11-11T00:00:00Z"))).toBe("completed");
 		expect(next("cancelled", at("2026-11-11T00:00:00Z"))).toBe("cancelled");
 	});
+
+	it("never stops a Swiss tournament on the clock: its last round closes it", () => {
+		const late = at("2026-11-11T03:00:00Z");
+
+		expect(next("running", late, { system: "swiss" })).toBe("running");
+		expect(next("registration", startsAt, { system: "swiss" })).toBe("running");
+		expect(next("finishing", late, { system: "swiss" })).toBe("completed");
+	});
 });
