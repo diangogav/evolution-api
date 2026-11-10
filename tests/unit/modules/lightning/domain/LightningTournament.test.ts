@@ -6,6 +6,8 @@ import {
 	DEFAULT_MAX_PLAYERS,
 	DEFAULT_MIN_PLAYERS,
 	DEFAULT_POINTS_BY_POSITION,
+	DEFAULT_ROUND_BREAK_SECONDS,
+	DEFAULT_ROUND_MINUTES,
 	DEFAULT_TURN_TIME_SECONDS,
 	InvalidLightningTournamentError,
 	lightningTournament,
@@ -115,5 +117,66 @@ describe("prizeForPosition", () => {
 		expect(prizeForPosition(table, 4)).toBe(3);
 		expect(prizeForPosition(table, 5)).toBe(1);
 		expect(prizeForPosition(table, 40)).toBe(1);
+	});
+});
+
+describe("lightningTournament — systems", () => {
+	const { endsAt: _ignored, ...withoutEnd } = input;
+
+	it("defaults to an arena with no rounds", () => {
+		expect(lightningTournament(input)).toMatchObject({
+			system: "arena",
+			rounds: null,
+			currentRound: 0,
+			roundStartedAt: null,
+			roundClosedAt: null,
+		});
+	});
+
+	it("still requires an end for an arena", () => {
+		expect(() => lightningTournament(withoutEnd)).toThrow(InvalidLightningTournamentError);
+	});
+
+	it("stores the Swiss defaults and estimates the end from the largest field", () => {
+		const tournament = lightningTournament({ ...withoutEnd, system: "swiss" });
+
+		expect(tournament).toMatchObject({
+			system: "swiss",
+			rounds: null,
+			currentRound: 0,
+			roundMinutes: DEFAULT_ROUND_MINUTES,
+			roundBreakSeconds: DEFAULT_ROUND_BREAK_SECONDS,
+		});
+		// 64 players: 6 rounds of 40 minutes plus a minute of break each.
+		expect(tournament.endsAt).toEqual(new Date("2026-11-11T00:06:00Z"));
+	});
+
+	it("estimates the Swiss end from the given rounds, ignoring any end sent", () => {
+		const tournament = lightningTournament({
+			...input,
+			system: "swiss",
+			rounds: 3,
+			roundMinutes: 30,
+			roundBreakSeconds: 0,
+		});
+
+		expect(tournament.rounds).toBe(3);
+		expect(tournament.endsAt).toEqual(new Date("2026-11-10T21:30:00Z"));
+	});
+
+	it("rejects an unknown system and out-of-range round settings", () => {
+		const swiss = { ...withoutEnd, system: "swiss" as const };
+		for (const bad of [
+			{ ...input, system: "bracket" as never },
+			{ ...swiss, rounds: 1 },
+			{ ...swiss, rounds: 10 },
+			{ ...swiss, rounds: 2.5 },
+			{ ...swiss, roundMinutes: 9 },
+			{ ...swiss, roundMinutes: 121 },
+			{ ...swiss, roundBreakSeconds: -1 },
+			{ ...swiss, roundBreakSeconds: 601 },
+		]) {
+			expect(() => lightningTournament(bad)).toThrow(InvalidLightningTournamentError);
+		}
 	});
 });

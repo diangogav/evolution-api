@@ -2,6 +2,7 @@ import type { QueryableManager } from "../../../shared/persistence/QueryableMana
 import { runQuery } from "../../../shared/persistence/runQuery";
 import {
 	LightningFormat,
+	LightningSystem,
 	LightningTournament,
 	LightningTournamentStatus,
 	PrizeTable,
@@ -11,20 +12,25 @@ import {
 	TournamentListing,
 	TournamentListQuery,
 } from "../domain/LightningTournamentRepository";
-import { returnedRows } from "./returnedRows";
+import { returnedRows, toDate } from "./returnedRows";
 
 const COLUMNS = `id, name, format, status, season, registration_opens_at, starts_at, ends_at,
 	turn_time_seconds, lobby_timeout_seconds, min_players, max_players, points_by_position,
-	essence_by_position, created_by, cancelled_reason, created_at, updated_at`;
+	essence_by_position, created_by, cancelled_reason, created_at, updated_at,
+	system, rounds, current_round, round_minutes, round_break_seconds, round_started_at,
+	round_closed_at`;
 
 const INSERT_QUERY = `INSERT INTO lightning_tournaments (${COLUMNS})
-	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13::jsonb, $14::jsonb, $15, $16, $17, $18)`;
+	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13::jsonb, $14::jsonb, $15, $16, $17, $18,
+		$19, $20, $21, $22, $23, $24, $25)`;
 
 const FIND_QUERY = `SELECT ${COLUMNS} FROM lightning_tournaments WHERE id = $1`;
 const FIND_FOR_UPDATE_QUERY = `${FIND_QUERY} FOR UPDATE`;
 
+// A Swiss start fixes the round count and re-estimates the end; every round moves the rest.
 const UPDATE_QUERY = `UPDATE lightning_tournaments SET status = $2, cancelled_reason = $3,
-	updated_at = $4 WHERE id = $1`;
+	updated_at = $4, ends_at = $5, rounds = $6, current_round = $7, round_started_at = $8,
+	round_closed_at = $9 WHERE id = $1`;
 
 const TRANSITION_QUERY = `UPDATE lightning_tournaments SET status = $3, updated_at = $4
 	WHERE id = $1 AND status = $2 RETURNING id`;
@@ -58,6 +64,13 @@ type Row = {
 	cancelled_reason: string | null;
 	created_at: Date;
 	updated_at: Date;
+	system: LightningSystem;
+	rounds: number | string | null;
+	current_round: number | string;
+	round_minutes: number | string;
+	round_break_seconds: number | string;
+	round_started_at: Date | null;
+	round_closed_at: Date | null;
 };
 
 function prefixed(alias: string): string {
@@ -72,6 +85,7 @@ function toTournament(row: Row): LightningTournament {
 		name: row.name,
 		format: row.format,
 		status: row.status,
+		system: row.system,
 		season: Number(row.season),
 		registrationOpensAt: new Date(row.registration_opens_at),
 		startsAt: new Date(row.starts_at),
@@ -84,6 +98,12 @@ function toTournament(row: Row): LightningTournament {
 		essenceByPosition: row.essence_by_position,
 		createdBy: row.created_by,
 		cancelledReason: row.cancelled_reason,
+		rounds: row.rounds === null ? null : Number(row.rounds),
+		currentRound: Number(row.current_round),
+		roundMinutes: Number(row.round_minutes),
+		roundBreakSeconds: Number(row.round_break_seconds),
+		roundStartedAt: toDate(row.round_started_at),
+		roundClosedAt: toDate(row.round_closed_at),
 		createdAt: new Date(row.created_at),
 		updatedAt: new Date(row.updated_at),
 	};
@@ -112,6 +132,13 @@ export class LightningTournamentPostgresRepository implements LightningTournamen
 				tournament.cancelledReason,
 				tournament.createdAt,
 				tournament.updatedAt,
+				tournament.system,
+				tournament.rounds,
+				tournament.currentRound,
+				tournament.roundMinutes,
+				tournament.roundBreakSeconds,
+				tournament.roundStartedAt,
+				tournament.roundClosedAt,
 			],
 			manager,
 		);
@@ -133,7 +160,17 @@ export class LightningTournamentPostgresRepository implements LightningTournamen
 	async update(tournament: LightningTournament, manager?: QueryableManager): Promise<void> {
 		await runQuery(
 			UPDATE_QUERY,
-			[tournament.id, tournament.status, tournament.cancelledReason, tournament.updatedAt],
+			[
+				tournament.id,
+				tournament.status,
+				tournament.cancelledReason,
+				tournament.updatedAt,
+				tournament.endsAt,
+				tournament.rounds,
+				tournament.currentRound,
+				tournament.roundStartedAt,
+				tournament.roundClosedAt,
+			],
 			manager,
 		);
 	}

@@ -32,6 +32,13 @@ const tournamentRow = {
 	essence_by_position: { positions: [], others: 0 },
 	created_by: "admin-1",
 	cancelled_reason: null,
+	system: "arena",
+	rounds: null,
+	current_round: 0,
+	round_minutes: 40,
+	round_break_seconds: "60",
+	round_started_at: null,
+	round_closed_at: null,
 	created_at: at("2026-11-10T18:00:00Z"),
 	updated_at: at("2026-11-10T18:00:00Z"),
 };
@@ -53,6 +60,13 @@ const tournament = {
 	essenceByPosition: { positions: [], others: 0 },
 	createdBy: "admin-1",
 	cancelledReason: null,
+	system: "arena" as const,
+	rounds: null,
+	currentRound: 0,
+	roundMinutes: 40,
+	roundBreakSeconds: 60,
+	roundStartedAt: null,
+	roundClosedAt: null,
 	createdAt: at("2026-11-10T18:00:00Z"),
 	updatedAt: at("2026-11-10T18:00:00Z"),
 };
@@ -73,6 +87,79 @@ describe("LightningTournamentPostgresRepository", () => {
 			"FROM lightning_tournaments WHERE id = $1 FOR UPDATE",
 		);
 		expect(locked).toEqual(tournament);
+	});
+
+	it("stores the Swiss settings and maps a Swiss round back", async () => {
+		const swissRow = {
+			...tournamentRow,
+			system: "swiss",
+			rounds: "4",
+			current_round: "2",
+			round_minutes: "30",
+			round_break_seconds: 0,
+			round_started_at: at("2026-11-10T20:31:00Z"),
+			round_closed_at: at("2026-11-10T20:55:00Z"),
+		};
+		const manager = managerReturning([], [swissRow]);
+		const repository = new LightningTournamentPostgresRepository();
+		const swiss = {
+			...tournament,
+			system: "swiss" as const,
+			rounds: 4,
+			currentRound: 2,
+			roundMinutes: 30,
+			roundBreakSeconds: 0,
+			roundStartedAt: at("2026-11-10T20:31:00Z"),
+			roundClosedAt: at("2026-11-10T20:55:00Z"),
+		};
+
+		await repository.insert(swiss, manager);
+		const found = await repository.findById("t-1", manager);
+
+		const [insertSql, insertParams] = manager.query.mock.calls[0];
+		expect(compact(insertSql)).toContain(
+			"system, rounds, current_round, round_minutes, round_break_seconds, round_started_at, round_closed_at",
+		);
+		expect(insertParams?.slice(18)).toEqual([
+			"swiss",
+			4,
+			2,
+			30,
+			0,
+			swiss.roundStartedAt,
+			swiss.roundClosedAt,
+		]);
+		expect(found).toEqual(swiss);
+	});
+
+	it("writes the round state, the fixed round count and the estimated end on update", async () => {
+		const manager = managerReturning([]);
+		const started = {
+			...tournament,
+			system: "swiss" as const,
+			rounds: 3,
+			currentRound: 1,
+			roundStartedAt: at("2026-11-10T20:00:05Z"),
+			endsAt: at("2026-11-10T22:03:00Z"),
+		};
+
+		await new LightningTournamentPostgresRepository().update(started, manager);
+
+		const [sql, params] = manager.query.mock.calls[0];
+		expect(compact(sql)).toContain(
+			"SET status = $2, cancelled_reason = $3, updated_at = $4, ends_at = $5, rounds = $6, current_round = $7, round_started_at = $8, round_closed_at = $9 WHERE id = $1",
+		);
+		expect(params).toEqual([
+			"t-1",
+			"running",
+			null,
+			started.updatedAt,
+			started.endsAt,
+			3,
+			1,
+			started.roundStartedAt,
+			null,
+		]);
 	});
 
 	it("moves the status only from the expected one", async () => {
