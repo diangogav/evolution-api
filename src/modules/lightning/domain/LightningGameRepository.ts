@@ -27,6 +27,12 @@ export interface LightningGameRepository {
 		appliedAt: Date,
 		manager: QueryableManager,
 	): Promise<ResolveGameResult>;
+	/** Every game of one Swiss round in any status, oldest issue first. */
+	listByRound(
+		tournamentId: string,
+		round: number,
+		manager?: QueryableManager,
+	): Promise<LightningGame[]>;
 	/** Games that left `pending`, for standings and the tournament's history. */
 	listResolved(tournamentId: string, manager?: QueryableManager): Promise<LightningGame[]>;
 }

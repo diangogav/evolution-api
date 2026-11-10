@@ -57,6 +57,7 @@ export class PairLightningPlayers {
 					resolution: null,
 					reason: null,
 					appliedAt: null,
+					round: null,
 				},
 				manager,
 			);

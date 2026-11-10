@@ -1,5 +1,6 @@
 import { describe, expect, it, mock } from "bun:test";
 
+import { LightningByePostgresRepository } from "../../../../../src/modules/lightning/infrastructure/LightningByePostgresRepository";
 import { LightningEntryPostgresRepository } from "../../../../../src/modules/lightning/infrastructure/LightningEntryPostgresRepository";
 import { LightningGamePostgresRepository } from "../../../../../src/modules/lightning/infrastructure/LightningGamePostgresRepository";
 import { LightningResultPostgresRepository } from "../../../../../src/modules/lightning/infrastructure/LightningResultPostgresRepository";
@@ -298,6 +299,7 @@ describe("LightningGamePostgresRepository", () => {
 		resolution: null,
 		reason: null,
 		applied_at: null,
+		round: null,
 	};
 
 	it("gates each game with a conditional update on pending", async () => {
@@ -341,7 +343,38 @@ describe("LightningGamePostgresRepository", () => {
 			resolution: null,
 			reason: null,
 			appliedAt: null,
+			round: null,
 		});
+	});
+
+	it("tags a game with its Swiss round and lists the games of one round", async () => {
+		const manager = managerReturning([], [{ ...gameRow, round: "2", status: "voided" }]);
+		const repository = new LightningGamePostgresRepository();
+		const game = {
+			reservationId: "R1",
+			tournamentId: "t-1",
+			seat0UserId: "u-1",
+			seat1UserId: "u-2",
+			issuedAt: at("2026-11-10T20:05:00Z"),
+			status: "pending" as const,
+			resolution: null,
+			reason: null,
+			appliedAt: null,
+			round: 2,
+		};
+
+		await repository.insert(game, manager);
+		const games = await repository.listByRound("t-1", 2, manager);
+
+		const [insertSql, insertParams] = manager.query.mock.calls[0];
+		expect(compact(insertSql)).toContain("applied_at, round)");
+		expect(insertParams?.[9]).toBe(2);
+		const [sql, params] = manager.query.mock.calls[1];
+		expect(compact(sql)).toContain(
+			"WHERE tournament_id = $1 AND round = $2 ORDER BY issued_at, reservation_id",
+		);
+		expect(params).toEqual(["t-1", 2]);
+		expect(games).toEqual([{ ...game, status: "voided" }]);
 	});
 
 	it("lists pending games oldest first and resolved ones in apply order", async () => {
@@ -357,6 +390,26 @@ describe("LightningGamePostgresRepository", () => {
 		expect(compact(manager.query.mock.calls[1][0])).toContain(
 			"status <> 'pending' ORDER BY applied_at, reservation_id",
 		);
+	});
+});
+
+describe("LightningByePostgresRepository", () => {
+	it("records a bye per player and round and lists a tournament's byes", async () => {
+		const manager = managerReturning([], [{ tournament_id: "t-1", user_id: "u-1", round: "2" }]);
+		const repository = new LightningByePostgresRepository();
+
+		await repository.insert({ tournamentId: "t-1", userId: "u-1", round: 2 }, manager);
+		const byes = await repository.listByTournament("t-1", manager);
+
+		const [insertSql, insertParams] = manager.query.mock.calls[0];
+		expect(compact(insertSql)).toContain(
+			"INSERT INTO lightning_byes (tournament_id, user_id, round) VALUES ($1, $2, $3)",
+		);
+		expect(insertParams).toEqual(["t-1", "u-1", 2]);
+		expect(compact(manager.query.mock.calls[1][0])).toContain(
+			"FROM lightning_byes WHERE tournament_id = $1 ORDER BY round, user_id",
+		);
+		expect(byes).toEqual([{ tournamentId: "t-1", userId: "u-1", round: 2 }]);
 	});
 });
 

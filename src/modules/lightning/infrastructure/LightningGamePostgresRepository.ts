@@ -9,10 +9,13 @@ import { LightningGameRepository, ResolveGameResult } from "../domain/LightningG
 import { returnedRows, toDate } from "./returnedRows";
 
 const COLUMNS = `reservation_id, tournament_id, seat0_user_id, seat1_user_id, issued_at, status,
-	resolution, reason, applied_at`;
+	resolution, reason, applied_at, round`;
 
 const INSERT_QUERY = `INSERT INTO lightning_games (${COLUMNS})
-	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`;
+	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`;
+
+const LIST_BY_ROUND_QUERY = `SELECT ${COLUMNS} FROM lightning_games
+	WHERE tournament_id = $1 AND round = $2 ORDER BY issued_at, reservation_id`;
 
 const LIST_PENDING_QUERY = `SELECT ${COLUMNS} FROM lightning_games
 	WHERE tournament_id = $1 AND status = 'pending' ORDER BY issued_at, reservation_id`;
@@ -42,6 +45,7 @@ type Row = {
 	resolution: LightningGameResolution | null;
 	reason: string | null;
 	applied_at: Date | null;
+	round: number | string | null;
 };
 
 function toGame(row: Row): LightningGame {
@@ -55,6 +59,7 @@ function toGame(row: Row): LightningGame {
 		resolution: row.resolution,
 		reason: row.reason,
 		appliedAt: toDate(row.applied_at),
+		round: row.round === null ? null : Number(row.round),
 	};
 }
 
@@ -72,6 +77,7 @@ export class LightningGamePostgresRepository implements LightningGameRepository 
 				game.resolution,
 				game.reason,
 				game.appliedAt,
+				game.round,
 			],
 			manager,
 		);
@@ -119,6 +125,14 @@ export class LightningGamePostgresRepository implements LightningGameRepository 
 			appliedAt,
 		]);
 		return returnedRows(result).length > 0 ? "resolved" : "skipped";
+	}
+
+	async listByRound(
+		tournamentId: string,
+		round: number,
+		manager?: QueryableManager,
+	): Promise<LightningGame[]> {
+		return (await runQuery<Row>(LIST_BY_ROUND_QUERY, [tournamentId, round], manager)).map(toGame);
 	}
 
 	async listResolved(tournamentId: string, manager?: QueryableManager): Promise<LightningGame[]> {

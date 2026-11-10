@@ -4,6 +4,10 @@ import type { DeckValidation } from "../../../../../src/modules/community-decks"
 import { ApplyLightningGame } from "../../../../../src/modules/lightning/application/ApplyLightningGame";
 import { CompleteLightningTournament } from "../../../../../src/modules/lightning/application/CompleteLightningTournament";
 import { PairLightningPlayers } from "../../../../../src/modules/lightning/application/PairLightningPlayers";
+import {
+	LightningBye,
+	LightningByeRepository,
+} from "../../../../../src/modules/lightning/domain/LightningByeRepository";
 import { DeckLegalityChecker } from "../../../../../src/modules/lightning/domain/DeckLegalityChecker";
 import {
 	LightningEntry,
@@ -80,6 +84,7 @@ export class World {
 	entries = new Map<string, LightningEntry>();
 	games = new Map<string, LightningGame>();
 	results: LightningResult[] = [];
+	byes: LightningBye[] = [];
 	rankings = new Map<
 		string,
 		{ userId: string; season: number; points: number; won: number; played: number }
@@ -198,10 +203,32 @@ export class World {
 			this.games.set(reservationId, { ...game, status, resolution, reason, appliedAt });
 			return "resolved";
 		},
+		listByRound: async (tournamentId, round) =>
+			this.gamesOf(tournamentId)
+				.filter((g) => g.round === round)
+				.sort((a, b) => a.issuedAt.getTime() - b.issuedAt.getTime())
+				.map((g) => ({ ...g })),
 		listResolved: async (tournamentId) =>
 			this.gamesOf(tournamentId)
 				.filter((g) => g.status !== "pending")
 				.map((g) => ({ ...g })),
+	};
+
+	readonly byeRepository: LightningByeRepository = {
+		insert: async (bye) => {
+			if (
+				this.byes.some(
+					(b) =>
+						b.tournamentId === bye.tournamentId && b.userId === bye.userId && b.round === bye.round,
+				)
+			) {
+				throw new Error("PK_lightning_byes violated");
+			}
+			this.events.push(`insert-bye:${bye.userId}:${bye.round}`);
+			this.byes.push({ ...bye });
+		},
+		listByTournament: async (tournamentId) =>
+			this.byes.filter((b) => b.tournamentId === tournamentId).map((b) => ({ ...b })),
 	};
 
 	readonly resultRepository: LightningResultRepository = {
@@ -400,6 +427,7 @@ export class World {
 			resolution: null,
 			reason: null,
 			appliedAt: null,
+			round: null,
 			...overrides,
 		};
 		this.games.set(game.reservationId, game);
@@ -468,6 +496,7 @@ export class World {
 			entries: new Map([...this.entries].map(([k, v]) => [k, { ...v }])),
 			games: new Map([...this.games].map(([k, v]) => [k, { ...v }])),
 			results: [...this.results],
+			byes: [...this.byes],
 			rankings: new Map([...this.rankings].map(([k, v]) => [k, { ...v }])),
 			ledger: [...this.ledger],
 		};
@@ -478,6 +507,7 @@ export class World {
 		this.entries = s.entries;
 		this.games = s.games;
 		this.results = s.results;
+		this.byes = s.byes;
 		this.rankings = s.rankings;
 		this.ledger = s.ledger;
 	}

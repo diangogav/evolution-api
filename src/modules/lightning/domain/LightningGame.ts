@@ -21,6 +21,8 @@ export type LightningGame = {
 	resolution: LightningGameResolution | null;
 	reason: string | null;
 	appliedAt: Date | null;
+	/** The Swiss round the game belongs to; null for an arena game. */
+	round: number | null;
 };
 
 export function seatOf(
