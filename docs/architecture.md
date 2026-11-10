@@ -47,7 +47,7 @@ Modules that exist today (`src/modules/*`):
 | `entitlements` | What cosmetics a user has access to, and granting them. |
 | `event-run` | Seasonal event gauntlets: the event catalog, runs, event duels and their worker. |
 | `event-stats` | Per-event run, wave, deck and player stats for the backoffice. |
-| `lightning` | Lightning tournaments: short arenas that pair idle players continuously by score, one reserved duel per pairing, with standings, season ranking and prizes, and their worker (see `design/lightning-tournaments.md`). |
+| `lightning` | Lightning tournaments: short arenas that pair idle players continuously by score, or Swiss rounds (see `design/lightning-swiss.md`), one reserved duel per pairing, with standings, season ranking and prizes, and their worker (see `design/lightning-tournaments.md`). |
 | `loadout` | A player's equipped cosmetics — own view and public view. |
 | `match` | Match history retrieval. |
 | `player-reports` | Private opponent reports with server match evidence, rolling quota and audited admin reviews. See [player reports](player-reports.md). |

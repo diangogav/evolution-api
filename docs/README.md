@@ -19,5 +19,6 @@ Live Swagger: [`https://api.evolutionygo.com/swagger`](https://api.evolutionygo.
 | [domain/moderation.md](domain/moderation.md) | User bans: lifecycle, `requireUser`, admin-only routes, relation to annulment |
 | [domain/cosmetics.md](domain/cosmetics.md) | Catalog, entitlements, loadout, signed asset URLs |
 | [design/lightning-tournaments.md](design/lightning-tournaments.md) | Lightning tournaments: the arena format, reserved duels per pairing, states, pairing, result resolution, standings and prizes, endpoints and the worker |
+| [design/lightning-swiss.md](design/lightning-swiss.md) | Swiss lightning tournaments: rounds, the round barrier and deadline, pairing without rematches, byes, Swiss resolutions and standings |
 | [rewards.md](rewards.md) | Essence, daily and weekly missions, the worker that projects progress from match results, the shop, backfill |
 | [operations.md](operations.md) | Environment variables, running locally, migrations, seeds and scripts, deployment notes |
