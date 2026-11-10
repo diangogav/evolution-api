@@ -638,4 +638,24 @@ describe("PlayerDirectoryPostgresRepository", () => {
 		expect(manager.query).toHaveBeenCalledTimes(1);
 		expect(manager.query.mock.calls[0][1]).toEqual([["u-1", "u-2"]]);
 	});
+
+	it("reads chat authors with their admin role in one query and skips it for none", async () => {
+		const manager = managerReturning([
+			{ id: "u-1", username: "alice", admin: false },
+			{ id: "u-9", username: "mod", admin: true },
+		]);
+		const directory = new PlayerDirectoryPostgresRepository();
+
+		expect(await directory.authorsOf(["u-1", "u-9"], manager)).toEqual(
+			new Map([
+				["u-1", { username: "alice", admin: false }],
+				["u-9", { username: "mod", admin: true }],
+			]),
+		);
+		expect(await directory.authorsOf([], manager)).toEqual(new Map());
+		expect(manager.query).toHaveBeenCalledTimes(1);
+		const [sql, params] = manager.query.mock.calls[0];
+		expect(compact(sql)).toContain("role = $2 AS admin");
+		expect(params).toEqual([["u-1", "u-9"], "admin"]);
+	});
 });
