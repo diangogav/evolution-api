@@ -6,7 +6,7 @@ import { EventCatalogRepository } from "../domain/EventCatalogRepository";
 import { findEventDeck, isEventOpen } from "../domain/EventDefinition";
 import { startEventRun } from "../domain/EventRun";
 import { EventRunRepository } from "../domain/EventRunRepository";
-import { ReservationStore } from "../domain/ReservationStore";
+import { ReservationStore } from "../../reserved-duel";
 import { assignRival, PickIndex, randomPickIndex } from "../domain/WaveRival";
 import { ApplyReservedDuel } from "./ApplyReservedDuel";
 import { EventRunView, toEventRunView } from "./EventRunView";

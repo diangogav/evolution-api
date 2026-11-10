@@ -53,6 +53,7 @@ Modules that exist today (`src/modules/*`):
 | `match-annulment` | Batch annulment and reinstatement of ranked matches. |
 | `points-ledger` | Per-match points entries that feed the ranked tiers. |
 | `rating` | Elo rating compensation when a match is annulled or reinstated. |
+| `reserved-duel` | The reservation contract shared with the duel server: issuing and revoking reservations in Redis, and the read-only view of the `reserved_duels` records the server writes. `event-run` builds on it. |
 | `rewards` | Essence ledger, missions, the worker that projects progress from match results, the shop (see `rewards.md`). |
 | `stats` | Player and global statistics, leaderboard, player of the week. |
 | `ticket` | Ranked game tickets, backed by Redis. |
@@ -118,7 +119,7 @@ Both `DataSource`s point at the same Postgres instance but track migrations inde
 
 `src/evolution-types/` is the schema package shared by this API and EDOpro-server-ts, vendored by both as a git submodule. Its entities and migrations change in the evolution-types repository and reach this API by bumping the submodule; they are never edited inside this checkout. Its migrations run with the package's own `migration:run`. The cosmetics `DataSource` declares its foreign key to `users(id)` in raw SQL inside its own migration, so it never manages the shared `users` table.
 
-Module-to-DataSource mapping: `catalog`, `loadout`, `emote-bar`, `entitlements`, `community-decks`, `event-run`, `event-stats`, `player-reports`, and `rewards` use the cosmetics `DataSource` (`rewards` also reads matches and achievements from the shared schema through its `*Source` adapters; `user`'s `UserDirectoryPostgresRepository` reads usernames from the shared `users` table; `event-run` and `event-stats` query through `src/shared/persistence/runQuery.ts`). Every other module that touches Postgres (`activity-stats`, `user`, `achievements`, `match`, `match-annulment`, `points-ledger`, `rating`, `stats`, `tiers`, `ban-list`) uses the shared `evolution-types` `DataSource`. `ticket` uses Redis, not Postgres. Both `DataSource`s are initialized at startup in `src/index.ts`.
+Module-to-DataSource mapping: `catalog`, `loadout`, `emote-bar`, `entitlements`, `community-decks`, `event-run`, `event-stats`, `player-reports`, and `rewards` use the cosmetics `DataSource` (`rewards` also reads matches and achievements from the shared schema through its `*Source` adapters; `user`'s `UserDirectoryPostgresRepository` reads usernames from the shared `users` table; `event-run`, `event-stats` and `reserved-duel` query through `src/shared/persistence/runQuery.ts`). Every other module that touches Postgres (`activity-stats`, `user`, `achievements`, `match`, `match-annulment`, `points-ledger`, `rating`, `stats`, `tiers`, `ban-list`) uses the shared `evolution-types` `DataSource`. `ticket` uses Redis, not Postgres. Both `DataSource`s are initialized at startup in `src/index.ts`.
 
 ## Errors
 

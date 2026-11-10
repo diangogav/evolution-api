@@ -1,5 +1,4 @@
 import { ApplyReservedDuel } from "../../../../../src/modules/event-run/application/ApplyReservedDuel";
-import { DuelReservation } from "../../../../../src/modules/event-run/domain/DuelReservation";
 import { EventAttemptRepository } from "../../../../../src/modules/event-run/domain/EventAttemptRepository";
 import { EventCatalogRepository } from "../../../../../src/modules/event-run/domain/EventCatalogRepository";
 import { EventDefinition } from "../../../../../src/modules/event-run/domain/EventDefinition";
@@ -9,10 +8,11 @@ import { EventRunRepository } from "../../../../../src/modules/event-run/domain/
 import { EventRunTickUnitOfWork } from "../../../../../src/modules/event-run/domain/EventRunTickUnitOfWork";
 import { PickIndex } from "../../../../../src/modules/event-run/domain/WaveRival";
 import {
+	DuelReservation,
 	ReservationStore,
+	ReservedDuelRecord,
 	RevokeResult,
-} from "../../../../../src/modules/event-run/domain/ReservationStore";
-import { ReservedDuelRecord } from "../../../../../src/modules/event-run/domain/ReservedDuelRecord";
+} from "../../../../../src/modules/reserved-duel";
 import { EntitlementSource } from "../../../../../src/modules/entitlements/domain/EntitlementSource";
 import { EssenceLedgerEntry } from "../../../../../src/modules/rewards/domain/EssenceLedgerEntry";
 import {

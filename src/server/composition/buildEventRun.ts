@@ -8,7 +8,8 @@ import { UserDirectoryPostgresRepository } from "../../modules/user/infrastructu
 import { EssenceLedgerPostgresRepository } from "../../modules/rewards/infrastructure/EssenceLedgerPostgresRepository";
 import { ApplyReservedDuel } from "../../modules/event-run/application/ApplyReservedDuel";
 import { ProcessEventRunTick } from "../../modules/event-run/application/ProcessEventRunTick";
-import { BunRedisReservationStore } from "../../modules/event-run/infrastructure/BunRedisReservationStore";
+import { BunRedisReservationStore } from "../../modules/reserved-duel/infrastructure/BunRedisReservationStore";
+import { ReservedDuelPostgresReader } from "../../modules/reserved-duel/infrastructure/ReservedDuelPostgresReader";
 import { EventCatalogPostgresRepository } from "../../modules/event-run/infrastructure/EventCatalogPostgresRepository";
 import { EventDuelPostgresRepository } from "../../modules/event-run/infrastructure/EventDuelPostgresRepository";
 import { EventRunPostgresRepository } from "../../modules/event-run/infrastructure/EventRunPostgresRepository";
@@ -23,7 +24,7 @@ export function buildApplyReservedDuel(): ApplyReservedDuel {
 	return new ApplyReservedDuel(
 		new EventCatalogPostgresRepository(),
 		new EventRunPostgresRepository(),
-		new EventDuelPostgresRepository(),
+		new EventDuelPostgresRepository(new ReservedDuelPostgresReader()),
 		new EssenceLedgerPostgresRepository(),
 		new GrantCosmeticToUser(
 			new CosmeticPostgresRepository(),
@@ -36,7 +37,7 @@ export function buildApplyReservedDuel(): ApplyReservedDuel {
 export function buildEventRunWorker(logger: Logger): EventRunWorker {
 	const tick = new ProcessEventRunTick(
 		new EventRunUnitOfWork(),
-		new EventDuelPostgresRepository(),
+		new EventDuelPostgresRepository(new ReservedDuelPostgresReader()),
 		new EventRunPostgresRepository(),
 		buildApplyReservedDuel(),
 		new BunRedisReservationStore(redisClient),

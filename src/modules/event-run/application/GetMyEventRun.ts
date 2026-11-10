@@ -3,7 +3,7 @@ import { TransactionRunner } from "../../rewards";
 import { EventCatalogRepository } from "../domain/EventCatalogRepository";
 import { isRunIdle } from "../domain/EventRun";
 import { EventRunRepository } from "../domain/EventRunRepository";
-import { ReservationStore } from "../domain/ReservationStore";
+import { ReservationStore } from "../../reserved-duel";
 import { ApplyReservedDuel } from "./ApplyReservedDuel";
 import { EventRunView, toEventRunView } from "./EventRunView";
 import { releaseReservation } from "./releaseReservation";
