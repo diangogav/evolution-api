@@ -4,6 +4,8 @@ import { Value } from "@sinclair/typebox/value";
 import { toTournamentView } from "../../../../../src/modules/lightning/application/LightningViews";
 import { lightningTournament } from "../../../../../src/modules/lightning/domain/LightningTournament";
 import {
+	CreateLightningTournamentBodySchema,
+	LightningTournamentDetailSchema,
 	LightningTournamentSchema,
 	MyLightningStateSchema,
 } from "../../../../../src/modules/lightning/infrastructure/LightningSchemas";
@@ -36,6 +38,7 @@ describe("LightningSchemas", () => {
 			game: null,
 			lastGame: null,
 			position: null,
+			bye: false,
 		};
 		const paired = {
 			...outside,
@@ -66,5 +69,85 @@ describe("LightningSchemas", () => {
 		expect(Value.Check(MyLightningStateSchema, outside)).toBe(true);
 		expect(Value.Check(MyLightningStateSchema, paired)).toBe(true);
 		expect(Value.Check(MyLightningStateSchema, { ...paired, state: "bracket" })).toBe(false);
+	});
+
+	it("describes a Swiss tournament with its round clocks", () => {
+		const swiss = { ...tournament, system: "swiss", rounds: 4, currentRound: 2 };
+
+		expect(
+			Value.Check(LightningTournamentSchema, { ...swiss, roundEndsAt: tournament.startsAt }),
+		).toBe(true);
+		expect(Value.Check(LightningTournamentSchema, { ...swiss, system: "bracket" })).toBe(false);
+		expect(Value.Check(LightningTournamentSchema, { ...tournament, currentRound: undefined })).toBe(
+			false,
+		);
+	});
+
+	it("describes the current Swiss round in the detail, with no-show seats only when known", () => {
+		const player = (userId: string) => ({ userId, username: userId });
+		const detail = {
+			...tournament,
+			system: "swiss",
+			rounds: 3,
+			currentRound: 1,
+			players: 3,
+			standings: [],
+			watchable: [],
+			round: {
+				number: 1,
+				tables: [
+					{
+						reservationId: "Xy3kP9aQ2mNb7RtL",
+						seat0: player("u-1"),
+						seat1: player("u-2"),
+						resolution: "no_show",
+						noShowSeats: [0, 1],
+						roomId: null,
+					},
+					{
+						reservationId: "Ab3kP9aQ2mNb7RtL",
+						seat0: player("u-3"),
+						seat1: player("u-4"),
+						resolution: null,
+						roomId: 4213,
+					},
+				],
+				bye: player("u-5"),
+			},
+		};
+
+		expect(Value.Check(LightningTournamentDetailSchema, detail)).toBe(true);
+		expect(Value.Check(LightningTournamentDetailSchema, { ...detail, round: null })).toBe(true);
+	});
+
+	it("accepts the Swiss settings in the creation body, within their bounds", () => {
+		const body = {
+			name: "Swiss Friday",
+			format: "tcg",
+			registrationOpensAt: "2026-11-10T19:00:00.000Z",
+			startsAt: "2026-11-10T20:00:00.000Z",
+			endsAt: "2026-11-10T21:00:00.000Z",
+		};
+		const swiss = {
+			...body,
+			system: "swiss",
+			rounds: null,
+			roundMinutes: 40,
+			roundBreakSeconds: 0,
+		};
+
+		expect(Value.Check(CreateLightningTournamentBodySchema, body)).toBe(true);
+		expect(Value.Check(CreateLightningTournamentBodySchema, swiss)).toBe(true);
+		expect(Value.Check(CreateLightningTournamentBodySchema, { ...swiss, rounds: 5 })).toBe(true);
+		for (const bad of [
+			{ rounds: 1 },
+			{ rounds: 10 },
+			{ roundMinutes: 9 },
+			{ roundMinutes: 121 },
+			{ roundBreakSeconds: 601 },
+			{ system: "bracket" },
+		]) {
+			expect(Value.Check(CreateLightningTournamentBodySchema, { ...swiss, ...bad })).toBe(false);
+		}
 	});
 });

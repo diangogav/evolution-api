@@ -82,6 +82,21 @@ const tournamentExample = {
 	essenceByPosition: { positions: [100, 50, 25], others: 0 },
 	cancelledReason: null,
 	createdAt: "2026-11-09T12:00:00.000Z",
+	system: "arena" as const,
+	rounds: null,
+	currentRound: 0,
+	roundEndsAt: null,
+	nextRoundAt: null,
+};
+
+const swissExample = {
+	...tournamentExample,
+	name: "Friday Swiss",
+	endsAt: "2026-11-13T22:44:00.000Z",
+	system: "swiss" as const,
+	rounds: 4,
+	currentRound: 2,
+	roundEndsAt: "2026-11-13T21:21:00.000Z",
 };
 
 const entryExample = {
@@ -170,10 +185,10 @@ export function createLightningRouter(deps: LightningRouterDependencies) {
 				tags: ["Lightning"],
 				summary: "Get a lightning tournament",
 				description:
-					"The tournament with its standings (live until completed, then the final results with the season points and essence each position earned) and the rooms of the games being played, which spectators join with `w,<roomId>`. Public: no credentials required.",
+					"The tournament with its standings (live until completed, then the final results with the season points and essence each position earned) and the rooms of the games being played, which spectators join with `w,<roomId>`. Arena standings order by score, wins, Buchholz, registration; Swiss by score, Buchholz, wins, registration. A Swiss tournament also returns `round`: the current (or last closed) round's tables with their results as they arrive, the room to watch while a table plays, and the bye. Public: no credentials required.",
 				responses: {
 					200: jsonOk(LightningTournamentDetailSchema, "The tournament", {
-						...tournamentExample,
+						...swissExample,
 						players: 12,
 						standings: [
 							{
@@ -199,6 +214,27 @@ export function createLightningRouter(deps: LightningRouterDependencies) {
 								players: [opponent, { userId: entryExample.userId, username: "Jaden" }],
 							},
 						],
+						round: {
+							number: 2,
+							tables: [
+								{
+									reservationId: "Xy3kP9aQ2mNb7RtL",
+									seat0: opponent,
+									seat1: { userId: entryExample.userId, username: "Jaden" },
+									resolution: null,
+									roomId: 4213,
+								},
+								{
+									reservationId: "Qw8nR2tY5uIo1PaS",
+									seat0: { userId: "3c2a1f0e-7b6d-4e5f-8a9b-0c1d2e3f4a5b", username: "Syrus" },
+									seat1: { userId: "9e8d7c6b-5a4f-4e3d-9c2b-1a0f9e8d7c6b", username: "Bastion" },
+									resolution: "no_show",
+									noShowSeats: [1],
+									roomId: null,
+								},
+							],
+							bye: { userId: "5d4c3b2a-1f0e-4d9c-8b7a-6f5e4d3c2b1a", username: "Alexis" },
+						},
 					}),
 					...errorResponses(404),
 				},
@@ -215,6 +251,10 @@ export function createLightningRouter(deps: LightningRouterDependencies) {
 					registrationOpensAt: new Date(body.registrationOpensAt),
 					startsAt: new Date(body.startsAt),
 					endsAt: new Date(body.endsAt),
+					system: body.system,
+					rounds: body.rounds,
+					roundMinutes: body.roundMinutes,
+					roundBreakSeconds: body.roundBreakSeconds,
 					turnTimeSeconds: body.turnTimeSeconds,
 					lobbyTimeoutSeconds: body.lobbyTimeoutSeconds,
 					minPlayers: body.minPlayers,
@@ -231,7 +271,7 @@ export function createLightningRouter(deps: LightningRouterDependencies) {
 					tags: ["Lightning Admin"],
 					summary: "Create a lightning tournament",
 					description:
-						"Schedules a tournament. Defaults: 90 s per turn, 90 s to join each room, 4 to 64 players, season points 10/7/5/3 then 1 for every other player with a game, no essence. The defaults are stored on the tournament, so changing them later never rewrites it. Registration opens at once when its time already passed.",
+						"Schedules a tournament. Defaults: arena system, 90 s per turn, 90 s to join each room, 4 to 64 players, season points 10/7/5/3 then 1 for every other player with a game, no essence. The defaults are stored on the tournament, so changing them later never rewrites it. Registration opens at once when its time already passed. `system: swiss` plays fixed rounds (`rounds` 2-9, or null for max(3, ceil(log2(players))) fixed at the start), each with a deadline of `roundMinutes` (default 40) and a break of `roundBreakSeconds` (default 60); its `endsAt` is ignored and estimated as startsAt + rounds × (roundMinutes + break), from maxPlayers until the start.",
 					security: [{ bearerAuth: [] }],
 					responses: {
 						200: jsonOk(LightningTournamentSchema, "The scheduled tournament", {
@@ -239,7 +279,9 @@ export function createLightningRouter(deps: LightningRouterDependencies) {
 							status: "scheduled",
 						}),
 						...errorResponses(401, 403),
-						...unprocessable("Invalid body, a window out of order or in the past, or bad bounds"),
+						...unprocessable(
+							"Invalid body, a window out of order or in the past, bad bounds, or Swiss settings out of range",
+						),
 					},
 				},
 			},
@@ -285,7 +327,7 @@ export function createLightningRouter(deps: LightningRouterDependencies) {
 							tags: ["Lightning"],
 							summary: "Enter a lightning tournament",
 							description:
-								"Registers the player with a deck, checked against the format's list (sizes, copies, legality). The server requires exactly these lists at every duel of the tournament. Accepted during registration and, late, while the tournament runs. A player who withdrew may enter again with a new deck and keeps their score.",
+								"Registers the player with a deck, checked against the format's list (sizes, copies, legality). The server requires exactly these lists at every duel of the tournament. Accepted during registration and, for an arena, late while the tournament runs; Swiss entries close at the start. A player who withdrew may enter again with a new deck and keeps their score.",
 							security: [{ bearerAuth: [] }],
 							responses: {
 								200: jsonOk(LightningEntrySchema, "The entry", {
@@ -313,7 +355,7 @@ export function createLightningRouter(deps: LightningRouterDependencies) {
 							tags: ["Lightning"],
 							summary: "Withdraw from a lightning tournament",
 							description:
-								"Leaves the tournament: the player is never paired again. A game already paired or live runs its course and counts for both players.",
+								"Leaves the tournament: the player is never paired again (in Swiss, this is the drop). A game already paired or live runs its course and counts for both players.",
 							security: [{ bearerAuth: [] }],
 							responses: {
 								200: jsonOk(LightningEntrySchema, "The withdrawn entry", {
@@ -336,7 +378,7 @@ export function createLightningRouter(deps: LightningRouterDependencies) {
 							tags: ["Lightning"],
 							summary: "Pause my lightning entry",
 							description:
-								"Marks the player away so pairing skips them; the client sends it when the player leaves the tournament page. Idempotent.",
+								"Marks the player away so pairing skips them; the client sends it when the player leaves the tournament page. Idempotent. Swiss has no pause: it answers 422 (withdraw to drop).",
 							security: [{ bearerAuth: [] }],
 							responses: {
 								200: jsonOk(LightningEntrySchema, "The paused entry", {
@@ -345,7 +387,9 @@ export function createLightningRouter(deps: LightningRouterDependencies) {
 								}),
 								...errorResponses(401, 403, 404),
 								...conflict("A game of the player is paired or live"),
-								...unprocessable("The tournament is over, or the entry is not active"),
+								...unprocessable(
+									"The tournament is over, the entry is not active, or the tournament is Swiss",
+								),
 							},
 						},
 					},
@@ -375,7 +419,7 @@ export function createLightningRouter(deps: LightningRouterDependencies) {
 						tags: ["Lightning"],
 						summary: "Get my lightning state",
 						description:
-							"What the waiting room polls (every 3 s while open). The player's finished game is applied first, so its result shows right away. `state` is the entry's presence: `paired` comes with `game` (room password, seat, opponent), `playing` once the duel started, `idle` while waiting, `away` after a pause or a missed room. `lastGame` is the latest result while nothing is pending. `entry` is null when the player did not enter.",
+							"What the waiting room polls (every 3 s while open). The player's finished game is applied first, so its result shows right away. `state` is the entry's presence: `paired` comes with `game` (room password, seat, opponent), `playing` once the duel started, `idle` while waiting, `away` after a pause or a missed room (never in Swiss). `lastGame` is the latest result while nothing is pending. `bye` is true when the player has the bye in the current Swiss round. `entry` is null when the player did not enter.",
 						security: [{ bearerAuth: [] }],
 						responses: {
 							200: jsonOk(MyLightningStateSchema, "The player's state", {
@@ -392,6 +436,7 @@ export function createLightningRouter(deps: LightningRouterDependencies) {
 								},
 								lastGame: null,
 								position: 4,
+								bye: false,
 							}),
 							...errorResponses(401, 403, 404),
 						},

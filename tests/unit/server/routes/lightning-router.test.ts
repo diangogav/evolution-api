@@ -209,6 +209,25 @@ describe("lightning router — admin routes", () => {
 		]);
 	});
 
+	it("passes the Swiss settings through and rejects them out of bounds before the use case", async () => {
+		const { app, calls } = buildApp();
+		const swiss = { ...body, system: "swiss", rounds: 4, roundMinutes: 30, roundBreakSeconds: 0 };
+
+		await app.handle(send("POST", "/", "admin-token", swiss));
+		const outOfBounds = await app.handle(
+			send("POST", "/", "admin-token", { ...swiss, rounds: 10 }),
+		);
+
+		expect(outOfBounds.status).toBe(422);
+		expect(calls).toHaveLength(1);
+		expect(calls[0].input).toMatchObject({
+			system: "swiss",
+			rounds: 4,
+			roundMinutes: 30,
+			roundBreakSeconds: 0,
+		});
+	});
+
 	it("cancels with the reason", async () => {
 		const { app, calls } = buildApp();
 
