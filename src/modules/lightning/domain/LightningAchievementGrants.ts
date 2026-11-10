@@ -29,5 +29,6 @@ export interface LightningAchievementGrants {
 		achievementIds: number[],
 		manager: QueryableManager,
 	): Promise<Set<number>>;
-	grant(grant: LightningAchievementGrant, manager: QueryableManager): Promise<void>;
+	/** Inserts the row and answers its id, the key its essence credit is recorded under. */
+	grant(grant: LightningAchievementGrant, manager: QueryableManager): Promise<string>;
 }

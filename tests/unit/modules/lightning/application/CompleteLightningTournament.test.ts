@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 
-import { ALICE, BOB, CAROL, DAVE, ENDS_AT, ERIN, TOURNAMENT_ID, World } from "./fakes";
+import { achievementCredit } from "../../../../../src/modules/rewards";
+import { ALICE, BOB, CAROL, DAVE, ENDS_AT, ERIN, TOURNAMENT_ID, unlockRowId, World } from "./fakes";
 
 function finishedArena() {
 	const world = new World();
@@ -44,7 +45,7 @@ describe("CompleteLightningTournament", () => {
 			{ userId: BOB, season: 7, points: 7, won: 0, played: 1 },
 			{ userId: CAROL, season: 7, points: 1, won: 0, played: 1 },
 		]);
-		expect(world.ledger).toEqual([
+		expect(world.ledger.filter((entry) => entry.kind === "lightning_tournament")).toEqual([
 			{
 				userId: ALICE,
 				kind: "lightning_tournament",
@@ -79,6 +80,63 @@ describe("CompleteLightningTournament", () => {
 		]);
 		expect(world.events).toContain(`lock-achievements:${ALICE}`);
 		expect(world.log.error).not.toHaveBeenCalled();
+	});
+
+	it("credits each unlock's essence on its user_achievements row, in the completion's own transaction", async () => {
+		const { world, tournament } = finishedArena();
+		const transaction = { query: async () => [] };
+
+		await world.completeTournament.complete(tournament, transaction, ENDS_AT);
+
+		const reward = new Map(world.achievementCatalog.map((row) => [row.id, row.essenceReward]));
+		expect(world.ledger.filter((entry) => entry.kind === "achievement")).toEqual(
+			world.unlocks.map((unlock) => ({
+				userId: unlock.userId,
+				kind: "achievement",
+				referenceKey: unlockRowId(unlock.userId, unlock.achievementId),
+				delta: reward.get(unlock.achievementId) ?? 0,
+			})),
+		);
+		expect(world.unlockManagers).toHaveLength(world.unlocks.length);
+		expect(world.ledgerManagers.length).toBeGreaterThan(world.unlocks.length);
+		for (const manager of [...world.unlockManagers, ...world.ledgerManagers]) {
+			expect(manager).toBe(transaction);
+		}
+	});
+
+	it("leaves nothing for the rewards worker: its credit of the same row is a no-op", async () => {
+		const { world, tournament } = finishedArena();
+
+		await world.completeTournament.complete(tournament, world.manager, ENDS_AT);
+
+		const credits = world.ledger.length;
+		const [unlock] = world.unlocks;
+		const workerCredit = achievementCredit({
+			sourceId: unlockRowId(unlock.userId, unlock.achievementId),
+			userId: unlock.userId,
+			essenceReward: 50,
+		});
+		expect(workerCredit).not.toBeNull();
+		expect(
+			await world.ledgerRepository.append(workerCredit as NonNullable<typeof workerCredit>),
+		).toBe("skipped");
+		expect(world.ledger).toHaveLength(credits);
+	});
+
+	it("unlocks an achievement with no essence reward without crediting it", async () => {
+		const { world, tournament } = finishedArena();
+		world.achievementCatalog = world.achievementCatalog.map((row) =>
+			row.code === "LIGHTNING_FIRST" ? { ...row, essenceReward: 0 } : row,
+		);
+
+		await world.completeTournament.complete(tournament, world.manager, ENDS_AT);
+
+		expect(world.unlocks.filter((u) => u.achievementId === 1101)).toHaveLength(3);
+		const credited = world.ledger
+			.filter((entry) => entry.kind === "achievement")
+			.map((entry) => entry.referenceKey);
+		expect(credited).toHaveLength(world.unlocks.length - 3);
+		expect(credited.some((key) => key.endsWith(":1101"))).toBe(false);
 	});
 
 	it("never unlocks an achievement twice, whatever season the player got it in", async () => {

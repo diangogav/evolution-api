@@ -10,7 +10,7 @@ Essence is never stored as a number. It is the sum of a user's rows in `essence_
 | --- | --- | --- | --- |
 | `mission` | `<mission_code>:<period_key>` | the mission's reward amount | claim endpoint |
 | `daily_bonus` | `<day key>` | 30, once all three daily missions of a day are claimed | claim endpoint |
-| `achievement` | `user_achievements.id` | the achievement's `essence_reward` | worker |
+| `achievement` | `user_achievements.id` | the achievement's `essence_reward` | worker; lightning completion for the `LIGHTNING_*` rows it writes |
 | `purchase` | `cosmetics.id` | minus the cosmetic's `essence_price` | shop endpoint |
 | `adjustment` | free text | any | manual repairs |
 | `event_run` | `event:<event_id>:tier:<waves>` | the event prize tier's essence, once per player and tier | event run apply (`/event-runs/me`, duel request, event run worker) |
@@ -49,7 +49,7 @@ The catalog is data: table `mission_catalog`, seeded by migration and editable w
 
 ## The worker
 
-The game server writes match results straight to the shared Postgres (`matches`, `duels`, `user_achievements`); this API never ingests them. The one exception is the lightning module, which writes the `LIGHTNING_*` rows of `user_achievements` when it completes a tournament; the worker credits them like the server's. The rewards worker reads those tables as an outbox:
+The game server writes match results straight to the shared Postgres (`matches`, `duels`, `user_achievements`); this API never ingests them. The one exception is the lightning module, which writes the `LIGHTNING_*` rows of `user_achievements` when it completes a tournament and credits their essence in that same transaction, under the key the worker would use (see [Achievements](#achievements)). The rewards worker reads those tables as an outbox:
 
 1. Every few seconds (`REWARDS_WORKER_INTERVAL_MS`) it opens one transaction and tries a transaction-scoped advisory lock. If another instance holds it, the tick is skipped, so the worker is safe to enable on several API instances.
 2. For each **source** it reads its cursor row in `rewards_cursor`, then fetches the next batch of rows ordered by `(created_at, id)` after the cursor and older than `REWARDS_WORKER_LAG_MS`. The lag keeps a match whose duels are still being written from being read half-complete.
@@ -61,6 +61,12 @@ Sources today: `matches` (ranked, one row per player per match), `unranked_match
 The cursor is stored as UTC text with microseconds. Postgres timestamps keep microseconds and a JS `Date` keeps milliseconds; a cursor that went through a `Date` would re-read the last processed row every tick.
 
 It runs inside the API process when `REWARDS_WORKER_ENABLED=true` (`src/index.ts`) or standalone with `bun run src/worker.ts`. Variables are listed in [operations.md](operations.md#rewards-worker).
+
+### Achievements
+
+Each `user_achievements` row whose live catalog entry has an `essence_reward` above 0 is credited once, as kind `achievement` keyed by the row id. The worker drains the table like the match sources, behind its own cursor.
+
+Lightning completion is the exception: it credits the `LIGHTNING_*` rows it inserts in the same transaction, with the same entry the worker builds (`achievementCredit`), so the unlock and its essence commit together. When the worker reaches such a row the ledger's unique index skips its credit.
 
 ### The rules engine contract
 

@@ -18,9 +18,10 @@ const HELD_QUERY = `SELECT DISTINCT achievement_id FROM user_achievements
 
 // Same row shape as the server: a random uuid, labels as JSON text (empty: no ladder, so
 // the points ledger never adds these to ranked points), and unlocked_at as a UTC wall-clock
-// `timestamp without time zone`, which is what the rewards worker's cursor orders by.
+// `timestamp without time zone`, which is what the rewards worker orders by. The id comes
+// back because the row's essence is credited under it in the same transaction.
 const GRANT_QUERY = `INSERT INTO user_achievements (id, user_id, achievement_id, labels, unlocked_at, season)
-	VALUES (gen_random_uuid(), $1, $2, $3, $4::timestamp, $5)`;
+	VALUES (gen_random_uuid(), $1, $2, $3, $4::timestamp, $5) RETURNING id`;
 
 type CatalogRow = {
 	id: number | string;
@@ -66,8 +67,8 @@ export class LightningAchievementGrantsPostgresRepository implements LightningAc
 		return new Set(rows.map((row) => Number(row.achievement_id)));
 	}
 
-	async grant(grant: LightningAchievementGrant, manager: QueryableManager): Promise<void> {
-		await runQuery(
+	async grant(grant: LightningAchievementGrant, manager: QueryableManager): Promise<string> {
+		const [row] = await runQuery<{ id: string }>(
 			GRANT_QUERY,
 			[
 				grant.userId,
@@ -78,5 +79,7 @@ export class LightningAchievementGrantsPostgresRepository implements LightningAc
 			],
 			manager,
 		);
+		if (!row) throw new Error("user_achievements insert returned no id");
+		return row.id;
 	}
 }

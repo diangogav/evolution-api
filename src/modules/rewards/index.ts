@@ -1,6 +1,7 @@
 // Public surface of the rewards module. Other modules import from here, never from
 // its folders; see the module boundaries section of docs/architecture.md.
 
+export { achievementCredit } from "./domain/achievementCredit";
 export { essenceLedgerEntry } from "./domain/EssenceLedgerEntry";
 export type { EssenceLedgerRepository } from "./domain/EssenceLedgerRepository";
 export { localize } from "./domain/LocalizedText";

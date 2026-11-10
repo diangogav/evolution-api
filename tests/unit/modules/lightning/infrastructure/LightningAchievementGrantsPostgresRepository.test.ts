@@ -66,9 +66,9 @@ describe("LightningAchievementGrantsPostgresRepository", () => {
 	});
 
 	it("inserts the row the way the duel server does, with no labels and a UTC unlock time", async () => {
-		const manager = managerReturning([]);
+		const manager = managerReturning([{ id: "5f0c1d2e-0000-4000-8000-000000000001" }]);
 
-		await new LightningAchievementGrantsPostgresRepository().grant(
+		const id = await new LightningAchievementGrantsPostgresRepository().grant(
 			{
 				userId: "u-1",
 				achievementId: 1103,
@@ -80,8 +80,20 @@ describe("LightningAchievementGrantsPostgresRepository", () => {
 
 		const [sql, params] = manager.query.mock.calls[0];
 		expect(compact(sql)).toContain(
-			"INSERT INTO user_achievements (id, user_id, achievement_id, labels, unlocked_at, season) VALUES (gen_random_uuid(), $1, $2, $3, $4::timestamp, $5)",
+			"INSERT INTO user_achievements (id, user_id, achievement_id, labels, unlocked_at, season) VALUES (gen_random_uuid(), $1, $2, $3, $4::timestamp, $5) RETURNING id",
 		);
 		expect(params).toEqual(["u-1", 1103, "[]", "2026-11-10 21:05:00.123", 7]);
+		expect(id).toBe("5f0c1d2e-0000-4000-8000-000000000001");
+	});
+
+	it("fails loudly when the insert returns no id, instead of crediting an unknown row", async () => {
+		const manager = managerReturning([]);
+
+		await expect(
+			new LightningAchievementGrantsPostgresRepository().grant(
+				{ userId: "u-1", achievementId: 1103, season: 7, unlockedAt: new Date() },
+				manager,
+			),
+		).rejects.toThrow("user_achievements insert returned no id");
 	});
 });

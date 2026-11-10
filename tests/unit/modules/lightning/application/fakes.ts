@@ -74,6 +74,11 @@ export const DECK = {
 	side: [],
 };
 
+/** The user_achievements id the fake gives a granted row. */
+export function unlockRowId(userId: string, achievementId: number): string {
+	return `ua:${userId}:${achievementId}`;
+}
+
 export function logger() {
 	return {
 		debug: mock((_message: unknown) => undefined),
@@ -110,6 +115,9 @@ export class World {
 		{ id: 1105, code: "LIGHTNING_CHAMPION_5", name: "Five-time champion", essenceReward: 500 },
 	];
 	unlocks: LightningAchievementGrant[] = [];
+	// The manager each unlock and each ledger credit was written on, in write order.
+	unlockManagers: QueryableManager[] = [];
+	ledgerManagers: QueryableManager[] = [];
 	banned = new Set<string>();
 	legal: DeckValidation = { legal: true };
 	events: string[] = [];
@@ -348,7 +356,8 @@ export class World {
 
 	readonly ledgerRepository: EssenceLedgerRepository = {
 		lockUser: async () => undefined,
-		append: async (entry) => {
+		append: async (entry, manager) => {
+			if (manager) this.ledgerManagers.push(manager);
 			const duplicate = this.ledger.some(
 				(e) =>
 					e.userId === entry.userId &&
@@ -375,9 +384,11 @@ export class World {
 					.filter((u) => u.userId === userId && ids.includes(u.achievementId))
 					.map((u) => u.achievementId),
 			),
-		grant: async (grant) => {
+		grant: async (grant, manager) => {
 			this.events.push(`unlock:${grant.userId}:${grant.achievementId}`);
+			this.unlockManagers.push(manager);
 			this.unlocks.push({ ...grant });
+			return unlockRowId(grant.userId, grant.achievementId);
 		},
 	};
 
