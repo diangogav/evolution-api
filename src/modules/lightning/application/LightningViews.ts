@@ -1,10 +1,12 @@
 import { LightningEntry, LightningEntryStatus, LightningPresence } from "../domain/LightningEntry";
 import {
 	LightningFormat,
+	LightningSystem,
 	LightningTournament,
 	LightningTournamentStatus,
 	PrizeTable,
 } from "../domain/LightningTournament";
+import { swissNextRoundAt, swissRoundEndsAt } from "../domain/swissRounds";
 
 export type LightningTournamentView = {
 	id: string;
@@ -23,6 +25,15 @@ export type LightningTournamentView = {
 	essenceByPosition: PrizeTable;
 	cancelledReason: string | null;
 	createdAt: string;
+	system: LightningSystem;
+	/** Swiss rounds, fixed at the start; null for an arena or a Swiss tournament not started. */
+	rounds: number | null;
+	/** The live (or last closed) Swiss round; 0 before the first one and for an arena. */
+	currentRound: number;
+	/** Deadline of the live Swiss round; null otherwise. */
+	roundEndsAt: string | null;
+	/** When the next Swiss round is paired, during a break; null otherwise. */
+	nextRoundAt: string | null;
 };
 
 export type LightningEntryView = {
@@ -62,6 +73,11 @@ export function toTournamentView(tournament: LightningTournament): LightningTour
 		},
 		cancelledReason: tournament.cancelledReason,
 		createdAt: tournament.createdAt.toISOString(),
+		system: tournament.system,
+		rounds: tournament.system === "swiss" ? tournament.rounds : null,
+		currentRound: tournament.system === "swiss" ? tournament.currentRound : 0,
+		roundEndsAt: swissRoundEndsAt(tournament)?.toISOString() ?? null,
+		nextRoundAt: swissNextRoundAt(tournament)?.toISOString() ?? null,
 	};
 }
 

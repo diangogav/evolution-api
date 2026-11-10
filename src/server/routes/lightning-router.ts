@@ -16,6 +16,7 @@ import { PauseLightningEntry } from "../../modules/lightning/application/PauseLi
 import { ResumeLightningEntry } from "../../modules/lightning/application/ResumeLightningEntry";
 import { WithdrawLightningEntry } from "../../modules/lightning/application/WithdrawLightningEntry";
 import { CommunityDeckLegalityChecker } from "../../modules/lightning/infrastructure/CommunityDeckLegalityChecker";
+import { LightningByePostgresRepository } from "../../modules/lightning/infrastructure/LightningByePostgresRepository";
 import { LightningEntryPostgresRepository } from "../../modules/lightning/infrastructure/LightningEntryPostgresRepository";
 import { LightningGamePostgresRepository } from "../../modules/lightning/infrastructure/LightningGamePostgresRepository";
 import { LightningResultPostgresRepository } from "../../modules/lightning/infrastructure/LightningResultPostgresRepository";
@@ -403,6 +404,7 @@ const tournaments = new LightningTournamentPostgresRepository();
 const entries = new LightningEntryPostgresRepository();
 const games = new LightningGamePostgresRepository();
 const results = new LightningResultPostgresRepository();
+const byes = new LightningByePostgresRepository();
 const records = new ReservedDuelPostgresReader();
 const players = new PlayerDirectoryPostgresRepository();
 const transactions = new CosmeticsTransactionRunner();
@@ -416,7 +418,7 @@ export const lightningRouter = createLightningRouter({
 	clock: () => new Date(),
 	defaultSeason: config.season,
 	list: new ListLightningTournaments(tournaments),
-	get: new GetLightningTournament(tournaments, entries, games, results, records, players),
+	get: new GetLightningTournament(tournaments, entries, games, results, records, players, byes),
 	rankings: new GetLightningRankings(results),
 	enter: new EnterLightningTournament(
 		tournaments,
@@ -439,6 +441,7 @@ export const lightningRouter = createLightningRouter({
 		players,
 		buildApplyLightningGame(logger),
 		transactions,
+		byes,
 	),
 	create: new CreateLightningTournament(tournaments),
 	cancel: new CancelLightningTournament(

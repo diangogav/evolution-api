@@ -1,10 +1,12 @@
 import { NotFoundError } from "../../../shared/errors/NotFoundError";
 import { reservationPassword, ReservedDuelRecordReader } from "../../reserved-duel";
 import { TransactionRunner } from "../../rewards";
+import { LightningByeRepository } from "../domain/LightningByeRepository";
 import { EntryGameOutcome, LightningPresence } from "../domain/LightningEntry";
 import { LightningEntryRepository } from "../domain/LightningEntryRepository";
 import { LightningGame, LightningGameResolution, seatOf } from "../domain/LightningGame";
 import { LightningGameRepository } from "../domain/LightningGameRepository";
+import { LightningSystem } from "../domain/LightningTournament";
 import { LightningTournamentRepository } from "../domain/LightningTournamentRepository";
 import { PlayerDirectory } from "../domain/PlayerDirectory";
 import { outcomeOfResolvedGame } from "../domain/resolveLightningGame";
@@ -50,6 +52,8 @@ export type MyLightningState = {
 	lastGame: MyLastLightningGame | null;
 	/** Place in the live standings; null when the player is not ranked. */
 	position: number | null;
+	/** True when the player has the bye in the current Swiss round. */
+	bye: boolean;
 };
 
 /**
@@ -66,6 +70,7 @@ export class GetMyLightningState {
 		private readonly players: PlayerDirectory,
 		private readonly applyGame: Pick<ApplyLightningGame, "applyGame">,
 		private readonly transactions: TransactionRunner,
+		private readonly byes: LightningByeRepository,
 	) {}
 
 	async run(input: GetMyLightningStateInput): Promise<MyLightningState> {
@@ -99,7 +104,15 @@ export class GetMyLightningState {
 			const players = entries.filter((candidate) => candidate.status === "active").length;
 			const base = { tournament: toTournamentView(tournament), players };
 			if (!entry) {
-				return { ...base, entry: null, state: null, game: null, lastGame: null, position: null };
+				return {
+					...base,
+					entry: null,
+					state: null,
+					game: null,
+					lastGame: null,
+					position: null,
+					bye: false,
+				};
 			}
 
 			const last = pending
@@ -118,17 +131,28 @@ export class GetMyLightningState {
 			const ref = (userId: string): PlayerRef => ({ userId, username: names.get(userId) ?? "" });
 
 			const resolved = await this.games.listResolved(tournament.id, manager);
-			const standing = liveStandings(entries, resolved).find(
+			const standing = liveStandings(entries, resolved, tournament.system).find(
 				(candidate) => candidate.userId === input.userId,
 			);
+			const swiss = tournament.system === "swiss";
+			const bye =
+				swiss &&
+				tournament.currentRound > 0 &&
+				(await this.byes.listByTournament(tournament.id, manager)).some(
+					(granted) => granted.userId === input.userId && granted.round === tournament.currentRound,
+				);
 
 			return {
 				...base,
 				entry: toEntryView(entry),
-				state: entry.presence,
+				// Swiss pairs every active player each round, so there is no away to report.
+				state: swiss && entry.presence === "away" ? "idle" : entry.presence,
 				game: pending ? this.gameView(pending, input.userId, recordOf, ref) : null,
-				lastGame: last ? this.lastGameView(last, input.userId, recordOf, ref) : null,
+				lastGame: last
+					? this.lastGameView(last, input.userId, recordOf, ref, tournament.system)
+					: null,
 				position: standing?.position ?? null,
+				bye,
 			};
 		});
 	}
@@ -154,6 +178,7 @@ export class GetMyLightningState {
 		userId: string,
 		recordOf: Map<string, Parameters<typeof outcomeOfResolvedGame>[1]>,
 		ref: (userId: string) => PlayerRef,
+		system: LightningSystem,
 	): MyLastLightningGame {
 		const seat = seatOf(game, userId) as 0 | 1;
 		const resolution = game.resolution as LightningGameResolution;
@@ -165,6 +190,7 @@ export class GetMyLightningState {
 				{ resolution, reason: game.reason },
 				recordOf.get(game.reservationId) ?? null,
 				seat,
+				system,
 			),
 			opponent: ref(seat === 0 ? game.seat1UserId : game.seat0UserId),
 			appliedAt: game.appliedAt?.toISOString() ?? null,

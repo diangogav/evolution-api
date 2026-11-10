@@ -14,6 +14,7 @@ function setup() {
 		world.players,
 		world.applyGame,
 		world.transactions,
+		world.byeRepository,
 	);
 	return { world, getState };
 }
@@ -113,5 +114,47 @@ describe("GetMyLightningState", () => {
 		const state = await getState.run(input);
 
 		expect(state).toMatchObject({ state: "away", entry: { noShows: 1 }, game: null });
+	});
+
+	it("tells a Swiss player they have the bye this round, not the round before", async () => {
+		const { world, getState } = setup();
+		world.seedSwiss([ALICE, BOB, CAROL], { currentRound: 2, roundStartedAt: RUNNING_AT });
+		world.byes.push({ tournamentId: TOURNAMENT_ID, userId: ALICE, round: 2 });
+		world.byes.push({ tournamentId: TOURNAMENT_ID, userId: BOB, round: 1 });
+
+		expect(await getState.run(input)).toMatchObject({ bye: true, state: "idle", game: null });
+		expect((await getState.run({ ...input, userId: BOB })).bye).toBe(false);
+	});
+
+	it("never reports a Swiss player away, and reads a no-show win back for the present seat", async () => {
+		const { world, getState } = setup();
+		world.seedSwiss([ALICE, BOB], { currentRound: 1, roundStartedAt: RUNNING_AT });
+		world.seedEntry(ALICE, { presence: "away" });
+		const game = world.seedGame(BOB, ALICE, {
+			round: 1,
+			status: "applied",
+			resolution: "no_show",
+			reason: "lobby_timeout",
+			appliedAt: RUNNING_AT,
+		});
+		world.seedEntry(ALICE, { presence: "away" });
+		world.record(game.reservationId, {
+			outcome: "abandoned",
+			abandonedBySeat: 0,
+			endedAt: RUNNING_AT,
+		});
+
+		const state = await getState.run(input);
+
+		expect(state.state).toBe("idle");
+		expect(state.bye).toBe(false);
+		expect(state.lastGame).toMatchObject({ resolution: "no_show", outcome: "win" });
+	});
+
+	it("never has a bye in an arena", async () => {
+		const { world, getState } = setup();
+		world.seedRunning([ALICE, BOB]);
+
+		expect((await getState.run(input)).bye).toBe(false);
 	});
 });
