@@ -40,7 +40,7 @@ Admin   DELETE /lightning/{id}/chat/{messageId}       → API    soft delete →
 | `created_at` | `timestamptz` default `now()` | |
 | `deleted_at`, `deleted_by` | nullable | soft delete by an admin |
 
-Index `(tournament_id, id)`. Usernames are read through the existing `PlayerDirectory` at view time, not stored per message.
+Index `(tournament_id, id)`. Usernames and the author's `admin` flag (the current `users.role`) are read through the existing `PlayerDirectory` at view time, in one query per page, not stored per message.
 
 ## Endpoints (bearer through `requireUser`, which already rejects banned users; OpenAPI ratchet)
 
@@ -67,6 +67,7 @@ Message view: `{ id, tournamentId, author: { userId, username, admin }, body, cr
 - Channel `lightning:chat:{tournamentId}`, payload the event as JSON.
 - A subscribed Bun `RedisClient` accepts only `subscribe`, `unsubscribe` and `ping`, so the subscriber is a second connection, separate from the shared `redisClient`.
 - Each instance keeps `tournamentId → Set<stream>` in memory, subscribes to a channel when its first local stream opens and unsubscribes when the last one closes.
+- Subscribe and unsubscribe calls for one channel run one after another, each checking the local streams when it runs, so a stream that opens while the last one closes never ends up without a subscription. A new stream waits for its channel's subscription before reading the replay, so no message falls between the replay and the live events. A failed subscribe is logged and retried on the next stream that opens or closes for that tournament.
 - Publish happens after the insert commits. A publish that fails is logged and not retried: the message is in the table and reaches every reader on its next reconnection or history load.
 
 ## Moderation (v1)
