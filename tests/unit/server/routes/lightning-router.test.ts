@@ -33,6 +33,7 @@ function buildApp() {
 				if (token !== "admin-token") throw new ForbiddenError("admin required");
 				return { userId: "admin-1" };
 			},
+			isAdmin: (token) => token === "admin-token",
 		},
 		requireUser: createRequireUser({
 			jwt: {
@@ -64,6 +65,9 @@ function buildApp() {
 			}) as never,
 		},
 		cancel: { run: record("cancel", { id: ID, status: "cancelled" }) as never },
+		chatHistory: { run: record("chatHistory", []) as never },
+		chatPost: { run: record("chatPost", {}) as never },
+		chatDelete: { run: record("chatDelete", undefined) as never },
 	};
 	const app = new Elysia().onError(mapDomainErrorStatus).use(createLightningRouter(deps));
 	return { app, calls };

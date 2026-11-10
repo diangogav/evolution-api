@@ -29,6 +29,7 @@ const ERROR_DESCRIPTIONS = {
 	404: "Resource not found",
 	409: "Conflicts with the current state",
 	422: "Request failed validation",
+	429: "Too many requests, retry later",
 } as const;
 
 type ErrorStatus = keyof typeof ERROR_DESCRIPTIONS;
