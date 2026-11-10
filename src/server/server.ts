@@ -11,6 +11,7 @@ import { NotFoundError } from "../shared/errors/NotFoundError";
 import { config } from "../config";
 import { buildCommunityDecksWorker } from "../modules/community-decks/infrastructure/buildCommunityDecks";
 import { buildEventRunWorker } from "./composition/buildEventRun";
+import { buildLightningWorker } from "./composition/buildLightning";
 import { Logger } from "../shared/logger/domain/Logger";
 
 import { achievementsRouter, userAchievementsRouter } from "./routes/achievements-router";
@@ -84,6 +85,8 @@ export class Server {
 	start(): void {
 		// The event run worker applies duel results nobody fetched and voids stale duels.
 		if (config.eventRunWorker.enabled) buildEventRunWorker(this.logger).start();
+		// The lightning worker runs tournament clocks, applies duel records and pairs players.
+		if (config.lightningWorker.enabled) buildLightningWorker(this.logger).start();
 		// The community decks worker syncs YGOPRODeck decks once per interval.
 		if (config.communityDecksWorker.enabled) buildCommunityDecksWorker(this.logger).start();
 		this.app.listen(process.env.PORT ?? 3000, () => {

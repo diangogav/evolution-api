@@ -139,6 +139,16 @@ How the worker works, and how to backfill or repair it, is in [rewards.md](rewar
 
 The rules it applies are in [design/halloween-event-runs.md](design/halloween-event-runs.md#api--event-run-module).
 
+### Lightning worker
+
+| Name | Required | Default | Purpose |
+| --- | --- | --- | --- |
+| `LIGHTNING_WORKER_ENABLED` | Optional | `false` | Only the literal string `"true"` starts the worker (`src/server/server.ts`, and `src/worker.ts` only when set) that runs lightning tournaments: moves them through their states on the clock, applies the duel records of their games, voids stale ones (logged as an error), pairs idle players and issues their duel reservations, and pays results, season points and essence at completion. Without it no tournament opens, starts or pairs anyone. Safe on several instances: its own advisory lock lets one tick run at a time. |
+| `LIGHTNING_WORKER_INTERVAL_MS` | Optional | `5000` | Pause between ticks; also the longest an idle player waits for a pairing. |
+| `LIGHTNING_STALE_GAME_MINUTES` | Optional | `45` | Minutes after its reservation was issued that a game whose duel never closed is voided. Also used by `GET /lightning/{id}/me`, which applies the caller's game on the spot. |
+
+The rules it applies are in [design/lightning-tournaments.md](design/lightning-tournaments.md).
+
 ### Community decks worker
 
 | Name | Required | Default | Purpose |
