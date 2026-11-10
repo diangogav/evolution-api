@@ -1,25 +1,36 @@
 import { describe, expect, it, mock } from "bun:test";
 import type { RedisClient } from "bun";
 
-import { eventDuelReservation } from "../../../../../src/modules/event-run/domain/DuelReservation";
+import { DuelReservation } from "../../../../../src/modules/reserved-duel/domain/DuelReservation";
 import {
 	BunRedisReservationStore,
 	ReservationIdCollisionError,
 	REVOKE_SCRIPT,
-} from "../../../../../src/modules/event-run/infrastructure/BunRedisReservationStore";
+} from "../../../../../src/modules/reserved-duel/infrastructure/BunRedisReservationStore";
 
 function client(reply: unknown) {
 	const send = mock(async (_command: string, _args: string[]) => reply);
 	return { send, store: new BunRedisReservationStore({ send } as unknown as RedisClient) };
 }
 
-const reservation = eventDuelReservation({
+const reservation: DuelReservation = {
+	v: 1,
 	reservationId: "AbCdEfGh12345678",
 	format: "edison",
-	userId: "user-1",
-	deck: { id: "d", name: { en: "D" }, main: [1], extra: [] },
-	botName: "Haunted",
-});
+	mode: "single",
+	participants: [
+		{ seat: 0, kind: "user", userId: "user-1", requiredDeck: { main: [1], extra: [], side: [] } },
+		{ seat: 1, kind: "windbot", botName: "Haunted" },
+	],
+	options: {
+		spectators: false,
+		listed: false,
+		reconnect: false,
+		deckLock: "exact",
+		lobbyTimeoutSeconds: 120,
+	},
+	claim: null,
+};
 
 describe("BunRedisReservationStore", () => {
 	it("issues with one SET … EX … NX on duel:reservation:<id>", async () => {
@@ -32,6 +43,17 @@ describe("BunRedisReservationStore", () => {
 		expect(args[0]).toBe("duel:reservation:AbCdEfGh12345678");
 		expect(JSON.parse(args[1])).toEqual(reservation);
 		expect(args.slice(2)).toEqual(["EX", "600", "NX"]);
+	});
+
+	it("serializes the turn time when a reservation carries one", async () => {
+		const { send, store } = client("OK");
+
+		await store.issue(
+			{ ...reservation, options: { ...reservation.options, turnTimeSeconds: 90 } },
+			600,
+		);
+
+		expect(JSON.parse(send.mock.calls[0][1][1]).options.turnTimeSeconds).toBe(90);
 	});
 
 	it("refuses to overwrite an existing key", async () => {

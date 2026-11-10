@@ -12,6 +12,7 @@ const earlier = new Date("2026-10-31T19:50:00Z");
 function record(overrides: Partial<ReservedDuelRecord> = {}): ReservedDuelRecord {
 	return {
 		reservationId: "AbCdEfGh12345678",
+		roomId: 1,
 		joinedAt: earlier,
 		startedAt: earlier,
 		endedAt: now,

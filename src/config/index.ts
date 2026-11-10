@@ -79,6 +79,11 @@ export const config = {
 		intervalMs: Number(process.env.EVENT_RUN_WORKER_INTERVAL_MS ?? 5000),
 		batchSize: Number(process.env.EVENT_RUN_WORKER_BATCH_SIZE ?? 100),
 	},
+	lightningWorker: {
+		enabled: process.env.LIGHTNING_WORKER_ENABLED === "true",
+		intervalMs: Number(process.env.LIGHTNING_WORKER_INTERVAL_MS ?? 5000),
+		staleGameMinutes: Number(process.env.LIGHTNING_STALE_GAME_MINUTES ?? 45),
+	},
 	communityDecksWorker: {
 		enabled: process.env.COMMUNITY_DECKS_WORKER_ENABLED === "true",
 		intervalMs: Number(process.env.COMMUNITY_DECKS_WORKER_INTERVAL_MS ?? 86_400_000),

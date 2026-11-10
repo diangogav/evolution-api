@@ -1,16 +1,12 @@
 import type { QueryableManager } from "../../../shared/persistence/QueryableManager";
-import { EventDuelRepository, MarkAppliedResult } from "../domain/EventDuelRepository";
-import { ReservedDuelOutcome, ReservedDuelRecord } from "../domain/ReservedDuelRecord";
 import { runQuery } from "../../../shared/persistence/runQuery";
+import { ReservedDuelRecord, ReservedDuelRecordReader } from "../../reserved-duel";
+import { EventDuelRepository, MarkAppliedResult } from "../domain/EventDuelRepository";
 
 const RECORD_RESERVATION_QUERY = `INSERT INTO event_run_reservations
 	(reservation_id, run_id, wave, bot_name, issued_at) VALUES ($1, $2, $3, $4, $5)`;
 
 const RUN_ID_QUERY = `SELECT run_id FROM event_run_reservations WHERE reservation_id = $1`;
-
-// `reserved_duels` belongs to the duel server: read-only here, and only by reservation id.
-const FIND_RECORD_QUERY = `SELECT reservation_id, joined_at, started_at, ended_at, outcome,
-	winner_seat, abandoned_by_seat, reason FROM reserved_duels WHERE reservation_id = $1`;
 
 const MARK_APPLIED_QUERY = `INSERT INTO event_run_duels (reservation_id, run_id, outcome)
 	VALUES ($1, $2, $3) ON CONFLICT (reservation_id) DO NOTHING RETURNING reservation_id`;
@@ -23,21 +19,9 @@ const LIST_PENDING_QUERY = `SELECT r.reservation_id FROM event_run_reservations 
 		AND (d.ended_at IS NOT NULL OR COALESCE(d.joined_at, d.started_at) < $1)
 	ORDER BY r.issued_at ASC LIMIT $2`;
 
-type RecordRow = {
-	reservation_id: string;
-	joined_at: Date | null;
-	started_at: Date | null;
-	ended_at: Date | null;
-	outcome: ReservedDuelOutcome | null;
-	winner_seat: number | null;
-	abandoned_by_seat: number | null;
-	reason: string | null;
-};
-
-const toDate = (value: Date | null): Date | null => (value ? new Date(value) : null);
-const toSeat = (value: number | null): number | null => (value === null ? null : Number(value));
-
 export class EventDuelPostgresRepository implements EventDuelRepository {
+	constructor(private readonly records: ReservedDuelRecordReader) {}
+
 	async recordReservation(
 		reservationId: string,
 		runId: string,
@@ -62,18 +46,8 @@ export class EventDuelPostgresRepository implements EventDuelRepository {
 		reservationId: string,
 		manager: QueryableManager,
 	): Promise<ReservedDuelRecord | null> {
-		const [row] = await runQuery<RecordRow>(FIND_RECORD_QUERY, [reservationId], manager);
-		if (!row) return null;
-		return {
-			reservationId: row.reservation_id,
-			joinedAt: toDate(row.joined_at),
-			startedAt: toDate(row.started_at),
-			endedAt: toDate(row.ended_at),
-			outcome: row.outcome,
-			winnerSeat: toSeat(row.winner_seat),
-			abandonedBySeat: toSeat(row.abandoned_by_seat),
-			reason: row.reason,
-		};
+		const [record] = await this.records.findRecords([reservationId], manager);
+		return record ?? null;
 	}
 
 	async markApplied(

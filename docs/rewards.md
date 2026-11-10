@@ -14,6 +14,7 @@ Essence is never stored as a number. It is the sum of a user's rows in `essence_
 | `purchase` | `cosmetics.id` | minus the cosmetic's `essence_price` | shop endpoint |
 | `adjustment` | free text | any | manual repairs |
 | `event_run` | `event:<event_id>:tier:<waves>` | the event prize tier's essence, once per player and tier | event run apply (`/event-runs/me`, duel request, event run worker) |
+| `lightning_tournament` | `lightning:<tournament_id>:<user_id>` | the essence the player's final position earns, once per tournament | lightning worker, when the tournament completes |
 
 `GET /me/essence` returns the balance. Domain code: `src/modules/rewards/domain/EssenceLedgerEntry.ts`.
 
@@ -48,7 +49,7 @@ The catalog is data: table `mission_catalog`, seeded by migration and editable w
 
 ## The worker
 
-The game server writes match results straight to the shared Postgres (`matches`, `duels`, `user_achievements`); this API never ingests them. The rewards worker reads those tables as an outbox:
+The game server writes match results straight to the shared Postgres (`matches`, `duels`, `user_achievements`); this API never ingests them. The one exception is the lightning module, which writes the `LIGHTNING_*` rows of `user_achievements` when it completes a tournament; the worker credits them like the server's. The rewards worker reads those tables as an outbox:
 
 1. Every few seconds (`REWARDS_WORKER_INTERVAL_MS`) it opens one transaction and tries a transaction-scoped advisory lock. If another instance holds it, the tick is skipped, so the worker is safe to enable on several API instances.
 2. For each **source** it reads its cursor row in `rewards_cursor`, then fetches the next batch of rows ordered by `(created_at, id)` after the cursor and older than `REWARDS_WORKER_LAG_MS`. The lag keeps a match whose duels are still being written from being read half-complete.

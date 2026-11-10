@@ -5,8 +5,11 @@ import { EventAttemptPostgresRepository } from "../../../../../src/modules/event
 import { EventCatalogPostgresRepository } from "../../../../../src/modules/event-run/infrastructure/EventCatalogPostgresRepository";
 import { EventDuelPostgresRepository } from "../../../../../src/modules/event-run/infrastructure/EventDuelPostgresRepository";
 import { EventRunPostgresRepository } from "../../../../../src/modules/event-run/infrastructure/EventRunPostgresRepository";
+import type { ReservedDuelRecordReader } from "../../../../../src/modules/reserved-duel";
 
 const compact = (sql: string) => sql.replace(/\s+/g, " ");
+
+const noRecords: ReservedDuelRecordReader = { findRecords: async () => [] };
 
 function managerReturning(...results: unknown[]) {
 	const queue = [...results];
@@ -143,7 +146,7 @@ describe("EventDuelPostgresRepository", () => {
 		const manager = managerReturning([]);
 		const issuedAt = new Date("2026-10-31T19:00:00Z");
 
-		await new EventDuelPostgresRepository().recordReservation(
+		await new EventDuelPostgresRepository(noRecords).recordReservation(
 			"R",
 			"run-1",
 			5,
@@ -159,7 +162,7 @@ describe("EventDuelPostgresRepository", () => {
 
 	it("gates each record with the event_run_duels primary key", async () => {
 		const manager = managerReturning([{ reservation_id: "R" }], []);
-		const repository = new EventDuelPostgresRepository();
+		const repository = new EventDuelPostgresRepository(noRecords);
 
 		expect(await repository.markApplied("R", "run-1", "win", manager)).toBe("inserted");
 		expect(await repository.markApplied("R", "run-1", "win", manager)).toBe("skipped");
@@ -172,10 +175,9 @@ describe("EventDuelPostgresRepository", () => {
 		const manager = managerReturning([{ reservation_id: "A" }, { reservation_id: "B" }]);
 		const staleBefore = new Date("2026-10-31T18:00:00Z");
 
-		expect(await new EventDuelPostgresRepository().listPending(staleBefore, 50, manager)).toEqual([
-			"A",
-			"B",
-		]);
+		expect(
+			await new EventDuelPostgresRepository(noRecords).listPending(staleBefore, 50, manager),
+		).toEqual(["A", "B"]);
 
 		const [sql, params] = manager.query.mock.calls[0];
 		expect(compact(sql)).toContain("FROM event_run_reservations AS r JOIN reserved_duels AS d");
@@ -186,30 +188,32 @@ describe("EventDuelPostgresRepository", () => {
 		expect(params).toEqual([staleBefore, 50]);
 	});
 
-	it("reads the server's record read-only and maps it", async () => {
+	it("reads a record through the shared reader, by its reservation id", async () => {
 		const ended = new Date("2026-10-31T19:40:00Z");
-		const manager = managerReturning([
-			{
-				reservation_id: "R",
-				joined_at: ended,
-				started_at: ended,
-				ended_at: ended,
-				outcome: "decided",
-				winner_seat: "0",
-				abandoned_by_seat: null,
-				reason: "win",
-			},
-		]);
-
-		const record = await new EventDuelPostgresRepository().findRecord("R", manager);
-
-		expect(manager.query.mock.calls[0][0]).toStartWith("SELECT");
-		expect(record).toMatchObject({
-			outcome: "decided",
+		const record = {
+			reservationId: "R",
+			roomId: 1,
+			joinedAt: ended,
+			startedAt: ended,
+			endedAt: ended,
+			outcome: "decided" as const,
 			winnerSeat: 0,
 			abandonedBySeat: null,
-			endedAt: ended,
-		});
+			reason: "win",
+		};
+		const asked: string[][] = [];
+		const reader: ReservedDuelRecordReader = {
+			findRecords: async (ids) => {
+				asked.push(ids);
+				return ids.includes("R") ? [record] : [];
+			},
+		};
+		const repository = new EventDuelPostgresRepository(reader);
+		const manager = managerReturning();
+
+		expect(await repository.findRecord("R", manager)).toEqual(record);
+		expect(await repository.findRecord("missing", manager)).toBeNull();
+		expect(asked).toEqual([["R"], ["missing"]]);
 	});
 });
 

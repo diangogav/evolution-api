@@ -3,7 +3,7 @@ import { EventDuelRepository } from "../domain/EventDuelRepository";
 import { READY_RUN_IDLE_MS } from "../domain/EventRun";
 import { EventRunRepository, ExpiredRun } from "../domain/EventRunRepository";
 import { EventRunTickUnitOfWork } from "../domain/EventRunTickUnitOfWork";
-import { ReservationStore } from "../domain/ReservationStore";
+import { ReservationStore } from "../../reserved-duel";
 import { STALE_DUEL_MS } from "../domain/ReservedDuelRecord";
 import { ApplyReservedDuel } from "./ApplyReservedDuel";
 

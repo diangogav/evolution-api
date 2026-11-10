@@ -1,5 +1,6 @@
-// The source categories we import and the format list each one is validated against.
-export const FORMAT_LIST_IDS = ["tcg", "genesys", "edison"] as const;
+// The format lists decks are validated against. The sync uses the lists its categories
+// name; JTP has no community category and serves deck checks elsewhere (lightning entries).
+export const FORMAT_LIST_IDS = ["tcg", "genesys", "edison", "jtp"] as const;
 
 export type FormatListId = (typeof FORMAT_LIST_IDS)[number];
 

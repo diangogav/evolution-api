@@ -1,6 +1,6 @@
 import { ConflictError } from "../../../shared/errors/ConflictError";
 import { EventRun } from "../domain/EventRun";
-import { ReservationStore } from "../domain/ReservationStore";
+import { ReservationStore } from "../../reserved-duel";
 
 // Drops the run's current reservation before a new one is issued or the run is replaced.
 // Callers apply the pending record first, so a reservation still set here was either

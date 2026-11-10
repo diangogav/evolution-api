@@ -1,5 +1,5 @@
 import type { QueryableManager } from "../../../shared/persistence/QueryableManager";
-import { ReservedDuelRecord } from "./ReservedDuelRecord";
+import { ReservedDuelRecord } from "../../reserved-duel";
 
 export type MarkAppliedResult = "inserted" | "skipped";
 
