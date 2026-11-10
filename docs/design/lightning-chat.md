@@ -55,7 +55,8 @@ Message view: `{ id, tournamentId, author: { userId, username, admin }, body, cr
 
 ## Stream
 
-- Events: `message` (the message view), `deleted` (`{ id }`) and `reset` (`{}`). The SSE `id:` field is the message id for `message`; `deleted` and `reset` carry no id so they do not move the replay cursor.
+- Events: `message` (the message view), `deleted` (`{ id }`) and `reset` (`{}`). The SSE `id:` field is the message id for `message`; `deleted` and `reset` carry no id so they do not move the replay cursor. `reset` means live events may have had a gap: it follows a truncated replay, and also reaches every open stream of a channel the instance subscribes again after losing Redis (see [Fan-out](#fan-out)).
+- Opening comment: the stream writes `: open` before anything else. Bun sends the response headers only with the first body bytes, so without it a stream with nothing to replay would leave the client's `fetch` pending until the first event or heartbeat.
 - Opening: an unknown tournament answers 404 before the stream opens. Without `Last-Event-ID` (or with one that is not a message id) the stream sends only live events: the client loads the history with `GET` first.
 - Reconnection: the client sends `Last-Event-ID`; the API first streams every non-deleted message with a greater id, then live events. Beyond 200 it sends the first 200 and then `reset`, and the client reloads the history. Live events that arrive during the replay are buffered and deduplicated by id.
 - The stream waits at most 5 s for its channel subscription before replaying: with Redis unreachable it still opens, without live events.
@@ -71,6 +72,8 @@ Message view: `{ id, tournamentId, author: { userId, username, admin }, body, cr
 - A subscribed Bun `RedisClient` accepts only `subscribe`, `unsubscribe` and `ping`, so the subscriber is a second connection, separate from the shared `redisClient`.
 - Each instance keeps `tournamentId → Set<stream>` in memory, subscribes to a channel when its first local stream opens and unsubscribes when the last one closes.
 - Subscribe and unsubscribe calls for one channel run one after another, each checking the local streams when it runs, so a stream that opens while the last one closes never ends up without a subscription. A new stream waits for its channel's subscription before reading the replay, so no message falls between the replay and the live events. A failed subscribe is logged and retried on the next stream that opens or closes for that tournament.
+- Redis reconnection: Bun's `RedisClient` reconnects on its own and fires `onconnect` again, but Redis has dropped every subscription while Bun keeps the channel callbacks, and `subscribe` adds a callback even when it is already registered. On every connect after the first, the hub runs `unsubscribe` then `subscribe` for each channel it held, had a call in flight for, or has listeners for, through the same per-channel queue as register and unregister; once a channel is subscribed again its local streams get `reset`. A re-subscribe that fails is logged and retried on the next stream that opens or closes for that tournament, and the `reset` goes out when it succeeds.
+- Subscriber given up: when Bun stops reconnecting (`onclose`, after its retries), the hub logs it, drops that client and treats every channel as unsubscribed; channels with listeners subscribe again on a new client, which keeps retrying while Redis is down, and their streams get `reset` once subscribed. A subscribe that completes on the dropped client does not count.
 - Publish happens after the insert commits. A publish that fails is logged and not retried: the message is in the table and reaches every reader on its next reconnection or history load.
 
 ## Moderation (v1)
@@ -86,12 +89,14 @@ Message view: `{ id, tournamentId, author: { userId, username, admin }, body, cr
 - The duel chat's `ChatMessageList` reads the global `chatStore` directly; it becomes presentational (messages and callbacks as props) so the duel and the tournament share it.
 - Panel in the tournament page, loaded lazily: the bundle is already over its budget.
 - The stream opens only while the tournament page is visible and closes on leave or when the tab is hidden.
+- `reset` can arrive at any time, not only right after a truncated replay: on every `reset` the client reloads the history with `GET` and keeps the stream open.
 
 ## Failure modes
 
 | Failure | Effect |
 |---|---|
 | Redis down | `POST` fails at the rate limit (500); streams stay open but get no live events; history still loads |
+| Redis restarts or the subscriber connection drops | each instance subscribes its channels again once Redis is back and sends `reset` to their streams, so readers reload what was published meanwhile |
 | Publish lost | readers see the message on reconnection or history reload |
 | Instance restart | its streams drop; clients reconnect to another instance and replay after `Last-Event-ID` |
 | Client misses a `deleted` event | the next history load returns the message as deleted |
