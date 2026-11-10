@@ -14,16 +14,19 @@ describe("HttpFormatListSource", () => {
 			if (url.endsWith("lflist.conf") && url.includes("moecube"))
 				return "!2026.10\n1 0\n!2026.9 TCG\n2 1\n";
 			if (url.endsWith("genesys.lflist.conf")) return "!Genesys\n3 3 10\n";
+			if (url.endsWith("jtp.lflist.conf")) return "!JTP\n$whitelist\n4031928 1\n";
 			return "!2010.3 Edison\n$whitelist\n910003009 1\n";
 		});
 
 		expect((await source.fetch("tcg")).label).toBe("2026.9 TCG");
 		expect((await source.fetch("genesys")).label).toBe("Genesys");
 		expect((await source.fetch("edison")).whitelist).toBe(true);
+		expect((await source.fetch("jtp")).label).toBe("JTP");
 		expect(urls).toEqual([
 			"https://cdntx.moecube.com/ygopro-database/zh-CN/lflist.conf",
 			"https://raw.githubusercontent.com/diangogav/evolution-assets/main/lflist/genesys.lflist.conf",
 			"https://raw.githubusercontent.com/diangogav/evolution-assets/main/lflist/edison.lflist.conf",
+			"https://raw.githubusercontent.com/diangogav/evolution-assets/main/lflist/jtp.lflist.conf",
 		]);
 	});
 

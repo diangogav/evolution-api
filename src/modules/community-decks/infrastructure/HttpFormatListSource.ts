@@ -6,7 +6,7 @@ import { isNewestTcgSection, parseLflist } from "./parseLflist";
 const EVOLUTION_ASSETS = "https://raw.githubusercontent.com/diangogav/evolution-assets/main";
 
 // The same lists the client validates decks with: the moecube base list for TCG and the
-// evolution-assets lists for Edison (whitelist with our errata ids) and Genesys.
+// evolution-assets lists for Edison (whitelist with our errata ids), Genesys and JTP.
 export const FORMAT_LISTS: Record<
 	FormatListId,
 	{ url: string; section: (header: string) => boolean }
@@ -22,6 +22,10 @@ export const FORMAT_LISTS: Record<
 	edison: {
 		url: `${EVOLUTION_ASSETS}/lflist/edison.lflist.conf`,
 		section: (header) => header === "2010.3 Edison",
+	},
+	jtp: {
+		url: `${EVOLUTION_ASSETS}/lflist/jtp.lflist.conf`,
+		section: (header) => header === "JTP",
 	},
 };
 

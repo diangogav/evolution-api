@@ -52,6 +52,7 @@ const LISTS: Record<FormatListId, ReturnType<typeof edisonList>> = {
 	tcg: blacklist([]),
 	genesys: blacklist([], "Genesys"),
 	edison: edisonList(),
+	jtp: blacklist([], "JTP"),
 };
 
 function setup(
