@@ -23,8 +23,9 @@ describe("PairSwissRound", () => {
 		const world = new World();
 		const tournament = world.seedSwiss([ALICE, BOB, CAROL, DAVE, ERIN]);
 
-		expect(await world.pairSwissRound.pair(tournament, world.manager, STARTS_AT)).toBe(2);
+		const summons = await world.pairSwissRound.pair(tournament, world.manager, STARTS_AT);
 
+		expect(summons).toHaveLength(2);
 		expect(world.tournaments.get(TOURNAMENT_ID)).toMatchObject({
 			currentRound: 1,
 			roundStartedAt: STARTS_AT,
@@ -35,6 +36,14 @@ describe("PairSwissRound", () => {
 		expect(world.byes).toHaveLength(1);
 		const [{ userId: bye }] = world.byes;
 		expect(world.entry(bye)).toMatchObject({ score: 3, wins: 1, gamesPlayed: 1, presence: "idle" });
+		expect(summons.map((s) => [s.reservationId, ...s.userIds])).toEqual(
+			games.map((g) => [g.reservationId, g.seat0UserId, g.seat1UserId]),
+		);
+		expect(summons[0]).toMatchObject({
+			tournamentId: TOURNAMENT_ID,
+			tournamentName: tournament.name,
+			lobbyTimeoutSeconds: tournament.lobbyTimeoutSeconds,
+		});
 		for (const game of games) {
 			expect(world.entry(game.seat0UserId)?.presence).toBe("paired");
 			expect(world.redis.has(game.reservationId)).toBe(true);
@@ -80,8 +89,12 @@ describe("PairSwissRound", () => {
 			world.seedEntry(user, { score, presence: "idle", gamesPlayed: 1 });
 		}
 
-		expect(await world.pairSwissRound.pair(tournament, world.manager, later(59_999))).toBe(0);
-		expect(await world.pairSwissRound.pair(tournament, world.manager, later(60_000))).toBe(2);
+		expect(await world.pairSwissRound.pair(tournament, world.manager, later(59_999))).toHaveLength(
+			0,
+		);
+		expect(await world.pairSwissRound.pair(tournament, world.manager, later(60_000))).toHaveLength(
+			2,
+		);
 
 		expect(pairs(world, 2)).toEqual([
 			[ALICE, CAROL].sort().join("-"),
@@ -106,7 +119,7 @@ describe("PairSwissRound", () => {
 		world.seedEntry(ALICE, { presence: "idle" });
 		world.seedEntry(BOB, { presence: "idle" });
 
-		expect(await world.pairSwissRound.pair(tournament, world.manager, later(1000))).toBe(1);
+		expect(await world.pairSwissRound.pair(tournament, world.manager, later(1000))).toHaveLength(1);
 
 		const reissued = [...world.games.values()].filter(
 			(g) => g.round === 1 && g.status === "pending" && g.seat0UserId === ALICE,
@@ -125,15 +138,17 @@ describe("PairSwissRound", () => {
 			roundStartedAt: STARTS_AT,
 			roundClosedAt: STARTS_AT,
 		});
-		expect(await world.pairSwissRound.pair(last, world.manager, later(3_600_000))).toBe(0);
+		expect(await world.pairSwissRound.pair(last, world.manager, later(3_600_000))).toHaveLength(0);
 
 		const alone = new World();
 		const lonely = alone.seedSwiss([ALICE, BOB]);
 		alone.seedEntry(BOB, { status: "withdrawn" });
-		expect(await alone.pairSwissRound.pair(lonely, alone.manager, STARTS_AT)).toBe(0);
+		expect(await alone.pairSwissRound.pair(lonely, alone.manager, STARTS_AT)).toHaveLength(0);
 
 		const arena = new World();
-		expect(await arena.pairSwissRound.pair(arena.seedRunning(), arena.manager, RUNNING_AT)).toBe(0);
+		expect(
+			await arena.pairSwissRound.pair(arena.seedRunning(), arena.manager, RUNNING_AT),
+		).toHaveLength(0);
 		expect(arena.games.size).toBe(0);
 	});
 });

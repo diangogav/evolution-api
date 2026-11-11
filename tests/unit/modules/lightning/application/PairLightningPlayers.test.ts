@@ -11,7 +11,22 @@ describe("PairLightningPlayers", () => {
 
 		const paired = await world.pairPlayers.pair(tournament, world.manager, RUNNING_AT);
 
-		expect(paired).toBe(2);
+		expect(paired).toEqual([
+			{
+				tournamentId: TOURNAMENT_ID,
+				tournamentName: tournament.name,
+				reservationId: "RSV0000000000001",
+				userIds: [ALICE, CAROL],
+				lobbyTimeoutSeconds: 90,
+			},
+			{
+				tournamentId: TOURNAMENT_ID,
+				tournamentName: tournament.name,
+				reservationId: "RSV0000000000002",
+				userIds: [BOB, DAVE],
+				lobbyTimeoutSeconds: 90,
+			},
+		]);
 		const games = [...world.games.values()];
 		expect(games.map((g) => [g.seat0UserId, g.seat1UserId])).toEqual([
 			[ALICE, CAROL],
@@ -63,7 +78,7 @@ describe("PairLightningPlayers", () => {
 
 		const paired = await world.pairPlayers.pair(tournament, world.manager, RUNNING_AT);
 
-		expect(paired).toBe(0);
+		expect(paired).toHaveLength(0);
 		expect(world.entry(ALICE)).toMatchObject({ presence: "idle" });
 	});
 
@@ -76,7 +91,7 @@ describe("PairLightningPlayers", () => {
 
 		const paired = await world.pairPlayers.pair(tournament, world.manager, RUNNING_AT);
 
-		expect(paired).toBe(1);
+		expect(paired).toHaveLength(1);
 	});
 
 	it("considers only active idle players", async () => {
@@ -86,7 +101,7 @@ describe("PairLightningPlayers", () => {
 		world.seedEntry(CAROL, { idleSince: RUNNING_AT, status: "withdrawn" });
 		world.seedEntry(DAVE, { idleSince: RUNNING_AT, presence: "paired" });
 
-		expect(await world.pairPlayers.pair(tournament, world.manager, RUNNING_AT)).toBe(0);
+		expect(await world.pairPlayers.pair(tournament, world.manager, RUNNING_AT)).toHaveLength(0);
 		expect(world.games.size).toBe(0);
 	});
 

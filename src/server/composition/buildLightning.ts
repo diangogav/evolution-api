@@ -12,7 +12,11 @@ import { LightningGamePostgresRepository } from "../../modules/lightning/infrast
 import { LightningResultPostgresRepository } from "../../modules/lightning/infrastructure/LightningResultPostgresRepository";
 import { LightningTournamentPostgresRepository } from "../../modules/lightning/infrastructure/LightningTournamentPostgresRepository";
 import { LightningUnitOfWork } from "../../modules/lightning/infrastructure/LightningUnitOfWork";
+import type { LightningSummonsNotifier } from "../../modules/lightning/domain/LightningSummons";
 import { LightningWorker } from "../../modules/lightning/infrastructure/LightningWorker";
+import { NotifyLightningSummons } from "../../modules/push/application/NotifyLightningSummons";
+import { PushSubscriptionPostgresRepository } from "../../modules/push/infrastructure/PushSubscriptionPostgresRepository";
+import { WebPushSender } from "../../modules/push/infrastructure/WebPushSender";
 import { BunRedisReservationStore } from "../../modules/reserved-duel/infrastructure/BunRedisReservationStore";
 import { ReservedDuelPostgresReader } from "../../modules/reserved-duel/infrastructure/ReservedDuelPostgresReader";
 import { EssenceLedgerPostgresRepository } from "../../modules/rewards/infrastructure/EssenceLedgerPostgresRepository";
@@ -20,7 +24,7 @@ import { Logger } from "../../shared/logger/domain/Logger";
 import { redisClient } from "../../shared/redis/redisClient";
 
 // Wires the lightning use cases to the adapters of the modules they depend on
-// (reserved-duel, rewards). It lives in the composition root because it needs those
+// (reserved-duel, rewards, push). It lives in the composition root because it needs those
 // modules' adapters. Shared by the router and the worker, so "/me" and the tick apply
 // game records through the very same use case and stale threshold.
 export function buildApplyLightningGame(logger: Logger): ApplyLightningGame {
@@ -65,5 +69,28 @@ export function buildLightningWorker(logger: Logger): LightningWorker {
 		),
 		logger,
 	);
-	return new LightningWorker(tick, config.lightningWorker.intervalMs, logger);
+	return new LightningWorker(
+		tick,
+		config.lightningWorker.intervalMs,
+		logger,
+		buildLightningSummonsNotifier(logger),
+	);
+}
+
+// Without VAPID keys push is off and the worker gets no notifier.
+export function buildLightningSummonsNotifier(logger: Logger): LightningSummonsNotifier | null {
+	if (!config.push) return null;
+	const notify = new NotifyLightningSummons(
+		new PushSubscriptionPostgresRepository(),
+		new WebPushSender(
+			{
+				subject: config.push.vapidSubject,
+				publicKey: config.push.vapidPublicKey,
+				privateKey: config.push.vapidPrivateKey,
+			},
+			logger,
+		),
+		logger,
+	);
+	return { notify: (summons, now) => notify.run(summons, now) };
 }
