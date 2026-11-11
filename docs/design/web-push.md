@@ -65,7 +65,7 @@ Tag `Push Notifications` (group Account). 401 without a token, 403 for a banned 
 
 ## Client
 
-- Service worker: the generated Workbox worker keeps its caching config and imports one static script (`workbox.importScripts`) with the `push` and `notificationclick` handlers. On `push`: if a visible window of the app exists, skip (the in-app notice is already there); otherwise show the notification with `tag = reservationId`. On click: focus an open window and navigate it to `url`, or open a new one.
+- Service worker: the generated Workbox worker keeps its caching config and imports one static script (`workbox.importScripts`) with the `push` and `notificationclick` handlers. On `push`: if a visible window of the app exists, skip (the in-app notice is already there); otherwise show the notification with `tag = lightning-summons-<reservationId>` (the in-app notification uses the same tag, so the two replace each other). On click: focus an open window and navigate it to `url`, or open a new one. The app routes by hash, so the worker maps `/lightning/<id>` to `/#/lightning/<id>` and follows same-origin paths only.
 - Opt-in control: "Notify me when it's my turn" on the tournament page and right after entering; shows the current state (on, off, blocked by the browser, unsupported). Subscribes with the API's public key and sends the locale.
 - iOS outside the home screen (`navigator.standalone` false and no `PushManager`): the control explains that notifications need the app installed to the home screen.
 - Sign-out deletes the subscription before dropping the token; a locale change re-sends it.
