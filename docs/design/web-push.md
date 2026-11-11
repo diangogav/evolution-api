@@ -53,7 +53,7 @@ Index on `user_id`. Upsert by `endpoint`: when another account signs in on the s
 
 ## Sending (API)
 
-- Port `PushSender.send(subscription, payload, { ttlSeconds, urgency, topic })` → `sent` / `gone` / `failed`; adapter on `web-push`.
+- Port `PushSender.send(subscription, payload, { ttlSeconds, urgency, topic })` → `sent` / `gone` / `failed`; the adapter builds the encrypted, VAPID-signed request with `web-push`'s `generateRequestDetails` and sends it with `fetch` (its `sendNotification` is tied to Node's `https` module).
 - The pairing use cases (`PairLightningPlayers`, `PairSwissRound`) return the reservations they issued instead of a count; the tick collects `{ tournamentId, reservationId, userId }` per seat and, after its transaction commits, hands them to `NotifyLightningSummons`.
 - `NotifyLightningSummons`: loads the subscriptions of each user, renders the text in the subscription's locale, sends with TTL = the tournament's lobby timeout, `Urgency: high` and a topic derived from the reservation, deletes subscriptions answered `gone`, logs `failed`. Sends run concurrently with a small cap and never block or fail the tick.
 - Payload (JSON, under the 4 KB limit): `{ type: "lightning-summons", tournamentId, reservationId, title, body, url }`.
