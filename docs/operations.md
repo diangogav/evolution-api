@@ -150,6 +150,16 @@ The rules it applies are in [design/halloween-event-runs.md](design/halloween-ev
 
 The rules it applies are in [design/lightning-tournaments.md](design/lightning-tournaments.md).
 
+### Web Push
+
+| Name | Required | Default | Purpose |
+| --- | --- | --- | --- |
+| `VAPID_PUBLIC_KEY` | Optional | — | VAPID public key (base64url), served by `GET /push/public-key` for browsers to subscribe. |
+| `VAPID_PRIVATE_KEY` | Optional | — | VAPID private key (base64url) that signs every push. Secret. |
+| `VAPID_SUBJECT` | Optional | — | Contact push services use to reach the sender: a `mailto:` or `https:` URL; any other value fails at startup. |
+
+Push is on only when all three are set; with any of them missing it is off: `GET /push/public-key` answers `{ "publicKey": null }` and the lightning worker sends nothing. Subscriptions are still stored. Generate a key pair once with `bunx web-push generate-vapid-keys` and keep it: changing the keys invalidates every stored subscription. How sends work is in [design/web-push.md](design/web-push.md).
+
 ### Community decks worker
 
 | Name | Required | Default | Purpose |

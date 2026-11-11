@@ -41,6 +41,10 @@ const TAGS = [
 		description:
 			"Short arenas: register with a deck, get paired continuously by score, standings and season ranking",
 	},
+	{
+		name: "Push Notifications",
+		description: "Web Push keys and the browser subscriptions that receive tournament calls",
+	},
 	{ name: "Cosmetics", description: "Cosmetics catalog, entitlements and player loadouts" },
 	{
 		name: "Rewards",
@@ -70,7 +74,10 @@ const TAGS = [
 ];
 
 const TAG_GROUPS = [
-	{ name: "Account", tags: ["Authentication", "User Management", "Player Reports"] },
+	{
+		name: "Account",
+		tags: ["Authentication", "User Management", "Player Reports", "Push Notifications"],
+	},
 	{ name: "Ranked", tags: ["Leaderboard", "Ranked", "Statistics", "Ban Lists", "Achievements"] },
 	{ name: "Decks", tags: ["Community Decks"] },
 	{ name: "Play", tags: ["Lightning"] },
