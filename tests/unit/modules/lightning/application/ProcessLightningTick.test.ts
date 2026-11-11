@@ -43,6 +43,7 @@ const empty = {
 	removed: 0,
 	failed: 0,
 	skipped: false,
+	summons: [],
 };
 
 describe("ProcessLightningTick", () => {
@@ -70,6 +71,37 @@ describe("ProcessLightningTick", () => {
 		expect(world.entry(ALICE)).toMatchObject({ presence: "paired" });
 		expect(world.games.size).toBe(2);
 		expect(world.redis.size).toBe(2);
+	});
+
+	it("returns a summons per issued reservation with both seats", async () => {
+		const { world, tick } = setup();
+		world.seedTournament({ status: "registration" });
+		for (const user of [ALICE, BOB, CAROL, DAVE]) world.seedEntry(user);
+
+		const { summons } = await tick.run(STARTS_AT);
+
+		const games = [...world.games.values()];
+		expect(summons.map((s) => [s.reservationId, ...s.userIds])).toEqual(
+			games.map((g) => [g.reservationId, g.seat0UserId, g.seat1UserId]),
+		);
+		expect(summons.every((s) => s.tournamentId === TOURNAMENT_ID)).toBe(true);
+	});
+
+	it("returns no summons for a tournament whose savepoint rolls back after pairing", async () => {
+		const { world, tick } = setup();
+		world.seedRunning([ALICE, BOB, CAROL, DAVE]);
+		const savepoint = world.unitOfWork.savepoint;
+		world.unitOfWork.savepoint = (async (manager, work) => {
+			const result = await savepoint(manager, work);
+			if (result && typeof result === "object" && "counts" in result) {
+				throw new Error("release failed");
+			}
+			return result;
+		}) as typeof savepoint;
+
+		const result = await tick.run(RUNNING_AT);
+
+		expect(result).toMatchObject({ failed: 1, paired: 0, summons: [] });
 	});
 
 	it("cancels a tournament short of players at start", async () => {
@@ -279,7 +311,12 @@ describe("ProcessLightningTick — Swiss", () => {
 			throw new Error("redis down");
 		};
 
-		expect(await tick.run(STARTS_AT)).toMatchObject({ transitions: 1, failed: 1, paired: 0 });
+		expect(await tick.run(STARTS_AT)).toMatchObject({
+			transitions: 1,
+			failed: 1,
+			paired: 0,
+			summons: [],
+		});
 		expect(world.tournaments.get(TOURNAMENT_ID)).toMatchObject({
 			status: "running",
 			currentRound: 0,

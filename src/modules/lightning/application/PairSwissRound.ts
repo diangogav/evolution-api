@@ -11,6 +11,7 @@ import { LightningEntry, recordBye } from "../domain/LightningEntry";
 import { LightningEntryRepository } from "../domain/LightningEntryRepository";
 import { LightningGameRepository } from "../domain/LightningGameRepository";
 import { lightningDuelReservation } from "../domain/LightningReservation";
+import { LightningSummons, lightningSummons } from "../domain/LightningSummons";
 import { LightningTournament } from "../domain/LightningTournament";
 import { LightningTournamentRepository } from "../domain/LightningTournamentRepository";
 import { pairSwissRound } from "../domain/pairSwissRound";
@@ -22,7 +23,8 @@ import { swissTables } from "../domain/swissTables";
  * round once the previous one closed and its break is over, and in between a new
  * reservation for any table an infrastructure failure voided. Like the arena pass, rows are
  * written first and reservations published last, so a failed publish rolls the pass back
- * and the next tick pairs the same way (the round-one draw is seeded).
+ * and the next tick pairs the same way (the round-one draw is seeded). Returns the
+ * reservations it issued, one summons per table.
  */
 export class PairSwissRound {
 	constructor(
@@ -38,8 +40,8 @@ export class PairSwissRound {
 		tournament: LightningTournament,
 		manager: QueryableManager,
 		now: Date,
-	): Promise<number> {
-		if (tournament.system !== "swiss" || tournament.status !== "running") return 0;
+	): Promise<LightningSummons[]> {
+		if (tournament.system !== "swiss" || tournament.status !== "running") return [];
 		const entries = await this.entries.listByTournament(tournament.id, manager);
 		const byUser = new Map(entries.map((entry) => [entry.userId, entry]));
 
@@ -60,9 +62,9 @@ export class PairSwissRound {
 		const nextRoundAt = swissNextRoundAt(tournament);
 		const due = tournament.currentRound === 0 || (nextRoundAt !== null && now >= nextRoundAt);
 		const nextRound = tournament.currentRound + 1;
-		if (!due || nextRound > (tournament.rounds ?? 0)) return 0;
+		if (!due || nextRound > (tournament.rounds ?? 0)) return [];
 		const active = entries.filter((entry) => entry.status === "active");
-		if (active.length < 2) return 0;
+		if (active.length < 2) return [];
 
 		const resolved = await this.games.listResolved(tournament.id, manager);
 		const standings = computeStandings(active, resolved, {
@@ -110,8 +112,9 @@ export class PairSwissRound {
 		byUser: Map<string, LightningEntry>,
 		manager: QueryableManager,
 		now: Date,
-	): Promise<number> {
+	): Promise<LightningSummons[]> {
 		const issued: DuelReservation[] = [];
+		const summons: LightningSummons[] = [];
 		for (const [seat0, seat1] of pairs) {
 			const first = byUser.get(seat0) as LightningEntry;
 			const second = byUser.get(seat1) as LightningEntry;
@@ -143,11 +146,12 @@ export class PairSwissRound {
 					turnTimeSeconds: tournament.turnTimeSeconds,
 				}),
 			);
+			summons.push(lightningSummons(tournament, reservationId, seat0, seat1));
 		}
 		for (const reservation of issued) {
 			await this.reservations.issue(reservation, RESERVATION_TTL_SECONDS);
 		}
-		return pairs.length;
+		return summons;
 	}
 }
 

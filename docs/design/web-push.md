@@ -48,20 +48,24 @@ Index on `user_id`. Upsert by `endpoint`: when another account signs in on the s
 | Method | Path | Notes |
 |---|---|---|
 | GET | `/push/public-key` | `{ publicKey }`, or `{ publicKey: null }` when push is not configured; public |
-| PUT | `/me/push-subscriptions` | `{ endpoint, keys: { p256dh, auth }, locale }` → 204; endpoint must be `https` |
+| PUT | `/me/push-subscriptions` | `{ endpoint, keys: { p256dh, auth }, locale }` → 204; endpoint must be `https` (≤ 2048 chars), keys base64url within their column widths, else 422; `locale` starting with `es` stores `es`, anything else `en` |
 | DELETE | `/me/push-subscriptions` | `{ endpoint }` → 204; idempotent; only the caller's own row |
+
+Tag `Push Notifications` (group Account). 401 without a token, 403 for a banned account.
 
 ## Sending (API)
 
 - Port `PushSender.send(subscription, payload, { ttlSeconds, urgency, topic })` → `sent` / `gone` / `failed`; the adapter builds the encrypted, VAPID-signed request with `web-push`'s `generateRequestDetails` and sends it with `fetch` (its `sendNotification` is tied to Node's `https` module).
-- The pairing use cases (`PairLightningPlayers`, `PairSwissRound`) return the reservations they issued instead of a count; the tick collects `{ tournamentId, reservationId, userId }` per seat and, after its transaction commits, hands them to `NotifyLightningSummons`.
-- `NotifyLightningSummons`: loads the subscriptions of each user, renders the text in the subscription's locale, sends with TTL = the tournament's lobby timeout, `Urgency: high` and a topic derived from the reservation, deletes subscriptions answered `gone`, logs `failed`. Sends run concurrently with a small cap and never block or fail the tick.
+- The pairing use cases (`PairLightningPlayers`, `PairSwissRound`) return the reservations they issued instead of a count, one `LightningSummons` per reservation: `{ tournamentId, tournamentName, reservationId, userIds: [seat0, seat1], lobbyTimeoutSeconds }`. The tick keeps only the summons of pairing passes and tournaments whose savepoints held and returns them in its result (`paired` stays the count). `ProcessLightningTick.run` resolves only after the tick's transaction committed, so `LightningWorker` hands the result's summons to its `LightningSummonsNotifier` port right after `run` returns, without awaiting it and catching both sync and async failures; a tick that throws (including a failed commit) notifies nobody. The composition root adapts `NotifyLightningSummons` (push module) to that port, so neither module imports the other.
+- `NotifyLightningSummons`: loads the subscriptions of all paired users in one query, renders the text in the subscription's locale (es: "Tu duelo del torneo está listo" / "<tournament>. Entra ahora: la sala espera <n> s"; en: "Your tournament duel is ready" / "<tournament>. Join now: the room waits <n> s"), sends with TTL = the tournament's lobby timeout, `Urgency: high` and a topic derived from the reservation, deletes subscriptions answered `gone`, stamps `last_used_at` on `sent` ones, logs the `failed` count. Sends run concurrently (at most 8 in flight) and it never throws.
+- Topic: the first 32 characters of the base64url SHA-256 of `lightning-summons:<reservationId>` (the push service accepts at most 32 URL-safe base64 characters).
+- Sender outcomes: 200/201/202 → `sent`, 404/410 → `gone`, any other status, a network error, a 10 s timeout or keys that cannot be encrypted → `failed`. Logs name only the push service host, never the endpoint path.
 - Payload (JSON, under the 4 KB limit): `{ type: "lightning-summons", tournamentId, reservationId, title, body, url }`.
-- Config: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` (`mailto:` or `https:`). Without them push is off: no sends, `publicKey: null`.
+- Config: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` (`mailto:` or `https:`, any other subject fails at startup). With any of them missing push is off: no sends, `publicKey: null`; subscriptions are still stored.
 
 ## Client
 
-- Service worker: the generated Workbox worker keeps its caching config and imports one static script (`workbox.importScripts`) with the `push` and `notificationclick` handlers. On `push`: if a visible window of the app exists, skip (the in-app notice is already there); otherwise show the notification with `tag = reservationId`. On click: focus an open window and navigate it to `url`, or open a new one.
+- Service worker: the generated Workbox worker keeps its caching config and imports one static script (`workbox.importScripts`) with the `push` and `notificationclick` handlers. On `push`: if a visible window of the app exists, skip (the in-app notice is already there); otherwise show the notification with `tag = lightning-summons-<reservationId>` (the in-app notification uses the same tag, so the two replace each other). On click: focus an open window and navigate it to `url`, or open a new one. The app routes by hash, so the worker maps `/lightning/<id>` to `/#/lightning/<id>` and follows same-origin paths only.
 - Opt-in control: "Notify me when it's my turn" on the tournament page and right after entering; shows the current state (on, off, blocked by the browser, unsupported). Subscribes with the API's public key and sends the locale.
 - iOS outside the home screen (`navigator.standalone` false and no `PushManager`): the control explains that notifications need the app installed to the home screen.
 - Sign-out deletes the subscription before dropping the token; a locale change re-sends it.

@@ -9,6 +9,7 @@ import { LightningEntry } from "../domain/LightningEntry";
 import { LightningEntryRepository } from "../domain/LightningEntryRepository";
 import { LightningGameRepository } from "../domain/LightningGameRepository";
 import { lightningDuelReservation } from "../domain/LightningReservation";
+import { LightningSummons, lightningSummons } from "../domain/LightningSummons";
 import { LightningTournament } from "../domain/LightningTournament";
 import { pairIdlePlayers } from "../domain/pairIdlePlayers";
 
@@ -16,7 +17,8 @@ import { pairIdlePlayers } from "../domain/pairIdlePlayers";
  * One pairing pass over a running tournament, under its row lock: idle players are paired
  * by score, each pair gets a game row and a reservation. The rows are written first and the
  * reservations published last, so a failed publish rolls the whole pass back and the next
- * tick retries; a reservation the server can see always has its game row committed.
+ * tick retries; a reservation the server can see always has its game row committed. Returns
+ * the reservations it issued, one summons per pair.
  */
 export class PairLightningPlayers {
 	constructor(
@@ -30,7 +32,7 @@ export class PairLightningPlayers {
 		tournament: LightningTournament,
 		manager: QueryableManager,
 		now: Date,
-	): Promise<number> {
+	): Promise<LightningSummons[]> {
 		const entries = await this.entries.listByTournament(tournament.id, manager);
 		const byUser = new Map(entries.map((entry) => [entry.userId, entry]));
 		const idle = entries.filter((entry) => entry.status === "active" && entry.presence === "idle");
@@ -42,6 +44,7 @@ export class PairLightningPlayers {
 		const pairs = pairIdlePlayers(idle, { allowRematch: playable.length <= 2 });
 
 		const issued: DuelReservation[] = [];
+		const summons: LightningSummons[] = [];
 		for (const { seat0, seat1 } of pairs) {
 			const first = byUser.get(seat0) as LightningEntry;
 			const second = byUser.get(seat1) as LightningEntry;
@@ -73,11 +76,12 @@ export class PairLightningPlayers {
 					turnTimeSeconds: tournament.turnTimeSeconds,
 				}),
 			);
+			summons.push(lightningSummons(tournament, reservationId, seat0, seat1));
 		}
 		for (const reservation of issued) {
 			await this.reservations.issue(reservation, RESERVATION_TTL_SECONDS);
 		}
-		return pairs.length;
+		return summons;
 	}
 }
 

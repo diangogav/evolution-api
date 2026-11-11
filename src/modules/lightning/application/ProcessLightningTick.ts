@@ -2,6 +2,7 @@ import { Logger } from "../../../shared/logger/domain/Logger";
 import type { QueryableManager } from "../../../shared/persistence/QueryableManager";
 import { LightningEntryRepository } from "../domain/LightningEntryRepository";
 import { LightningGameRepository } from "../domain/LightningGameRepository";
+import { LightningSummons } from "../domain/LightningSummons";
 import { LightningTickUnitOfWork } from "../domain/LightningTickUnitOfWork";
 import { LightningTournament } from "../domain/LightningTournament";
 import { LightningTournamentRepository } from "../domain/LightningTournamentRepository";
@@ -27,9 +28,16 @@ export type ProcessLightningTickResult = {
 	failed: number;
 	/** True when another instance held the worker lock and this tick did nothing. */
 	skipped: boolean;
+	/**
+	 * Reservations issued by pairing passes that were kept: a pass or tournament rolled back
+	 * contributes none. The result exists only once the tick's transaction committed.
+	 */
+	summons: LightningSummons[];
 };
 
-type Counts = Omit<ProcessLightningTickResult, "tournaments" | "skipped">;
+type Counts = Omit<ProcessLightningTickResult, "tournaments" | "skipped" | "summons">;
+
+type TournamentOutcome = { counts: Counts; summons: LightningSummons[] };
 
 export const NOT_ENOUGH_PLAYERS = "Not enough players";
 
@@ -65,13 +73,16 @@ export class ProcessLightningTick {
 				removed: 0,
 				failed: 0,
 			};
+			const summons: LightningSummons[] = [];
 			const ids = await this.tournaments.listOpenIds(manager);
 			for (const id of ids) {
 				try {
-					const delta = await this.unitOfWork.savepoint(manager, () =>
+					const outcome = await this.unitOfWork.savepoint(manager, () =>
 						this.processTournament(id, manager, now),
 					);
+					const delta = outcome.counts;
 					for (const key of Object.keys(delta) as Array<keyof Counts>) counts[key] += delta[key];
+					summons.push(...outcome.summons);
 				} catch (error) {
 					counts.failed++;
 					this.logger.error(
@@ -79,7 +90,7 @@ export class ProcessLightningTick {
 					);
 				}
 			}
-			return { ...counts, tournaments: ids.length };
+			return { ...counts, tournaments: ids.length, summons };
 		});
 		if (!result) {
 			return {
@@ -92,6 +103,7 @@ export class ProcessLightningTick {
 				removed: 0,
 				failed: 0,
 				skipped: true,
+				summons: [],
 			};
 		}
 		return { ...result, skipped: false };
@@ -101,7 +113,7 @@ export class ProcessLightningTick {
 		id: string,
 		manager: QueryableManager,
 		now: Date,
-	): Promise<Counts> {
+	): Promise<TournamentOutcome> {
 		const counts: Counts = {
 			transitions: 0,
 			applied: 0,
@@ -113,11 +125,12 @@ export class ProcessLightningTick {
 		};
 		let tournament = await this.tournaments.findByIdForUpdate(id, manager);
 		if (!tournament || tournament.status === "completed" || tournament.status === "cancelled") {
-			return counts;
+			return { counts, summons: [] };
 		}
 
 		tournament = await this.advanceClock(tournament, manager, now, counts);
-		if (tournament.status === "completed" || tournament.status === "cancelled") return counts;
+		if (tournament.status === "completed" || tournament.status === "cancelled")
+			return { counts, summons: [] };
 
 		counts.removed = (await this.entries.removeBanned(tournament.id, manager)).length;
 		for (const game of await this.games.listPending(tournament.id, manager)) {
@@ -128,7 +141,7 @@ export class ProcessLightningTick {
 
 		// Again after applying: the last live game of a finishing tournament just closed.
 		tournament = await this.advanceClock(tournament, manager, now, counts);
-		if (tournament.status !== "running") return counts;
+		if (tournament.status !== "running") return { counts, summons: [] };
 
 		if (tournament.system === "swiss") {
 			const closed = await this.closeSwissRound.close(tournament, manager, now);
@@ -137,22 +150,24 @@ export class ProcessLightningTick {
 			if (tournament.status === "finishing") {
 				counts.transitions++;
 				await this.advanceClock(tournament, manager, now, counts);
-				return counts;
+				return { counts, summons: [] };
 			}
 		}
 
 		const running = tournament;
+		let summons: LightningSummons[] = [];
 		try {
-			counts.paired = await this.unitOfWork.savepoint(manager, () =>
+			summons = await this.unitOfWork.savepoint(manager, () =>
 				running.system === "swiss"
 					? this.pairSwissRound.pair(running, manager, now)
 					: this.pairPlayers.pair(running, manager, now),
 			);
+			counts.paired = summons.length;
 		} catch (error) {
 			counts.failed++;
 			this.logger.error(`Lightning worker could not pair tournament ${id}: ${errorMessage(error)}`);
 		}
-		return counts;
+		return { counts, summons };
 	}
 
 	private async advanceClock(
