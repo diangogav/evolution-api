@@ -38,6 +38,7 @@ import { adminStatsRouter } from "./routes/admin-stats-router";
 import { statsRouter } from "./routes/stats-router";
 import { ticketRouter } from "./routes/ticket-router";
 import { userRouter } from "./routes/user-router";
+import { pushRouter } from "./routes/push-router";
 import { createSwagger } from "./swagger";
 import { playerReportsRouter, adminPlayerReportsRouter } from "./routes/player-reports-router";
 
@@ -131,6 +132,7 @@ export function mountApiV1Routes(app: Elysia) {
 			.use(eventRunsRouter)
 			.use(communityDecksRouter)
 			.use(lightningRouter)
+			.use(pushRouter)
 			.use(playerReportsRouter)
 			.use(adminPlayerReportsRouter);
 	});

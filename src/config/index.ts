@@ -41,6 +41,28 @@ export function parseCosmeticsPublicBaseUrl(value: string | undefined): string |
 	return trimmed.replace(/\/+$/, "");
 }
 
+export type PushConfig = {
+	vapidPublicKey: string;
+	vapidPrivateKey: string;
+	vapidSubject: string;
+};
+
+/**
+ * VAPID keys and contact for Web Push. Push is on only when all three are set; with any
+ * of them missing it is off (no sends, no public key). The subject must be a `mailto:`
+ * or `https:` URL, which push services require to reach the sender.
+ */
+export function parsePushConfig(env: Record<string, string | undefined>): PushConfig | null {
+	const vapidPublicKey = env.VAPID_PUBLIC_KEY?.trim();
+	const vapidPrivateKey = env.VAPID_PRIVATE_KEY?.trim();
+	const vapidSubject = env.VAPID_SUBJECT?.trim();
+	if (!vapidPublicKey || !vapidPrivateKey || !vapidSubject) return null;
+	if (!vapidSubject.startsWith("mailto:") && !vapidSubject.startsWith("https:")) {
+		throw new Error("Environment variable VAPID_SUBJECT must be a mailto: or https: URL");
+	}
+	return { vapidPublicKey, vapidPrivateKey, vapidSubject };
+}
+
 const isProduction = process.env.NODE_ENV === "production";
 
 export const config = {
@@ -91,6 +113,7 @@ export const config = {
 		maxPages: Number(process.env.COMMUNITY_DECKS_MAX_PAGES ?? 10),
 		edisonMinViews: Number(process.env.COMMUNITY_DECKS_EDISON_MIN_VIEWS ?? 100),
 	},
+	push: parsePushConfig(process.env),
 	annulment: { enabled: process.env.ANNULMENT_ENABLED === "true" },
 	passwordRecovery: {
 		defaultResetUrl: "https://evolutionygo.com/reset-account-password?token={token}",
