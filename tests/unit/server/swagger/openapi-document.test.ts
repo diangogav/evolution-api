@@ -29,6 +29,7 @@ type OpenApiDocument = {
 // bearerAuth. `reset-account-password` reads the reset-link token from the same
 // header, so it is listed too.
 const PROTECTED_OPERATIONS = [
+	"POST /api/v1/users/change-email",
 	"GET /api/v1/users/email-verification",
 	"POST /api/v1/users/email-verification/resend",
 	"GET /api/v1/auth/discord/link",

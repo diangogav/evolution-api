@@ -222,6 +222,20 @@ The confirmation link goes out in the welcome email of an email-and-password reg
 
 An unverified address blocks nothing: the client only reminds the user. The link opens the frontend page listed in `config.emailVerification`, chosen by the request origin. Its token names the user as `verifyUserId`, never as `id`, so it cannot be used as a session.
 
+#### Changing the address
+
+| Route | What it does |
+| --- | --- |
+| `POST /users/change-email` | Signed in, `{ newEmail, currentPassword }`. Checks the password and mails a link to the new address. The account keeps its address. |
+| `POST /users/confirm-email-change` | Public, `{ token }`. Applies the change, records the new address as verified and mails a notice to the previous one. |
+
+- **Why the password:** the email is what recovers the account, so a session alone must not be able to move it.
+- **Why the change waits for the link:** opening it proves the user reads the new inbox, so a mistyped address never becomes the account's address.
+- **Why the notice:** it is the alarm for the real owner when someone else made the change.
+- **Stale links:** the token carries the address the account had at request time; once the account leaves that address the link answers `401`, which also makes it single-use.
+- **Address in use** is checked ignoring case, at request and again at confirmation; deleted users count, because the unique index covers them.
+
+
 The reset endpoint takes only that mailed token. A session token names a user too, but accepting it would let whoever holds a session set a new password without the current one, so it answers `401`; signed-in users change their password through `POST /users/change-account-password`, which asks for the current one. An earlier verification date is never overwritten.
 
 ## Workers
