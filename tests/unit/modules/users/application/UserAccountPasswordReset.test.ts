@@ -115,6 +115,21 @@ describe("UserAccountPasswordReset", () => {
 		);
 	});
 
+	it.each([
+		["a session token", { role: "USER" }],
+		["a session token of a user who must upgrade", { role: "USER", mustUpgrade: true }],
+		["a token issued for another purpose", { purpose: "discord-login" }],
+	])("rejects %s and leaves the password alone", async (_label, claims) => {
+		spyOn(repository, "findById").mockResolvedValue(user);
+		const updateSpy = spyOn(repository, "update");
+		const other = jwt.generate({ id: user.id, ...claims });
+
+		await expect(reset.resetPassword({ token: other, newPassword: "NewPass2024" })).rejects.toThrow(
+			AuthenticationError,
+		);
+		expect(updateSpy).not.toHaveBeenCalled();
+	});
+
 	describe("email verification", () => {
 		const NOW = new Date("2026-11-13T12:00:00Z");
 		let verified: { userId: string; at: Date }[];
@@ -137,10 +152,10 @@ describe("UserAccountPasswordReset", () => {
 			expect(verified).toEqual([{ userId: user.id, at: NOW }]);
 		});
 
-		it("does not mark it for a token that did not come from the reset email", async () => {
-			const sessionToken = jwt.generate({ id: user.id, role: user.role });
+		it("does not mark it for a reset link mailed before the claim existed", async () => {
+			const legacy = jwt.generate({ id: user.id });
 
-			await reset.resetPassword({ token: sessionToken, newPassword: "NewPass2024", now: NOW });
+			await reset.resetPassword({ token: legacy, newPassword: "NewPass2024", now: NOW });
 
 			expect(verified).toEqual([]);
 		});
