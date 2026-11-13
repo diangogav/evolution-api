@@ -150,6 +150,16 @@ The rules it applies are in [design/halloween-event-runs.md](design/halloween-ev
 
 The rules it applies are in [design/lightning-tournaments.md](design/lightning-tournaments.md).
 
+### Discord sign-in
+
+| Name | Required | Default | Purpose |
+| --- | --- | --- | --- |
+| `DISCORD_CLIENT_ID` | Optional | — | Client id of the Discord application. |
+| `DISCORD_CLIENT_SECRET` | Optional | — | Client secret of the Discord application. Secret. |
+| `DISCORD_REDIRECT_URI` | Optional | — | This API's callback, `https://<api host>/api/v1/auth/discord/callback`. It must be an `http(s)` URL (any other value fails at startup) and match a redirect registered in the Discord application exactly. |
+
+Signing in with Discord is on only when all three are set; with any of them missing the `/auth/discord` routes answer `404`. The frontends a sign-in may return to are listed in `config.discordLogin.frontends`. The flow is described in [architecture.md](architecture.md#signing-in-with-discord).
+
 ### Web Push
 
 | Name | Required | Default | Purpose |

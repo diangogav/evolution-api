@@ -63,6 +63,30 @@ export function parsePushConfig(env: Record<string, string | undefined>): PushCo
 	return { vapidPublicKey, vapidPrivateKey, vapidSubject };
 }
 
+export type DiscordAuthConfig = {
+	clientId: string;
+	clientSecret: string;
+	redirectUri: string;
+};
+
+/**
+ * Credentials of the Discord application used to sign in. Signing in with Discord is on
+ * only when all three are set; with any of them missing its endpoints answer 404. The
+ * redirect URI is this API's callback and must match the one registered in Discord.
+ */
+export function parseDiscordAuthConfig(
+	env: Record<string, string | undefined>,
+): DiscordAuthConfig | null {
+	const clientId = env.DISCORD_CLIENT_ID?.trim();
+	const clientSecret = env.DISCORD_CLIENT_SECRET?.trim();
+	const redirectUri = env.DISCORD_REDIRECT_URI?.trim();
+	if (!clientId || !clientSecret || !redirectUri) return null;
+	if (!/^https?:\/\//.test(redirectUri)) {
+		throw new Error("Environment variable DISCORD_REDIRECT_URI must be an http(s) URL");
+	}
+	return { clientId, clientSecret, redirectUri };
+}
+
 const isProduction = process.env.NODE_ENV === "production";
 
 export const config = {
@@ -114,6 +138,22 @@ export const config = {
 		edisonMinViews: Number(process.env.COMMUNITY_DECKS_EDISON_MIN_VIEWS ?? 100),
 	},
 	push: parsePushConfig(process.env),
+	discordAuth: parseDiscordAuthConfig(process.env),
+	// Frontends a Discord sign-in may return to; the first one is the default.
+	discordLogin: {
+		secureCookie: isProduction,
+		frontends: [
+			{ origin: "https://evoduel.com", template: "https://evoduel.com/#/auth/discord?{query}" },
+			...(isProduction
+				? []
+				: [
+						{
+							origin: "http://localhost:5173",
+							template: "http://localhost:5173/#/auth/discord?{query}",
+						},
+					]),
+		],
+	},
 	annulment: { enabled: process.env.ANNULMENT_ENABLED === "true" },
 	passwordRecovery: {
 		defaultResetUrl: "https://evolutionygo.com/reset-account-password?token={token}",
