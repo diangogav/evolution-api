@@ -2,6 +2,7 @@ import { EmailSender } from "../../../shared/email/domain/EmailSender";
 import { renderBrandedEmail } from "../../../shared/email/EmailTemplate";
 import { JWT } from "../../../shared/JWT";
 import { Logger } from "../../../shared/logger/domain/Logger";
+import { PASSWORD_RESET_PURPOSE } from "../domain/EmailVerifications";
 import { ResetPasswordLinkBuilder } from "../domain/ResetPasswordLinkBuilder";
 import { UserRepository } from "../domain/UserRepository";
 
@@ -34,7 +35,10 @@ export class UserForgotPassword {
 			return { message: "Email sent successfully" };
 		}
 
-		const token = this.jwt.generate({ id: user.id }, { expiresIn: "1h" });
+		const token = this.jwt.generate(
+			{ id: user.id, purpose: PASSWORD_RESET_PURPOSE },
+			{ expiresIn: "1h" },
+		);
 		const resetLink = this.resetLinkBuilder.build({ origin, referer, token });
 
 		const { html, text } = renderBrandedEmail({

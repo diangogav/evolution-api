@@ -65,6 +65,16 @@ describe("UserForgotPassword", () => {
 		expect(emailData.text).toContain("https://evoduel.com/#/reset-account-password?token=");
 	});
 
+	it("mails a token that says it is for a password reset and names the user", async () => {
+		spyOn(repository, "findByEmail").mockResolvedValue(user);
+		const sendSpy = spyOn(emailSender, "send").mockResolvedValue();
+
+		await forgot.forgotPassword({ email: user.email, origin: "https://evoduel.com" });
+
+		const mailed = jwt.decode(sendSpy.mock.calls[0][1].token);
+		expect(mailed).toMatchObject({ id: user.id, purpose: "password-reset" });
+	});
+
 	it("preserves the evolutionygo reset-password link when the request only carries a referer", async () => {
 		spyOn(repository, "findByEmail").mockResolvedValue(user);
 		const sendSpy = spyOn(emailSender, "send").mockResolvedValue();
