@@ -9,6 +9,8 @@ export type DiscordReturnOutcome =
 	| { code: string; redirect: string }
 	/** New to us: `register` is the ticket for the form that creates the account. */
 	| { register: string; username: string; redirect: string }
+	/** A signed-in user linked their Discord account from the settings screen. */
+	| { linked: "true"; redirect: string }
 	| { error: DiscordLoginError };
 
 /** Why a Discord sign-in did not produce a session; sent to the frontend as `error`. */
@@ -20,6 +22,10 @@ export const DISCORD_LOGIN_ERRORS = [
 	"email_unverified",
 	// The email belongs to an account that cannot take this Discord account.
 	"account_conflict",
+	// Linking from settings: the Discord account already belongs to another user.
+	"discord_in_use",
+	// Linking from settings: the user already has a Discord account linked.
+	"already_linked",
 ] as const;
 export type DiscordLoginError = (typeof DISCORD_LOGIN_ERRORS)[number];
 

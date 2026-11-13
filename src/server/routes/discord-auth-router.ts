@@ -4,15 +4,21 @@ import { Elysia, t } from "elysia";
 import { config } from "../../config";
 import { AdmitDiscordIdentity } from "../../modules/auth/application/AdmitDiscordIdentity";
 import { CompleteDiscordLogin } from "../../modules/auth/application/CompleteDiscordLogin";
+import { DiscordLinkIntent } from "../../modules/auth/application/DiscordLinkIntent";
 import {
 	DISCORD_STATE_TTL_SECONDS,
 	DiscordLoginState,
 } from "../../modules/auth/application/DiscordLoginState";
 import { ExchangeLoginCode } from "../../modules/auth/application/ExchangeLoginCode";
+import { LinkDiscordToUser } from "../../modules/auth/application/LinkDiscordToUser";
+import { ManageDiscordLink } from "../../modules/auth/application/ManageDiscordLink";
 import { RegisterWithDiscord } from "../../modules/auth/application/RegisterWithDiscord";
 import { StartDiscordLogin } from "../../modules/auth/application/StartDiscordLogin";
 import { DiscordReturnLinkBuilder } from "../../modules/auth/domain/DiscordReturnLinkBuilder";
 import {
+	DiscordLinkStartBodySchema,
+	DiscordLinkStartSchema,
+	DiscordLinkStatusSchema,
 	DiscordRegistrationSchema,
 	LoginCodeExchangeSchema,
 	LoginSchema,
@@ -30,7 +36,8 @@ import { Hash } from "../../shared/Hash";
 import { Pino } from "../../shared/logger/infrastructure/Pino";
 import { redisClient } from "../../shared/redis/redisClient";
 import { apiJwt } from "../auth/apiJwt";
-import { errorResponses, jsonOk } from "../openapi/responses";
+import { requireUser as defaultRequireUser } from "../auth/requireUser";
+import { emptyOk, errorResponses, jsonOk } from "../openapi/responses";
 
 // Ties the callback to the browser that started the sign-in; see DiscordLoginState.
 const NONCE_COOKIE = "discord_login_nonce";
@@ -43,6 +50,7 @@ export interface DiscordAuthUseCases {
 	complete: Pick<CompleteDiscordLogin, "run">;
 	exchange: Pick<ExchangeLoginCode, "run">;
 	register: Pick<RegisterWithDiscord, "run">;
+	link: Pick<ManageDiscordLink, "status" | "begin" | "unlink">;
 }
 
 export interface DiscordAuthRouterDependencies {
@@ -50,6 +58,7 @@ export interface DiscordAuthRouterDependencies {
 	useCases: DiscordAuthUseCases | null;
 	/** Marks the nonce cookie Secure; off only for plain-http local development. */
 	secureCookie: boolean;
+	requireUser: typeof defaultRequireUser;
 }
 
 function buildUseCases(): DiscordAuthUseCases | null {
@@ -63,31 +72,39 @@ function buildUseCases(): DiscordAuthUseCases | null {
 	const users = new UserPostgresRepository();
 	const logger = new Pino();
 	const emailSender = new ResendEmailSender();
+	const accounts = new DiscordAccountsPostgresRepository();
+	const intents = new DiscordLinkIntent(apiJwt);
 
 	return {
-		start: new StartDiscordLogin(oauthClient, state, links, randomUUID),
+		start: new StartDiscordLogin(oauthClient, state, links, randomUUID, intents),
 		complete: new CompleteDiscordLogin(
 			oauthClient,
-			new AdmitDiscordIdentity(
-				new DiscordAccountsPostgresRepository(),
-				registrations,
-				emailSender,
-				logger,
-			),
+			new AdmitDiscordIdentity(accounts, registrations, emailSender, logger),
 			loginCodes,
 			state,
 			links,
 			logger,
+			new LinkDiscordToUser(accounts),
 		),
 		exchange: new ExchangeLoginCode(loginCodes, users, apiJwt),
 		register: new RegisterWithDiscord(
 			registrations,
 			new UserRegister(users, new Hash(), logger, emailSender, apiJwt),
 		),
+		// The start route sits next to the callback Discord is configured with.
+		link: new ManageDiscordLink(
+			accounts,
+			intents,
+			new URL("./start", config.discordAuth.redirectUri).toString(),
+		),
 	};
 }
 
-export function createDiscordAuthRouter({ useCases, secureCookie }: DiscordAuthRouterDependencies) {
+export function createDiscordAuthRouter({
+	useCases,
+	secureCookie,
+	requireUser,
+}: DiscordAuthRouterDependencies) {
 	const enabled = (): DiscordAuthUseCases => {
 		if (!useCases) throw new NotFoundError("Signing in with Discord is not available");
 		return useCases;
@@ -97,24 +114,26 @@ export function createDiscordAuthRouter({ useCases, secureCookie }: DiscordAuthR
 		.get(
 			"/start",
 			({ query, cookie, redirect }) => {
-				const { authorizeUrl, nonce } = enabled().start.run(query);
-				cookie[NONCE_COOKIE].set({
-					value: nonce,
-					httpOnly: true,
-					secure: secureCookie,
-					// Lax still sends the cookie on the top-level redirect back from Discord.
-					sameSite: "lax",
-					path: COOKIE_PATH,
-					maxAge: DISCORD_STATE_TTL_SECONDS,
-				});
-				return redirect(authorizeUrl, 302);
+				const { location, nonce } = enabled().start.run(query);
+				if (nonce) {
+					cookie[NONCE_COOKIE].set({
+						value: nonce,
+						httpOnly: true,
+						secure: secureCookie,
+						// Lax still sends the cookie on the top-level redirect back from Discord.
+						sameSite: "lax",
+						path: COOKIE_PATH,
+						maxAge: DISCORD_STATE_TTL_SECONDS,
+					});
+				}
+				return redirect(location, 302);
 			},
 			{
 				detail: {
 					tags: ["Authentication"],
 					summary: "Start signing in with Discord",
 					description:
-						"Opened by the browser as a page navigation, not by a fetch. Redirects to Discord's consent page and sets a cookie that ties the callback to this browser. Answers 404 while Discord sign-in is not configured.",
+						"Opened by the browser as a page navigation, not by a fetch. Redirects to Discord's consent page and sets a cookie that ties the callback to this browser. With `link` (from POST /auth/discord/link) the flow links Discord to that signed-in user instead of signing in; an unknown or expired `link` redirects to the frontend with `error=invalid_state`. Answers 404 while Discord sign-in is not configured.",
 					responses: { 302: REDIRECT_RESPONSE, ...errorResponses(404, 422) },
 				},
 				query: t.Object({
@@ -129,6 +148,12 @@ export function createDiscordAuthRouter({ useCases, secureCookie }: DiscordAuthR
 						t.String({
 							maxLength: 512,
 							description: "Path inside that frontend to open once signed in",
+						}),
+					),
+					link: t.Optional(
+						t.String({
+							maxLength: 2048,
+							description: "Link intent of a signed-in user, from POST /auth/discord/link",
 						}),
 					),
 				}),
@@ -152,7 +177,7 @@ export function createDiscordAuthRouter({ useCases, secureCookie }: DiscordAuthR
 					tags: ["Authentication"],
 					summary: "Discord sign-in callback",
 					description:
-						"Discord sends the browser here. Always redirects to the frontend with one of three results. Signed in: `code` and `redirect`; the single-use code is traded at POST /auth/discord/session. An existing account with the same verified email is linked on the way. New user: `register`, `username` and `redirect`; the ticket goes to POST /auth/discord/register with the suggested username. Failure: `error` (access_denied, invalid_state, discord_unavailable, email_unverified, account_conflict).",
+						"Discord sends the browser here. Always redirects to the frontend with one of three results. Signed in: `code` and `redirect`; the single-use code is traded at POST /auth/discord/session. An existing account with the same verified email is linked on the way. New user: `register`, `username` and `redirect`; the ticket goes to POST /auth/discord/register with the suggested username. Linked from settings: `linked=true` and `redirect`. Failure: `error` (access_denied, invalid_state, discord_unavailable, email_unverified, account_conflict, discord_in_use, already_linked).",
 					responses: { 302: REDIRECT_RESPONSE, ...errorResponses(404, 422) },
 				},
 				query: t.Object({
@@ -211,10 +236,67 @@ export function createDiscordAuthRouter({ useCases, secureCookie }: DiscordAuthR
 				},
 				body: DiscordRegistrationSchema,
 			},
+		)
+		.guard({}, (app) =>
+			app
+				.use(requireUser)
+				.get("/link", ({ userId }) => enabled().link.status(userId), {
+					detail: {
+						tags: ["Authentication"],
+						summary: "Get the caller's Discord link",
+						description:
+							"Tells the settings screen whether a Discord account is linked to the caller and whether it can be unlinked.",
+						security: [{ bearerAuth: [] }],
+						responses: {
+							200: jsonOk(DiscordLinkStatusSchema, "The caller's Discord link", {
+								linked: true,
+								canUnlink: true,
+							}),
+							...errorResponses(401, 403, 404),
+						},
+					},
+				})
+				.post("/link", ({ userId, body }) => enabled().link.begin({ userId, ...body }), {
+					body: DiscordLinkStartBodySchema,
+					detail: {
+						tags: ["Authentication"],
+						summary: "Start linking Discord to the caller",
+						description:
+							"Returns the URL the browser must navigate to in order to link a Discord account to the caller. The flow ends on the frontend with `linked=true`, or with `error` (discord_in_use when that Discord account belongs to another user, already_linked when the caller has one).",
+						security: [{ bearerAuth: [] }],
+						responses: {
+							200: jsonOk(DiscordLinkStartSchema, "Where to send the browser", {
+								url: "https://api.evolutionygo.com/api/v1/auth/discord/start?link=eyJhbGciOi...&redirect=%2Fsettings",
+							}),
+							...errorResponses(401, 403, 404, 422),
+						},
+					},
+				})
+				.delete(
+					"/link",
+					async ({ userId, set }) => {
+						await enabled().link.unlink(userId);
+						set.status = 204;
+					},
+					{
+						detail: {
+							tags: ["Authentication"],
+							summary: "Unlink Discord from the caller",
+							description:
+								"Removes the caller's Discord link. Idempotent. Answers 409 when the caller has no account password, since that would leave no way to sign in.",
+							security: [{ bearerAuth: [] }],
+							responses: {
+								204: emptyOk("Discord is not linked to the caller"),
+								...errorResponses(401, 403, 404, 409),
+							},
+						},
+					},
+				),
 		);
 }
 
 export const discordAuthRouter = createDiscordAuthRouter({
 	useCases: buildUseCases(),
 	secureCookie: config.discordLogin.secureCookie,
+	requireUser: defaultRequireUser,
 });

@@ -32,7 +32,7 @@ function account(overrides: Partial<EmailAccount> = {}): EmailAccount {
 class FakeAccounts implements DiscordAccounts {
 	byDiscordId = new Map<string, string>();
 	byEmail: EmailAccount[] = [];
-	links: { userId: string; discordId: string; verifiedAt: Date }[] = [];
+	links: { userId: string; discordId: string; verifiedAt: Date | null }[] = [];
 	/** Simulates another sign-in linking the account between the lookup and the link. */
 	raceWinner: string | null = null;
 
@@ -45,7 +45,15 @@ class FakeAccounts implements DiscordAccounts {
 		return this.byEmail.filter((row) => row.email.toLowerCase() === email.toLowerCase());
 	}
 
-	async link(userId: string, discordId: string, verifiedAt: Date) {
+	async findLinkStatus() {
+		return null;
+	}
+
+	async unlink() {
+		// Not used by the admission rules.
+	}
+
+	async link(userId: string, discordId: string, verifiedAt: Date | null) {
 		if (this.raceWinner !== null) {
 			if (this.raceWinner === discordId) this.byDiscordId.set(discordId, userId);
 			return false;

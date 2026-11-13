@@ -30,3 +30,23 @@ export const DiscordRegistrationSchema = t.Object({
 	username: t.String({ minLength: 1, maxLength: 14, pattern: "^.*\\S.*$" }),
 	password: t.String({ minLength: 1, pattern: "^.*\\S.*$" }),
 });
+
+/** Response of GET /auth/discord/link. */
+export const DiscordLinkStatusSchema = t.Object({
+	linked: t.Boolean({ description: "True when a Discord account is linked to the user" }),
+	canUnlink: t.Boolean({
+		description:
+			"False when the user has no account password and would be left without a way to sign in",
+	}),
+});
+
+/** Body of POST /auth/discord/link. */
+export const DiscordLinkStartBodySchema = t.Object({
+	origin: t.Optional(t.String({ maxLength: 200 })),
+	redirect: t.Optional(t.String({ maxLength: 512 })),
+});
+
+/** Response of POST /auth/discord/link. */
+export const DiscordLinkStartSchema = t.Object({
+	url: t.String({ description: "URL the browser must navigate to; valid for five minutes" }),
+});

@@ -14,6 +14,8 @@ export type DiscordLoginStatePayload = {
 	redirect: string;
 	/** Hash of the nonce kept in the browser cookie. */
 	nonceHash: string;
+	/** Set when a signed-in user is linking Discord to their account instead of signing in. */
+	linkUserId?: string;
 };
 
 /**
@@ -28,13 +30,14 @@ export type DiscordLoginStatePayload = {
 export class DiscordLoginState {
 	constructor(private readonly jwt: JWT) {}
 
-	sign(input: { origin: string; redirect: string; nonce: string }): string {
+	sign(input: { origin: string; redirect: string; nonce: string; linkUserId?: string }): string {
 		return this.jwt.generate(
 			{
 				purpose: PURPOSE,
 				origin: input.origin,
 				redirect: input.redirect,
 				nonceHash: hashNonce(input.nonce),
+				...(input.linkUserId ? { linkUserId: input.linkUserId } : {}),
 			},
 			{ expiresIn: DISCORD_STATE_TTL_SECONDS },
 		);
@@ -50,11 +53,13 @@ export class DiscordLoginState {
 			return null;
 		}
 		if (typeof decoded !== "object" || decoded === null) return null;
-		const { purpose, origin, redirect, nonceHash } = decoded as Record<string, unknown>;
+		const { purpose, origin, redirect, nonceHash, linkUserId } = decoded as Record<string, unknown>;
 		if (purpose !== PURPOSE) return null;
 		if (typeof origin !== "string" || typeof redirect !== "string") return null;
 		if (typeof nonceHash !== "string") return null;
-		return { origin, redirect, nonceHash };
+		return typeof linkUserId === "string"
+			? { origin, redirect, nonceHash, linkUserId }
+			: { origin, redirect, nonceHash };
 	}
 
 	/** True when `nonce` is the one the state was signed for. */

@@ -5,6 +5,7 @@ import { DiscordReturnLinkBuilder } from "../domain/DiscordReturnLinkBuilder";
 import { LoginCodeStore } from "../domain/LoginCodeStore";
 import { AdmitDiscordIdentity } from "./AdmitDiscordIdentity";
 import { DiscordLoginState } from "./DiscordLoginState";
+import { LinkDiscordToUser } from "./LinkDiscordToUser";
 
 export type CompleteDiscordLoginInput = {
 	/** Authorization code Discord sent; absent when the user declined. */
@@ -36,6 +37,7 @@ export class CompleteDiscordLogin {
 		private readonly state: DiscordLoginState,
 		private readonly links: Pick<DiscordReturnLinkBuilder, "build">,
 		private readonly logger: Logger,
+		private readonly linkToUser: Pick<LinkDiscordToUser, "run">,
 	) {}
 
 	async run(input: CompleteDiscordLoginInput): Promise<CompleteDiscordLoginResult> {
@@ -55,6 +57,16 @@ export class CompleteDiscordLogin {
 		} catch (error) {
 			this.logger.error(`Discord sign-in failed while reading the identity: ${String(error)}`);
 			return { redirectUrl: this.links.build(payload.origin, { error: "discord_unavailable" }) };
+		}
+
+		if (payload.linkUserId) {
+			const result = await this.linkToUser.run(payload.linkUserId, identity, input.now);
+			return {
+				redirectUrl: this.links.build(
+					payload.origin,
+					result.linked ? { linked: "true", redirect: payload.redirect } : { error: result.error },
+				),
+			};
 		}
 
 		const admission = await this.admit.run(identity, input.now);
