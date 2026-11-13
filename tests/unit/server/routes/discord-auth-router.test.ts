@@ -140,6 +140,7 @@ function buildApp({ configured = true, secureCookie = true, users = [] }: World 
 
 	const router = createDiscordAuthRouter({
 		secureCookie,
+		attachRefreshToken: (session, now) => sessionTokens.attach(session, now),
 		// The bearer token is the user id, so a test signs in by naming the user.
 		requireUser: createRequireUser({
 			jwt: { decode: (token) => ({ id: token }) },
@@ -321,7 +322,13 @@ describe("discord auth router", () => {
 		});
 
 		expect(registered.status).toBe(200);
-		const body = (await registered.json()) as { id: string; token: string; gamePassword: string };
+		const body = (await registered.json()) as {
+			id: string;
+			token: string;
+			gamePassword: string;
+			refreshToken: string;
+		};
+		expect(body.refreshToken).toBeString();
 		expect(body).toMatchObject({ username: "duelist", email: "duelist@example.com" });
 		expect(body.gamePassword).toHaveLength(4);
 		expect(jwt.decode(body.token)).toMatchObject({ id: body.id });

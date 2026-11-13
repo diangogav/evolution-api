@@ -174,7 +174,9 @@ A sign-in answers with a JWT (its lifetime is `JWT_EXPIRES_IN`) and a refresh to
 - **Reuse.** A used token that comes back means it exists in two places, and which holder is legitimate cannot be told, so the whole family is revoked. Two tabs renewing at once would look the same, so a repeat within ten seconds is refused without revoking.
 - **Lifetime.** 30 days from issue; every renewal restarts it.
 - **`mustUpgrade`** is stored with the family and carried across renewals.
-- **Where tokens are issued:** `POST /users/login` and `POST /auth/discord/session`, through `SessionTokens.attach` (`src/server/composition/sessionTokens.ts`).
+- **Where tokens are issued:** every route that answers a session, through `SessionTokens.attach` (`src/server/composition/sessionTokens.ts`): `POST /users/login`, `POST /users/register`, `POST /users/upgrade-password`, `POST /users/reset-account-password`, `POST /auth/discord/session` and `POST /auth/discord/register`.
+- **When every sign-in of a user ends:** changing the account password, resetting it, setting it for the first time, and confirming a change of email. Those use cases take a `SessionRevoker` and call it only after the change succeeded. The routes that answer a session then issue a fresh token for the caller; `POST /users/change-account-password` answers no body, so that device signs in again once its JWT expires.
+- **The JWT is not revoked.** It stays valid until it expires; revoking stops it from being renewed.
 
 ### Signing in with Discord
 
