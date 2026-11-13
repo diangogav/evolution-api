@@ -11,6 +11,7 @@ import {
 	PASSWORD_RESET_PURPOSE,
 } from "../domain/EmailVerifications";
 import { SecurePassword } from "../domain/SecurePassword";
+import { SessionRevoker } from "../domain/SessionRevoker";
 import { UserRepository } from "../domain/UserRepository";
 
 export class UserAccountPasswordReset {
@@ -21,6 +22,7 @@ export class UserAccountPasswordReset {
 		private readonly logger: Logger,
 		private readonly jwt: JWT,
 		private readonly emailVerifications?: Pick<EmailVerifications, "markVerified">,
+		private readonly sessions?: SessionRevoker,
 	) {}
 
 	async resetPassword({
@@ -55,6 +57,8 @@ export class UserAccountPasswordReset {
 
 		const updatedUser = user.updateSecurePassword(securePasswordHashed);
 		await this.repository.update(updatedUser);
+		// A reset is what someone does after losing control of the account.
+		await this.sessions?.revokeAllForUser(user.id, now);
 		this.logger.info(`Account password reset for user: ${user.id}`);
 
 		// A link mailed before the claim existed is accepted above but proves nothing new.

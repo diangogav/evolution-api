@@ -23,9 +23,15 @@ import {
 import { Hash } from "../../../../../src/shared/Hash";
 import { JWT } from "../../../../../src/shared/JWT";
 import { Pino } from "../../../../../src/shared/logger/infrastructure/Pino";
+import { SessionTokens } from "../../../../../src/modules/auth/application/SessionTokens";
+import { InMemoryRefreshTokens } from "../../auth/InMemoryRefreshTokens";
 import { UserMother } from "../mothers/UserMother";
 
 const wire = (value: unknown): unknown => JSON.parse(JSON.stringify(value));
+
+/** What the route sends: the use case result plus the refresh token the route attaches. */
+const asSent = async <T extends { id: string }>(session: T): Promise<unknown> =>
+	wire(await new SessionTokens(new InMemoryRefreshTokens()).attach(session, new Date()));
 
 const hash = new Hash();
 const jwt = new JWT({ issuer: "issuer", secret: "secret" });
@@ -46,7 +52,7 @@ const legacyUser = UserMother.create({ securePassword: null });
 
 describe("RegisteredUserSchema", () => {
 	it("accepts the new account UserRegister returns, including its one-time game password", async () => {
-		const registered = wire(
+		const registered = await asSent(
 			await new UserRegister(repositoryWith(null), hash, logger, emailSender, jwt).register({
 				id: "user-1",
 				email: "player1@example.com",
@@ -105,7 +111,7 @@ describe("UsernameAvailabilitySchema", () => {
 
 describe("AccountPasswordResetSchema", () => {
 	it("accepts the fresh session UserAccountPasswordReset returns", async () => {
-		const session = wire(
+		const session = await asSent(
 			await new UserAccountPasswordReset(
 				repositoryWith(legacyUser),
 				hash,
@@ -137,7 +143,7 @@ describe("GamePasswordSchema", () => {
 
 describe("PasswordUpgradeSchema", () => {
 	it("accepts the fresh session UserUpgradePassword returns", async () => {
-		const session = wire(
+		const session = await asSent(
 			await new UserUpgradePassword(repositoryWith(legacyUser), hash, jwt).upgrade({
 				userId: legacyUser.id,
 				password: "Str0ngPassword",

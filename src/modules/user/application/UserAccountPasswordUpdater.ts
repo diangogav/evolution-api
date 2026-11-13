@@ -5,6 +5,7 @@ import { NotFoundError } from "../../../shared/errors/NotFoundError";
 import { Hash } from "../../../shared/Hash";
 import { Logger } from "../../../shared/logger/domain/Logger";
 import { SecurePassword } from "../domain/SecurePassword";
+import { SessionRevoker } from "../domain/SessionRevoker";
 import { UserRepository } from "../domain/UserRepository";
 
 export class UserAccountPasswordUpdater {
@@ -13,16 +14,19 @@ export class UserAccountPasswordUpdater {
 		private readonly hash: Hash,
 		private readonly logger: Logger,
 		private readonly emailSender: EmailSender,
+		private readonly sessions?: SessionRevoker,
 	) {}
 
 	async updatePassword({
 		id,
 		currentPassword,
 		newPassword,
+		now = new Date(),
 	}: {
 		id: string;
 		currentPassword: string;
 		newPassword: string;
+		now?: Date;
 	}): Promise<void> {
 		const user = await this.repository.findById(id);
 		if (!user) {
@@ -38,6 +42,7 @@ export class UserAccountPasswordUpdater {
 		const securePasswordHashed = await this.hash.hash(securePassword.value);
 
 		await this.repository.update(user.updateSecurePassword(securePasswordHashed));
+		await this.sessions?.revokeAllForUser(user.id, now);
 		this.logger.info(`Account password updated for user: ${user.id}`);
 
 		const { html, text } = renderBrandedEmail({

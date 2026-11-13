@@ -65,6 +65,11 @@ export interface DiscordAuthRouterDependencies {
 	/** Marks the nonce cookie Secure; off only for plain-http local development. */
 	secureCookie: boolean;
 	requireUser: typeof defaultRequireUser;
+	/** Adds a refresh token to the session of an account that was just created. */
+	attachRefreshToken: <T extends { id: string }>(
+		session: T,
+		now: Date,
+	) => Promise<T & { refreshToken: string }>;
 }
 
 function buildUseCases(): DiscordAuthUseCases | null {
@@ -116,6 +121,7 @@ export function createDiscordAuthRouter({
 	useCases,
 	secureCookie,
 	requireUser,
+	attachRefreshToken,
 }: DiscordAuthRouterDependencies) {
 	const enabled = (): DiscordAuthUseCases => {
 		if (!useCases) throw new NotFoundError("Signing in with Discord is not available");
@@ -228,7 +234,9 @@ export function createDiscordAuthRouter({
 		.post(
 			"/register",
 			async ({ body }) => {
-				return enabled().register.run({ ...body, id: randomUUID(), now: new Date() });
+				const now = new Date();
+				const registered = await enabled().register.run({ ...body, id: randomUUID(), now });
+				return attachRefreshToken(registered, now);
 			},
 			{
 				detail: {
@@ -243,6 +251,7 @@ export function createDiscordAuthRouter({
 							email: "player1@example.com",
 							token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
 							gamePassword: "Xy3z",
+							refreshToken: "nB3x0vY8mTq2cLh5JrW7dKpZ1sFu4aEg6iOoXyVbN9M",
 						}),
 						...errorResponses(400, 401, 404, 409, 422),
 					},
@@ -312,4 +321,5 @@ export const discordAuthRouter = createDiscordAuthRouter({
 	useCases: buildUseCases(),
 	secureCookie: config.discordLogin.secureCookie,
 	requireUser: defaultRequireUser,
+	attachRefreshToken: (session, now) => sessionTokens.attach(session, now),
 });

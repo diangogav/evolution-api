@@ -67,7 +67,7 @@ import {
 } from "../../modules/user/infrastructure/UserBanSchemas";
 import { adminAuthorizer } from "../auth/AdminAuthorizer";
 import { requireUser } from "../auth/requireUser";
-import { sessionTokens } from "../composition/sessionTokens";
+import { refreshTokenRepository, sessionTokens } from "../composition/sessionTokens";
 
 const logger = new Pino();
 const emailSender = new ResendEmailSender();
@@ -117,7 +117,7 @@ export const userRouter = new Elysia({ prefix: "/users" })
 		"/register",
 		async ({ body, request }) => {
 			const id = randomUUID();
-			return new UserRegister(
+			const registered = await new UserRegister(
 				userRepository,
 				hash,
 				logger,
@@ -130,6 +130,7 @@ export const userRouter = new Elysia({ prefix: "/users" })
 				origin: request.headers.get("origin"),
 				referer: request.headers.get("referer"),
 			});
+			return sessionTokens.attach(registered, new Date());
 		},
 		{
 			detail: {
@@ -144,6 +145,7 @@ export const userRouter = new Elysia({ prefix: "/users" })
 						email: "player1@example.com",
 						token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
 						gamePassword: "Xy3z",
+						refreshToken: "nB3x0vY8mTq2cLh5JrW7dKpZ1sFu4aEg6iOoXyVbN9M",
 					}),
 					...errorResponses(400, 409, 422),
 				},
@@ -271,17 +273,19 @@ export const userRouter = new Elysia({ prefix: "/users" })
 			if (!token) {
 				throw new AuthenticationError("No token provided");
 			}
-			return new UserAccountPasswordReset(
+			const session = await new UserAccountPasswordReset(
 				userRepository,
 				hash,
 				emailSender,
 				logger,
 				jwt,
 				userRepository,
+				refreshTokenRepository,
 			).resetPassword({
 				token,
 				newPassword: body.password,
 			});
+			return sessionTokens.attach(session, new Date());
 		},
 		{
 			detail: {
@@ -296,6 +300,7 @@ export const userRouter = new Elysia({ prefix: "/users" })
 						{
 							id: "user-123",
 							username: "player1",
+							refreshToken: "nB3x0vY8mTq2cLh5JrW7dKpZ1sFu4aEg6iOoXyVbN9M",
 							token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
 							migrated: true,
 						},
@@ -461,6 +466,7 @@ export const userRouter = new Elysia({ prefix: "/users" })
 				userRepository,
 				emailSender,
 				logger,
+				refreshTokenRepository,
 			).run({ token: body.token, now: new Date() }),
 		{
 			detail: {
@@ -596,10 +602,16 @@ export const userRouter = new Elysia({ prefix: "/users" })
 			.post(
 				"/upgrade-password",
 				async ({ body, userId: id }) => {
-					return new UserUpgradePassword(userRepository, hash, jwt).upgrade({
+					const session = await new UserUpgradePassword(
+						userRepository,
+						hash,
+						jwt,
+						refreshTokenRepository,
+					).upgrade({
 						...(body as { password: string }),
 						userId: id,
 					});
+					return sessionTokens.attach(session, new Date());
 				},
 				{
 					detail: {
@@ -613,6 +625,7 @@ export const userRouter = new Elysia({ prefix: "/users" })
 								id: "user-123",
 								token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
 								username: "player1",
+								refreshToken: "nB3x0vY8mTq2cLh5JrW7dKpZ1sFu4aEg6iOoXyVbN9M",
 							}),
 							...errorResponses(400, 401, 403, 404, 409, 422),
 						},
@@ -630,6 +643,7 @@ export const userRouter = new Elysia({ prefix: "/users" })
 						hash,
 						logger,
 						emailSender,
+						refreshTokenRepository,
 					).updatePassword({
 						...(body as { currentPassword: string; newPassword: string }),
 						id,
@@ -640,7 +654,7 @@ export const userRouter = new Elysia({ prefix: "/users" })
 						tags: ["Authentication"],
 						summary: "Change account password",
 						description:
-							"Changes the strong account password of the authenticated user, verifying the current one",
+							"Changes the strong account password of the authenticated user, verifying the current one, and ends every sign-in of the user: no refresh token issued before works afterwards",
 						security: [{ bearerAuth: [] }],
 						responses: {
 							200: emptyOk("Account password changed successfully"),

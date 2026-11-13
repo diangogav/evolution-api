@@ -8,12 +8,18 @@ const gamePassword = t.String({
 });
 
 /** Response of POST /users/register. */
+const refreshToken = t.String({
+	description:
+		"Single-use token for POST /auth/refresh, which renews the session without the password",
+});
+
 export const RegisteredUserSchema = t.Object({
 	id: t.String(),
 	username: t.String(),
 	email: t.String(),
 	token,
 	gamePassword,
+	refreshToken,
 });
 
 /** Response of POST /users/forgot-password: identical whether or not the email is registered. */
@@ -33,6 +39,7 @@ export const PasswordUpgradeSchema = t.Object({
 	id: t.String(),
 	token,
 	username: t.String(),
+	refreshToken,
 });
 
 /** Response of POST /users/reset-account-password: a fresh session for auto-login. */

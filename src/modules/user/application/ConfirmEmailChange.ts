@@ -4,6 +4,7 @@ import { AuthenticationError } from "../../../shared/errors/AuthenticationError"
 import { ConflictError } from "../../../shared/errors/ConflictError";
 import { Logger } from "../../../shared/logger/domain/Logger";
 import { EmailChanges, EmailTakenError } from "../domain/EmailChanges";
+import { SessionRevoker } from "../domain/SessionRevoker";
 import { UserRepository } from "../domain/UserRepository";
 import { EmailChangeLinks } from "./EmailChangeLinks";
 
@@ -15,6 +16,7 @@ export class ConfirmEmailChange {
 		private readonly emailChanges: EmailChanges,
 		private readonly emailSender: EmailSender,
 		private readonly logger: Logger,
+		private readonly sessions?: SessionRevoker,
 	) {}
 
 	async run({ token, now }: { token: string; now: Date }): Promise<{ email: string }> {
@@ -44,6 +46,9 @@ export class ConfirmEmailChange {
 			throw error;
 		}
 		if (!changed) throw new AuthenticationError("Invalid or expired link");
+
+		// The address that recovers the account moved; whoever is signed in elsewhere proves it again.
+		await this.sessions?.revokeAllForUser(user.id, now);
 
 		this.logger.info(`Email changed for user: ${user.id}`);
 		this.notifyPreviousAddress(user.username, claim.currentEmail, claim.newEmail);
