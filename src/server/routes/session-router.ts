@@ -18,7 +18,7 @@ export interface SessionRouterDependencies {
 
 export function createSessionRouter({ refresh, end }: SessionRouterDependencies) {
 	return new Elysia({ prefix: "/auth" })
-		.post("/refresh", ({ body }) => refresh.run({ ...body, now: new Date() }), {
+		.post("/refresh", async ({ body }) => refresh.run({ ...body, now: new Date() }), {
 			body: RefreshTokenBodySchema,
 			detail: {
 				tags: ["Authentication"],

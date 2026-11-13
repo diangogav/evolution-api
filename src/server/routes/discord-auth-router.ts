@@ -262,7 +262,7 @@ export function createDiscordAuthRouter({
 		.guard({}, (app) =>
 			app
 				.use(requireUser)
-				.get("/link", ({ userId }) => enabled().link.status(userId), {
+				.get("/link", async ({ userId }) => enabled().link.status(userId), {
 					detail: {
 						tags: ["Authentication"],
 						summary: "Get the caller's Discord link",
@@ -278,7 +278,7 @@ export function createDiscordAuthRouter({
 						},
 					},
 				})
-				.post("/link", ({ userId, body }) => enabled().link.begin({ userId, ...body }), {
+				.post("/link", async ({ userId, body }) => enabled().link.begin({ userId, ...body }), {
 					body: DiscordLinkStartBodySchema,
 					detail: {
 						tags: ["Authentication"],

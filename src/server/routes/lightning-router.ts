@@ -191,7 +191,7 @@ export function createLightningRouter(deps: LightningRouterDependencies) {
 		})
 		.get(
 			"/rankings",
-			({ query }) =>
+			async ({ query }) =>
 				deps.rankings.run({ season: query.season ?? deps.defaultSeason, limit: query.limit }),
 			{
 				query: t.Object({
@@ -360,7 +360,7 @@ export function createLightningRouter(deps: LightningRouterDependencies) {
 				.use(deps.requireUser)
 				.get(
 					"/:id/chat",
-					({ params, query }) =>
+					async ({ params, query }) =>
 						deps.chatHistory.run({
 							tournamentId: params.id,
 							before: query.before ?? null,
@@ -455,7 +455,7 @@ export function createLightningRouter(deps: LightningRouterDependencies) {
 				)
 				.get(
 					"/:id/chat/stream",
-					({ userId, params, request }) =>
+					async ({ userId, params, request }) =>
 						deps.chatStream.open({
 							tournamentId: params.id,
 							userId,
@@ -528,7 +528,7 @@ export function createLightningRouter(deps: LightningRouterDependencies) {
 				})
 				.post(
 					"/:id/entries",
-					({ userId, params, body }) =>
+					async ({ userId, params, body }) =>
 						deps.enter.run({ ...playerInput(userId, params.id), deck: body.deck }),
 					{
 						params: t.Object({ id: t.String() }),
