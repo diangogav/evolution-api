@@ -1,26 +1,44 @@
 import { describe, expect, it } from "bun:test";
 import { Elysia } from "elysia";
 
+import { AdmitDiscordIdentity } from "../../../../src/modules/auth/application/AdmitDiscordIdentity";
 import { CompleteDiscordLogin } from "../../../../src/modules/auth/application/CompleteDiscordLogin";
 import { DiscordLoginState } from "../../../../src/modules/auth/application/DiscordLoginState";
 import { ExchangeLoginCode } from "../../../../src/modules/auth/application/ExchangeLoginCode";
+import { RegisterWithDiscord } from "../../../../src/modules/auth/application/RegisterWithDiscord";
 import { StartDiscordLogin } from "../../../../src/modules/auth/application/StartDiscordLogin";
+import type { EmailAccount } from "../../../../src/modules/auth/domain/DiscordAccounts";
+import type { DiscordRegistration } from "../../../../src/modules/auth/domain/DiscordRegistration";
 import { DiscordReturnLinkBuilder } from "../../../../src/modules/auth/domain/DiscordReturnLinkBuilder";
+import { UserRegister } from "../../../../src/modules/user/application/UserRegister";
+import type { User } from "../../../../src/modules/user/domain/User";
+import type { VerifiedDiscordIdentity } from "../../../../src/modules/user/domain/UserRepository";
 import { createDiscordAuthRouter } from "../../../../src/server/routes/discord-auth-router";
 import { mapDomainErrorStatus } from "../../../../src/server/server";
+import { Hash } from "../../../../src/shared/Hash";
 import { JWT } from "../../../../src/shared/JWT";
 import { UserMother } from "../../modules/users/mothers/UserMother";
 
 const FRONTEND = "https://evoduel.com";
 const BASE = "http://localhost/auth/discord";
 
-function buildApp({ configured = true, secureCookie = true } = {}) {
+type World = {
+	configured?: boolean;
+	secureCookie?: boolean;
+	/** Users that exist before the sign-in, with the Discord account linked to each. */
+	users?: { user: User; discordId: string | null }[];
+};
+
+function buildApp({ configured = true, secureCookie = true, users = [] }: World = {}) {
 	const jwt = new JWT({ issuer: "issuer", secret: "secret" });
 	const state = new DiscordLoginState(jwt);
 	const links = new DiscordReturnLinkBuilder([
 		{ origin: FRONTEND, template: `${FRONTEND}/#/auth/discord?{query}` },
 	]);
-	const user = UserMother.create({ id: "user-1", username: "duelist" });
+	const rows = users.map((row) => ({ ...row }));
+	const created: { user: User; discord?: VerifiedDiscordIdentity }[] = [];
+	const emails: string[] = [];
+
 	const codes = new Map<string, string>();
 	const loginCodes = {
 		issue: async (userId: string) => {
@@ -33,17 +51,66 @@ function buildApp({ configured = true, secureCookie = true } = {}) {
 			return userId;
 		},
 	};
+	const tickets = new Map<string, DiscordRegistration>();
+	const registrations = {
+		save: async (registration: DiscordRegistration) => {
+			tickets.set("ticket-1", registration);
+			return "ticket-1";
+		},
+		find: async (ticket: string) => tickets.get(ticket) ?? null,
+		remove: async (ticket: string) => {
+			tickets.delete(ticket);
+		},
+	};
 	const oauthClient = {
 		authorizeUrl: (value: string) => `https://discord.test/authorize?state=${value}`,
 		fetchIdentity: async () => ({
 			id: "discord-1",
 			username: "duelist",
 			globalName: null,
-			email: null,
-			emailVerified: false,
+			email: "duelist@example.com",
+			emailVerified: true,
 		}),
 	};
-	const accounts = { findByDiscordId: async () => ({ id: user.id }) };
+	const accounts = {
+		findByDiscordId: async (discordId: string) => {
+			const row = rows.find((candidate) => candidate.discordId === discordId);
+			return row ? { id: row.user.id } : null;
+		},
+		findByEmail: async (email: string): Promise<EmailAccount[]> =>
+			rows
+				.filter((row) => row.user.email.toLowerCase() === email.toLowerCase())
+				.map((row) => ({
+					id: row.user.id,
+					username: row.user.username,
+					email: row.user.email,
+					discordId: row.discordId,
+					deleted: false,
+				})),
+		link: async (userId: string, discordId: string) => {
+			const row = rows.find((candidate) => candidate.user.id === userId);
+			if (!row || row.discordId) return false;
+			row.discordId = discordId;
+			return true;
+		},
+	};
+	const userRepository = {
+		create: async (user: User, discord?: VerifiedDiscordIdentity) => {
+			created.push({ user, discord });
+			rows.push({ user, discordId: discord?.discordId ?? null });
+		},
+		findByEmailOrUsername: async (email: string, username: string) =>
+			rows.find((row) => row.user.email === email || row.user.username === username)?.user ?? null,
+		findByEmail: async () => null,
+		findByUsername: async () => null,
+		findById: async (id: string) => rows.find((row) => row.user.id === id)?.user ?? null,
+		update: async () => undefined,
+	};
+	const emailSender = {
+		send: async (to: string) => {
+			emails.push(to);
+		},
+	};
 	const logger = { info: () => undefined, error: () => undefined } as never;
 	let nonces = 0;
 
@@ -54,22 +121,43 @@ function buildApp({ configured = true, secureCookie = true } = {}) {
 					start: new StartDiscordLogin(oauthClient, state, links, () => `nonce-${++nonces}`),
 					complete: new CompleteDiscordLogin(
 						oauthClient,
-						accounts,
+						new AdmitDiscordIdentity(accounts, registrations, emailSender, logger),
 						loginCodes,
 						state,
 						links,
 						logger,
 					),
-					exchange: new ExchangeLoginCode(
-						loginCodes,
-						{ findById: async (id) => (id === user.id ? user : null) },
-						jwt,
+					exchange: new ExchangeLoginCode(loginCodes, userRepository, jwt),
+					register: new RegisterWithDiscord(
+						registrations,
+						new UserRegister(userRepository, new Hash(), logger, emailSender, jwt),
 					),
 				}
 			: null,
 	});
 
-	return { app: new Elysia().onError(mapDomainErrorStatus).use(router), jwt };
+	return {
+		app: new Elysia().onError(mapDomainErrorStatus).use(router),
+		jwt,
+		rows,
+		created,
+		emails,
+	};
+}
+
+const LINKED = {
+	user: UserMother.create({ id: "user-1", username: "duelist" }),
+	discordId: "discord-1",
+};
+
+function post(app: { handle(request: Request): Promise<Response> }, path: string, body: unknown) {
+	return app.handle(
+		new Request(`${BASE}${path}`, {
+			method: "POST",
+			headers: { "content-type": "application/json" },
+			body: JSON.stringify(body),
+		}),
+	);
 }
 
 /** Starts a sign-in and returns what the browser would keep: the state and the cookie. */
@@ -111,7 +199,7 @@ describe("discord auth router", () => {
 	});
 
 	it("signs a browser in end to end: start, callback, then the code for a session", async () => {
-		const { app, jwt } = buildApp();
+		const { app, jwt } = buildApp({ users: [LINKED] });
 		const { state, cookie } = await start(app as unknown as Elysia, "?redirect=/decks");
 
 		const callback = await app.handle(
@@ -147,6 +235,91 @@ describe("discord auth router", () => {
 		expect(replay.status).toBe(401);
 	});
 
+	it("links the account that has the same email and signs its owner in", async () => {
+		const existing = UserMother.create({ id: "user-7", email: "Duelist@example.com" });
+		const { app, rows, emails } = buildApp({ users: [{ user: existing, discordId: null }] });
+		const { state, cookie } = await start(app as unknown as Elysia);
+
+		const callback = await app.handle(
+			new Request(`${BASE}/callback?code=discord-code&state=${state}`, { headers: { cookie } }),
+		);
+
+		expect(callback.headers.get("location")).toBe(
+			`${FRONTEND}/#/auth/discord?code=login-code&redirect=%2F`,
+		);
+		expect(rows[0].discordId).toBe("discord-1");
+		expect(emails).toEqual(["Duelist@example.com"]);
+
+		const session = await post(app, "/session", { code: "login-code" });
+		expect(((await session.json()) as { id: string }).id).toBe("user-7");
+	});
+
+	it("registers a new user end to end: callback ticket, then username and password", async () => {
+		const { app, jwt, created } = buildApp();
+		const { state, cookie } = await start(app as unknown as Elysia, "?redirect=/decks");
+
+		const callback = await app.handle(
+			new Request(`${BASE}/callback?code=discord-code&state=${state}`, { headers: { cookie } }),
+		);
+
+		expect(callback.headers.get("location")).toBe(
+			`${FRONTEND}/#/auth/discord?register=ticket-1&username=duelist&redirect=%2Fdecks`,
+		);
+
+		const weak = await post(app, "/register", {
+			ticket: "ticket-1",
+			username: "duelist",
+			password: "short",
+		});
+		expect(weak.status).toBe(400);
+
+		const registered = await post(app, "/register", {
+			ticket: "ticket-1",
+			username: "duelist",
+			password: "Passw0rd!",
+		});
+
+		expect(registered.status).toBe(200);
+		const body = (await registered.json()) as { id: string; token: string; gamePassword: string };
+		expect(body).toMatchObject({ username: "duelist", email: "duelist@example.com" });
+		expect(body.gamePassword).toHaveLength(4);
+		expect(jwt.decode(body.token)).toMatchObject({ id: body.id });
+		expect(created).toHaveLength(1);
+		expect(created[0].discord?.discordId).toBe("discord-1");
+		expect(created[0].discord?.emailVerifiedAt).toBeInstanceOf(Date);
+		expect(created[0].user.securePassword).toBeTruthy();
+
+		const again = await post(app, "/register", {
+			ticket: "ticket-1",
+			username: "other",
+			password: "Passw0rd!",
+		});
+		expect(again.status).toBe(401);
+	});
+
+	it("answers 409 to a registration whose username is taken and keeps the ticket", async () => {
+		const taken = UserMother.create({ id: "user-3", username: "duelist", email: "x@example.com" });
+		const { app } = buildApp({ users: [{ user: taken, discordId: null }] });
+		const { state, cookie } = await start(app as unknown as Elysia);
+		await app.handle(
+			new Request(`${BASE}/callback?code=discord-code&state=${state}`, { headers: { cookie } }),
+		);
+
+		const conflict = await post(app, "/register", {
+			ticket: "ticket-1",
+			username: "duelist",
+			password: "Passw0rd!",
+		});
+		const retry = await post(app, "/register", {
+			ticket: "ticket-1",
+			username: "duelist2",
+			password: "Passw0rd!",
+		});
+
+		expect(conflict.status).toBe(409);
+		expect(retry.status).toBe(200);
+	});
+
 	it("sends a callback without the cookie back with invalid_state", async () => {
 		const { app } = buildApp();
 		const { state } = await start(app as unknown as Elysia);
@@ -175,6 +348,7 @@ describe("discord auth router", () => {
 		["GET", "/start"],
 		["GET", "/callback?code=c&state=s"],
 		["POST", "/session"],
+		["POST", "/register"],
 	])("answers 404 to %s %s while Discord sign-in is not configured", async (method, path) => {
 		const { app } = buildApp({ configured: false });
 
@@ -182,7 +356,10 @@ describe("discord auth router", () => {
 			new Request(`${BASE}${path}`, {
 				method,
 				headers: { "content-type": "application/json" },
-				body: method === "POST" ? JSON.stringify({ code: "x" }) : undefined,
+				body:
+					method === "POST"
+						? JSON.stringify({ code: "x", ticket: "t", username: "u", password: "Passw0rd!" })
+						: undefined,
 			}),
 		);
 

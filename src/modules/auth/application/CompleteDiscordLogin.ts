@@ -1,9 +1,9 @@
 import { Logger } from "../../../shared/logger/domain/Logger";
-import { DiscordAccounts } from "../domain/DiscordAccounts";
 import { DiscordIdentity } from "../domain/DiscordIdentity";
 import { DiscordOAuthClient } from "../domain/DiscordOAuthClient";
 import { DiscordReturnLinkBuilder } from "../domain/DiscordReturnLinkBuilder";
 import { LoginCodeStore } from "../domain/LoginCodeStore";
+import { AdmitDiscordIdentity } from "./AdmitDiscordIdentity";
 import { DiscordLoginState } from "./DiscordLoginState";
 
 export type CompleteDiscordLoginInput = {
@@ -15,10 +15,11 @@ export type CompleteDiscordLoginInput = {
 	nonce?: string | null;
 	/** Error Discord reported instead of a code, e.g. `access_denied`. */
 	error?: string | null;
+	now: Date;
 };
 
 export type CompleteDiscordLoginResult = {
-	/** Frontend URL to send the browser to, carrying a login code or an error. */
+	/** Frontend URL to send the browser to, carrying a login code, a registration ticket or an error. */
 	redirectUrl: string;
 };
 
@@ -30,7 +31,7 @@ export type CompleteDiscordLoginResult = {
 export class CompleteDiscordLogin {
 	constructor(
 		private readonly oauthClient: Pick<DiscordOAuthClient, "fetchIdentity">,
-		private readonly accounts: DiscordAccounts,
+		private readonly admit: Pick<AdmitDiscordIdentity, "run">,
 		private readonly loginCodes: Pick<LoginCodeStore, "issue">,
 		private readonly state: DiscordLoginState,
 		private readonly links: Pick<DiscordReturnLinkBuilder, "build">,
@@ -56,12 +57,21 @@ export class CompleteDiscordLogin {
 			return { redirectUrl: this.links.build(payload.origin, { error: "discord_unavailable" }) };
 		}
 
-		const account = await this.accounts.findByDiscordId(identity.id);
-		if (!account) {
-			return { redirectUrl: this.links.build(payload.origin, { error: "not_linked" }) };
+		const admission = await this.admit.run(identity, input.now);
+		if (admission.kind === "error") {
+			return { redirectUrl: this.links.build(payload.origin, { error: admission.error }) };
+		}
+		if (admission.kind === "register") {
+			return {
+				redirectUrl: this.links.build(payload.origin, {
+					register: admission.ticket,
+					username: admission.username,
+					redirect: payload.redirect,
+				}),
+			};
 		}
 
-		const code = await this.loginCodes.issue(account.id);
+		const code = await this.loginCodes.issue(admission.userId);
 		return {
 			redirectUrl: this.links.build(payload.origin, { code, redirect: payload.redirect }),
 		};

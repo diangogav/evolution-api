@@ -1,7 +1,7 @@
 import { dataSource } from "../../../evolution-types/src/data-source";
 import { UserProfileEntity } from "../../../evolution-types/src/entities/UserProfileEntity";
 import { User } from "../domain/User";
-import { UserRepository } from "../domain/UserRepository";
+import { UserRepository, VerifiedDiscordIdentity } from "../domain/UserRepository";
 
 export class UserPostgresRepository implements UserRepository {
 	async findByEmailOrUsername(email: string, username: string): Promise<User | null> {
@@ -17,7 +17,7 @@ export class UserPostgresRepository implements UserRepository {
 		return User.from(userProfileEntity);
 	}
 
-	async create(user: User): Promise<void> {
+	async create(user: User, discord?: VerifiedDiscordIdentity): Promise<void> {
 		const repository = dataSource.getRepository(UserProfileEntity);
 		const userProfileEntity = repository.create({
 			id: user.id,
@@ -25,6 +25,9 @@ export class UserPostgresRepository implements UserRepository {
 			password: user.password,
 			securePassword: user.securePassword,
 			email: user.email,
+			...(discord
+				? { discordId: discord.discordId, emailVerifiedAt: discord.emailVerifiedAt }
+				: {}),
 		});
 		await repository.save(userProfileEntity);
 	}

@@ -19,3 +19,14 @@ export const LoginCodeExchangeSchema = t.Object({
 		description: "Single-use code received in the redirect back from Discord",
 	}),
 });
+
+/** Body of POST /auth/discord/register. */
+export const DiscordRegistrationSchema = t.Object({
+	ticket: t.String({
+		minLength: 1,
+		maxLength: 128,
+		description: "Registration ticket received in the redirect back from Discord",
+	}),
+	username: t.String({ minLength: 1, maxLength: 14, pattern: "^.*\\S.*$" }),
+	password: t.String({ minLength: 1, pattern: "^.*\\S.*$" }),
+});

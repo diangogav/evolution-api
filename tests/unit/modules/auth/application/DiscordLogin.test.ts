@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "bun:test";
 
+import type { DiscordAdmission } from "../../../../../src/modules/auth/application/AdmitDiscordIdentity";
 import { CompleteDiscordLogin } from "../../../../../src/modules/auth/application/CompleteDiscordLogin";
 import { DiscordLoginState } from "../../../../../src/modules/auth/application/DiscordLoginState";
 import { ExchangeLoginCode } from "../../../../../src/modules/auth/application/ExchangeLoginCode";
@@ -12,6 +13,8 @@ import { UserMother } from "../../users/mothers/UserMother";
 
 const DEFAULT_ORIGIN = "https://evoduel.com";
 const LOCAL_ORIGIN = "http://localhost:5173";
+
+const NOW = new Date("2026-11-13T12:00:00Z");
 
 const IDENTITY: DiscordIdentity = {
 	id: "discord-1",
@@ -47,7 +50,8 @@ describe("signing in with Discord", () => {
 	let state: DiscordLoginState;
 	let links: DiscordReturnLinkBuilder;
 	let loginCodes: FakeLoginCodes;
-	let linked: Map<string, string>;
+	let admission: DiscordAdmission;
+	let admitted: DiscordIdentity[];
 	let identityRequests: string[];
 	let failIdentity: boolean;
 	let start: StartDiscordLogin;
@@ -61,7 +65,8 @@ describe("signing in with Discord", () => {
 			{ origin: LOCAL_ORIGIN, template: `${LOCAL_ORIGIN}/#/auth/discord?{query}` },
 		]);
 		loginCodes = new FakeLoginCodes();
-		linked = new Map([[IDENTITY.id, "user-1"]]);
+		admission = { kind: "login", userId: "user-1" };
+		admitted = [];
 		identityRequests = [];
 		failIdentity = false;
 
@@ -73,16 +78,16 @@ describe("signing in with Discord", () => {
 				return IDENTITY;
 			},
 		};
-		const accounts = {
-			findByDiscordId: async (discordId: string) => {
-				const id = linked.get(discordId);
-				return id ? { id } : null;
+		const admit = {
+			run: async (identity: DiscordIdentity) => {
+				admitted.push(identity);
+				return admission;
 			},
 		};
 		const logger = { info: () => undefined, error: () => undefined } as never;
 
 		start = new StartDiscordLogin(oauthClient, state, links, () => "nonce-1");
-		complete = new CompleteDiscordLogin(oauthClient, accounts, loginCodes, state, links, logger);
+		complete = new CompleteDiscordLogin(oauthClient, admit, loginCodes, state, links, logger);
 	});
 
 	function startedState(input: { origin?: string; redirect?: string } = {}): string {
@@ -111,8 +116,9 @@ describe("signing in with Discord", () => {
 	});
 
 	describe("CompleteDiscordLogin", () => {
-		it("returns a login code for the user linked to the Discord account", async () => {
+		it("returns a login code for the user the identity is admitted as", async () => {
 			const { redirectUrl } = await complete.run({
+				now: NOW,
 				code: "discord-code",
 				state: startedState({ origin: LOCAL_ORIGIN, redirect: "/decks" }),
 				nonce: "nonce-1",
@@ -123,23 +129,44 @@ describe("signing in with Discord", () => {
 			expect(result.get("redirect")).toBe("/decks");
 			expect(loginCodes.issued.get(result.get("code") as string)).toBe("user-1");
 			expect(identityRequests).toEqual(["discord-code"]);
+			expect(admitted).toEqual([IDENTITY]);
 		});
 
-		it("reports not_linked when no user has that Discord account", async () => {
-			linked.clear();
+		it("returns the registration ticket and the suggested username for a new user", async () => {
+			admission = { kind: "register", ticket: "ticket-1", username: "duelist" };
 
 			const { redirectUrl } = await complete.run({
+				now: NOW,
+				code: "discord-code",
+				state: startedState({ redirect: "/decks" }),
+				nonce: "nonce-1",
+			});
+
+			expect(Object.fromEntries(resultOf(redirectUrl))).toEqual({
+				register: "ticket-1",
+				username: "duelist",
+				redirect: "/decks",
+			});
+			expect(loginCodes.issued.size).toBe(0);
+		});
+
+		it("reports the reason when the identity is not admitted", async () => {
+			admission = { kind: "error", error: "account_conflict" };
+
+			const { redirectUrl } = await complete.run({
+				now: NOW,
 				code: "discord-code",
 				state: startedState(),
 				nonce: "nonce-1",
 			});
 
-			expect(resultOf(redirectUrl).get("error")).toBe("not_linked");
+			expect(resultOf(redirectUrl).get("error")).toBe("account_conflict");
 			expect(loginCodes.issued.size).toBe(0);
 		});
 
 		it("rejects a callback from a browser that did not start the sign-in", async () => {
 			const { redirectUrl } = await complete.run({
+				now: NOW,
 				code: "discord-code",
 				state: startedState({ origin: LOCAL_ORIGIN }),
 				nonce: "nonce-of-another-browser",
@@ -150,7 +177,11 @@ describe("signing in with Discord", () => {
 		});
 
 		it("rejects a callback without the nonce cookie", async () => {
-			const { redirectUrl } = await complete.run({ code: "discord-code", state: startedState() });
+			const { redirectUrl } = await complete.run({
+				code: "discord-code",
+				state: startedState(),
+				now: NOW,
+			});
 
 			expect(resultOf(redirectUrl).get("error")).toBe("invalid_state");
 		});
@@ -163,7 +194,12 @@ describe("signing in with Discord", () => {
 				nonceHash: "x",
 			});
 
-			const { redirectUrl } = await complete.run({ code: "c", state: forged, nonce: "nonce-1" });
+			const { redirectUrl } = await complete.run({
+				code: "c",
+				state: forged,
+				nonce: "nonce-1",
+				now: NOW,
+			});
 
 			expect(redirectUrl).toBe(`${DEFAULT_ORIGIN}/#/auth/discord?error=invalid_state`);
 		});
@@ -172,6 +208,7 @@ describe("signing in with Discord", () => {
 			const sessionToken = jwt.generate({ id: "user-1", role: "USER" });
 
 			const { redirectUrl } = await complete.run({
+				now: NOW,
 				code: "c",
 				state: sessionToken,
 				nonce: "nonce-1",
@@ -182,6 +219,7 @@ describe("signing in with Discord", () => {
 
 		it("reports access_denied when the user declines on Discord", async () => {
 			const { redirectUrl } = await complete.run({
+				now: NOW,
 				error: "access_denied",
 				state: startedState(),
 				nonce: "nonce-1",
@@ -195,6 +233,7 @@ describe("signing in with Discord", () => {
 			failIdentity = true;
 
 			const { redirectUrl } = await complete.run({
+				now: NOW,
 				code: "discord-code",
 				state: startedState(),
 				nonce: "nonce-1",

@@ -22,9 +22,17 @@ describe("DiscordReturnLinkBuilder", () => {
 	});
 
 	it("falls back to the first frontend for an origin that is not registered", () => {
-		const url = builder.build("https://evil.example", { error: "not_linked" });
+		const url = builder.build("https://evil.example", { error: "account_conflict" });
 
-		expect(url).toBe("https://evoduel.com/#/auth/discord?error=not_linked");
+		expect(url).toBe("https://evoduel.com/#/auth/discord?error=account_conflict");
+	});
+
+	it("carries the registration ticket and the suggested username for a new user", () => {
+		const url = builder.build(null, { register: "ticket-1", username: "duelist", redirect: "/" });
+
+		expect(url).toBe(
+			"https://evoduel.com/#/auth/discord?register=ticket-1&username=duelist&redirect=%2F",
+		);
 	});
 
 	it("falls back to the first frontend when no origin is given", () => {

@@ -8,7 +8,15 @@ import { Logger } from "../../../shared/logger/domain/Logger";
 import { GamePassword } from "../domain/GamePassword";
 import { SecurePassword } from "../domain/SecurePassword";
 import { User } from "../domain/User";
-import { UserRepository } from "../domain/UserRepository";
+import { UserRepository, VerifiedDiscordIdentity } from "../domain/UserRepository";
+
+export type RegisteredUser = {
+	id: string;
+	username: string;
+	email: string;
+	token: string;
+	gamePassword: string;
+};
 
 export class UserRegister {
 	constructor(
@@ -24,12 +32,15 @@ export class UserRegister {
 		email,
 		username,
 		password,
+		discord,
 	}: {
 		id: string;
 		email: string;
 		username: string;
 		password: string;
-	}): Promise<unknown> {
+		/** Set when the account is created through Discord, which already verified the email. */
+		discord?: VerifiedDiscordIdentity;
+	}): Promise<RegisteredUser> {
 		this.logger.info(`Creating new user ${email}`);
 
 		const existingUser = await this.repository.findByEmailOrUsername(email, username);
@@ -49,6 +60,7 @@ export class UserRegister {
 			password,
 			gamePassword: gamePassword.value,
 			gamePasswordHashed,
+			discord,
 		});
 	}
 
@@ -59,6 +71,7 @@ export class UserRegister {
 		password,
 		gamePassword,
 		gamePasswordHashed,
+		discord,
 	}: {
 		id: string;
 		email: string;
@@ -66,13 +79,8 @@ export class UserRegister {
 		password: string;
 		gamePassword: string;
 		gamePasswordHashed: string;
-	}): Promise<{
-		id: string;
-		username: string;
-		email: string;
-		token: string;
-		gamePassword: string;
-	}> {
+		discord?: VerifiedDiscordIdentity;
+	}): Promise<RegisteredUser> {
 		const securePassword = SecurePassword.create(password);
 		const securePasswordHashed = await this.hash.hash(securePassword.value);
 
@@ -85,7 +93,7 @@ export class UserRegister {
 			role: UserProfileRole.USER,
 		});
 
-		await this.repository.create(user);
+		await this.repository.create(user, discord);
 
 		const { html, text } = renderBrandedEmail({
 			heading: `Welcome to Evolution, ${username}!`,
