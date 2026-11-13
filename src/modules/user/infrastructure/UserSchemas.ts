@@ -67,3 +67,28 @@ export const EmailVerificationStatusSchema = t.Object({
 export const EmailVerificationResendSchema = t.Object({
 	sent: t.Boolean({ description: "False when the address was already confirmed" }),
 });
+
+/** Body of POST /users/change-email. */
+export const EmailChangeRequestBodySchema = t.Object({
+	newEmail: t.String({ minLength: 1, maxLength: 254 }),
+	currentPassword: t.String({ minLength: 1 }),
+});
+
+/** Response of POST /users/change-email. */
+export const EmailChangeRequestedSchema = t.Object({
+	sent: t.Literal(true, { description: "A confirmation link was mailed to the new address" }),
+});
+
+/** Body of POST /users/confirm-email-change. */
+export const EmailChangeConfirmBodySchema = t.Object({
+	token: t.String({
+		minLength: 1,
+		maxLength: 2048,
+		description: "Token from the link mailed to the new address",
+	}),
+});
+
+/** Response of POST /users/confirm-email-change. */
+export const EmailChangedSchema = t.Object({
+	email: t.String({ description: "Address the account uses from now on" }),
+});

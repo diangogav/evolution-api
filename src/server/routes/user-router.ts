@@ -13,8 +13,11 @@ import { UserStatsSchema } from "../../modules/stats/infrastructure/StatsSchemas
 import { UserStatsPostgresRepository } from "../../modules/stats/infrastructure/UserStatsPostgresRepository";
 import { TierResolver } from "../../modules/tiers/application/TierResolver";
 import { TiersPostgresRepository } from "../../modules/tiers/infrastructure/TiersPostgresRepository";
+import { ConfirmEmailChange } from "../../modules/user/application/ConfirmEmailChange";
+import { EmailChangeLinks } from "../../modules/user/application/EmailChangeLinks";
 import { EmailVerificationLinks } from "../../modules/user/application/EmailVerificationLinks";
 import { EmailVerificationStatus } from "../../modules/user/application/EmailVerificationStatus";
+import { RequestEmailChange } from "../../modules/user/application/RequestEmailChange";
 import { UserForgotPassword } from "../../modules/user/application/UserForgotPassword";
 import { UserGamePasswordGenerator } from "../../modules/user/application/UserGamePasswordGenerator";
 import { UserRegister } from "../../modules/user/application/UserRegister";
@@ -30,6 +33,10 @@ import { BunRedisVerificationResendThrottle } from "../../modules/user/infrastru
 import { UserPostgresRepository } from "../../modules/user/infrastructure/UserPostgresRepository";
 import {
 	AccountPasswordResetSchema,
+	EmailChangeConfirmBodySchema,
+	EmailChangedSchema,
+	EmailChangeRequestBodySchema,
+	EmailChangeRequestedSchema,
 	EmailVerificationBodySchema,
 	EmailVerificationResendSchema,
 	EmailVerificationStatusSchema,
@@ -88,6 +95,19 @@ const emailVerificationStatus = new EmailVerificationStatus(
 	verificationLinks,
 	emailSender,
 	new BunRedisVerificationResendThrottle(redisClient),
+);
+
+const emailChangeLinks = new EmailChangeLinks(
+	jwt,
+	new ResetPasswordLinkBuilder(config.emailChange.frontends, config.emailChange.defaultUrl),
+);
+const requestEmailChange = new RequestEmailChange(
+	userRepository,
+	userRepository,
+	hash,
+	emailChangeLinks,
+	emailSender,
+	new BunRedisVerificationResendThrottle(redisClient, "email-change:request:"),
 );
 
 export const userRouter = new Elysia({ prefix: "/users" })
@@ -429,6 +449,33 @@ export const userRouter = new Elysia({ prefix: "/users" })
 		},
 	)
 
+	.post(
+		"/confirm-email-change",
+		({ body }) =>
+			new ConfirmEmailChange(
+				emailChangeLinks,
+				userRepository,
+				userRepository,
+				emailSender,
+				logger,
+			).run({ token: body.token, now: new Date() }),
+		{
+			detail: {
+				tags: ["Authentication"],
+				summary: "Confirm a change of email address",
+				description:
+					"Applies the change for whoever opens the link mailed to the new address, records that address as verified and notifies the previous one. Answers 401 when the link is unknown, expired (24 hours) or stale because the account's address changed since, and 409 when another account took the address meanwhile.",
+				responses: {
+					200: jsonOk(EmailChangedSchema, "The account uses the new address", {
+						email: "new@example.com",
+					}),
+					...errorResponses(401, 409, 422),
+				},
+			},
+			body: EmailChangeConfirmBodySchema,
+		},
+	)
+
 	// Authenticated Endpoints: requireUser verifies the token and rejects banned users
 	.use(bearer())
 	.guard({}, (app) =>
@@ -448,6 +495,32 @@ export const userRouter = new Elysia({ prefix: "/users" })
 					},
 				},
 			})
+			.post(
+				"/change-email",
+				({ userId, body, request }) =>
+					requestEmailChange.run({
+						userId,
+						...body,
+						origin: request.headers.get("origin"),
+						referer: request.headers.get("referer"),
+					}),
+				{
+					detail: {
+						tags: ["User Management"],
+						summary: "Ask to change the email address",
+						description:
+							"Mails a confirmation link to the new address after checking the current account password. The account keeps its address until POST /users/confirm-email-change. Answers 401 for a wrong password, 400 for an invalid or unchanged address, 409 when the address is in use and 429 when an email was sent less than a minute ago.",
+						security: [{ bearerAuth: [] }],
+						responses: {
+							200: jsonOk(EmailChangeRequestedSchema, "The confirmation link was mailed", {
+								sent: true,
+							}),
+							...errorResponses(400, 401, 403, 404, 409, 422, 429),
+						},
+					},
+					body: EmailChangeRequestBodySchema,
+				},
+			)
 			.post(
 				"/email-verification/resend",
 				({ userId, request }) =>

@@ -173,6 +173,24 @@ export const config = {
 					]),
 		],
 	},
+	// Frontend page that confirms a change of email address.
+	emailChange: {
+		defaultUrl: "https://evoduel.com/#/confirm-email-change?token={token}",
+		frontends: [
+			{
+				origin: "https://evoduel.com",
+				template: "https://evoduel.com/#/confirm-email-change?token={token}",
+			},
+			...(isProduction
+				? []
+				: [
+						{
+							origin: "http://localhost:5173",
+							template: "http://localhost:5173/#/confirm-email-change?token={token}",
+						},
+					]),
+		],
+	},
 	passwordRecovery: {
 		defaultResetUrl: "https://evolutionygo.com/reset-account-password?token={token}",
 		frontends: [
