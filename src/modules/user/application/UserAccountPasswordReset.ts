@@ -20,7 +20,7 @@ export class UserAccountPasswordReset {
 		private readonly emailSender: EmailSender,
 		private readonly logger: Logger,
 		private readonly jwt: JWT,
-		private readonly emailVerifications?: EmailVerifications,
+		private readonly emailVerifications?: Pick<EmailVerifications, "markVerified">,
 	) {}
 
 	async resetPassword({
