@@ -5,7 +5,11 @@ import { NotFoundError } from "../../../shared/errors/NotFoundError";
 import { Hash } from "../../../shared/Hash";
 import { JWT } from "../../../shared/JWT";
 import { Logger } from "../../../shared/logger/domain/Logger";
-import { EmailVerifications, PASSWORD_RESET_PURPOSE } from "../domain/EmailVerifications";
+import {
+	EmailVerifications,
+	isPasswordResetToken,
+	PASSWORD_RESET_PURPOSE,
+} from "../domain/EmailVerifications";
 import { SecurePassword } from "../domain/SecurePassword";
 import { UserRepository } from "../domain/UserRepository";
 
@@ -32,7 +36,11 @@ export class UserAccountPasswordReset {
 			throw new AuthenticationError("No token provided");
 		}
 
-		const decoded = this.jwt.decode(token) as { id: string; purpose?: string };
+		const decoded = this.jwt.decode(token) as { id: string; purpose?: string; role?: string };
+		if (!isPasswordResetToken(decoded)) {
+			throw new AuthenticationError("Invalid or expired token");
+		}
+
 		const user = await this.repository.findById(decoded.id);
 		if (!user) {
 			this.logger.error(`User not found for account password reset: ${decoded.id}`);
@@ -49,8 +57,7 @@ export class UserAccountPasswordReset {
 		await this.repository.update(updatedUser);
 		this.logger.info(`Account password reset for user: ${user.id}`);
 
-		// Only the token mailed by "forgot password" proves the address: this endpoint also
-		// accepts other valid tokens, and those say nothing about who reads the inbox.
+		// A link mailed before the claim existed is accepted above but proves nothing new.
 		if (decoded.purpose === PASSWORD_RESET_PURPOSE) {
 			await this.emailVerifications?.markVerified(user.id, now);
 		}

@@ -197,7 +197,7 @@ What the callback decides, in order (`AdmitDiscordIdentity`):
 | Registering or linking through Discord | Discord verified the address |
 | `POST /users/reset-account-password` with the token mailed by `POST /users/forgot-password` | The user opened the email; the token carries `purpose: "password-reset"` |
 
-The reset endpoint accepts any valid token of this API, so a reset made with another token (a session token, for example) changes the password and leaves the column alone. An earlier verification date is never overwritten.
+The reset endpoint takes only that mailed token. A session token names a user too, but accepting it would let whoever holds a session set a new password without the current one, so it answers `401`; signed-in users change their password through `POST /users/change-account-password`, which asks for the current one. An earlier verification date is never overwritten.
 
 ## Workers
 
