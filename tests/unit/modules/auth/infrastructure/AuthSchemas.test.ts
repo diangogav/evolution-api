@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { Value } from "@sinclair/typebox/value";
 
+import { SessionTokens } from "../../../../../src/modules/auth/application/SessionTokens";
 import { UserAuth } from "../../../../../src/modules/auth/application/UserAuth";
 import { LoginSchema } from "../../../../../src/modules/auth/infrastructure/AuthSchemas";
 import { User } from "../../../../../src/modules/user/domain/User";
@@ -8,6 +9,7 @@ import { UserRepository } from "../../../../../src/modules/user/domain/UserRepos
 import { Hash } from "../../../../../src/shared/Hash";
 import { JWT } from "../../../../../src/shared/JWT";
 import { UserMother } from "../../users/mothers/UserMother";
+import { InMemoryRefreshTokens } from "../InMemoryRefreshTokens";
 
 const wire = (value: unknown): unknown => JSON.parse(JSON.stringify(value));
 
@@ -24,7 +26,9 @@ const loginAs = async (user: User, password: string): Promise<unknown> => {
 		update: async () => undefined,
 	};
 
-	return wire(await new UserAuth(repository, hash, jwt).login({ email: user.email, password }));
+	// The route answers with the sign-in plus the refresh token it attaches.
+	const session = await new UserAuth(repository, hash, jwt).login({ email: user.email, password });
+	return wire(await new SessionTokens(new InMemoryRefreshTokens()).attach(session, new Date()));
 };
 
 describe("LoginSchema", () => {
@@ -47,6 +51,17 @@ describe("LoginSchema", () => {
 
 		expect(Value.Check(LoginSchema, session)).toBe(true);
 		expect((session as { mustUpgrade: boolean }).mustUpgrade).toBe(true);
+	});
+
+	it("rejects a session without its refresh token", () => {
+		expect(
+			Value.Check(LoginSchema, {
+				id: "user-123",
+				token: "jwt",
+				username: "player1",
+				mustUpgrade: false,
+			}),
+		).toBe(false);
 	});
 
 	it("rejects a token with a nested user object", () => {

@@ -9,6 +9,15 @@ export const LoginSchema = t.Object({
 		description:
 			"True when the user signed in with the game password and must set an account password",
 	}),
+	refreshToken: t.String({
+		description:
+			"Single-use token for POST /auth/refresh, which renews the session without the password; clients that do not renew can ignore it",
+	}),
+});
+
+/** Body of POST /auth/refresh and POST /auth/logout. */
+export const RefreshTokenBodySchema = t.Object({
+	refreshToken: t.String({ minLength: 1, maxLength: 256 }),
 });
 
 /** Body of POST /auth/discord/session. */

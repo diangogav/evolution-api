@@ -36,6 +36,7 @@ import { adminCosmeticsRouter } from "./routes/admin-cosmetics-router";
 import { adminModerationRouter } from "./routes/admin-moderation-router";
 import { adminEventsRouter } from "./routes/admin-events-router";
 import { adminStatsRouter } from "./routes/admin-stats-router";
+import { sessionRouter } from "./routes/session-router";
 import { statsRouter } from "./routes/stats-router";
 import { ticketRouter } from "./routes/ticket-router";
 import { userRouter } from "./routes/user-router";
@@ -109,6 +110,7 @@ export function mountApiV1Routes(app: Elysia) {
 		return group
 			.use(userRouter)
 			.use(discordAuthRouter)
+			.use(sessionRouter)
 			.use(achievementsRouter)
 			.use(userAchievementsRouter)
 			.use(leaderboardRouter)

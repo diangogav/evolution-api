@@ -9,7 +9,10 @@ import {
 	DISCORD_STATE_TTL_SECONDS,
 	DiscordLoginState,
 } from "../../modules/auth/application/DiscordLoginState";
-import { ExchangeLoginCode } from "../../modules/auth/application/ExchangeLoginCode";
+import {
+	ExchangeLoginCode,
+	ExchangeLoginCodeResult,
+} from "../../modules/auth/application/ExchangeLoginCode";
 import { LinkDiscordToUser } from "../../modules/auth/application/LinkDiscordToUser";
 import { ManageDiscordLink } from "../../modules/auth/application/ManageDiscordLink";
 import { RegisterWithDiscord } from "../../modules/auth/application/RegisterWithDiscord";
@@ -36,6 +39,7 @@ import { Hash } from "../../shared/Hash";
 import { Pino } from "../../shared/logger/infrastructure/Pino";
 import { redisClient } from "../../shared/redis/redisClient";
 import { apiJwt } from "../auth/apiJwt";
+import { sessionTokens } from "../composition/sessionTokens";
 import { requireUser as defaultRequireUser } from "../auth/requireUser";
 import { emptyOk, errorResponses, jsonOk } from "../openapi/responses";
 
@@ -48,7 +52,9 @@ const REDIRECT_RESPONSE = { description: "Redirect; the Location header carries 
 export interface DiscordAuthUseCases {
 	start: Pick<StartDiscordLogin, "run">;
 	complete: Pick<CompleteDiscordLogin, "run">;
-	exchange: Pick<ExchangeLoginCode, "run">;
+	exchange: {
+		run(input: { code: string }): Promise<ExchangeLoginCodeResult & { refreshToken: string }>;
+	};
 	register: Pick<RegisterWithDiscord, "run">;
 	link: Pick<ManageDiscordLink, "status" | "begin" | "unlink">;
 }
@@ -86,7 +92,13 @@ function buildUseCases(): DiscordAuthUseCases | null {
 			logger,
 			new LinkDiscordToUser(accounts),
 		),
-		exchange: new ExchangeLoginCode(loginCodes, users, apiJwt),
+		exchange: {
+			run: async (input) =>
+				sessionTokens.attach(
+					await new ExchangeLoginCode(loginCodes, users, apiJwt).run(input),
+					new Date(),
+				),
+		},
 		register: new RegisterWithDiscord(
 			registrations,
 			new UserRegister(users, new Hash(), logger, emailSender, apiJwt),
@@ -205,6 +217,7 @@ export function createDiscordAuthRouter({
 							token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
 							username: "player1",
 							mustUpgrade: false,
+							refreshToken: "nB3x0vY8mTq2cLh5JrW7dKpZ1sFu4aEg6iOoXyVbN9M",
 						}),
 						...errorResponses(401, 404, 422),
 					},

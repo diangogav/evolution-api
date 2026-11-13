@@ -67,6 +67,7 @@ import {
 } from "../../modules/user/infrastructure/UserBanSchemas";
 import { adminAuthorizer } from "../auth/AdminAuthorizer";
 import { requireUser } from "../auth/requireUser";
+import { sessionTokens } from "../composition/sessionTokens";
 
 const logger = new Pino();
 const emailSender = new ResendEmailSender();
@@ -157,7 +158,8 @@ export const userRouter = new Elysia({ prefix: "/users" })
 	.post(
 		"/login",
 		async ({ body }) => {
-			return new UserAuth(userRepository, hash, jwt).login(body);
+			const session = await new UserAuth(userRepository, hash, jwt).login(body);
+			return sessionTokens.attach(session, new Date());
 		},
 		{
 			detail: {
@@ -170,6 +172,7 @@ export const userRouter = new Elysia({ prefix: "/users" })
 						token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
 						username: "player1",
 						mustUpgrade: false,
+						refreshToken: "nB3x0vY8mTq2cLh5JrW7dKpZ1sFu4aEg6iOoXyVbN9M",
 					}),
 					...errorResponses(401, 422),
 				},
