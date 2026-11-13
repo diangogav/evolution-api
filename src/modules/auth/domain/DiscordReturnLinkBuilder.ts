@@ -5,7 +5,10 @@ export interface DiscordReturnFrontend {
 }
 
 export type DiscordReturnOutcome =
+	/** Signed in: `code` is traded for the session. */
 	| { code: string; redirect: string }
+	/** New to us: `register` is the ticket for the form that creates the account. */
+	| { register: string; username: string; redirect: string }
 	| { error: DiscordLoginError };
 
 /** Why a Discord sign-in did not produce a session; sent to the frontend as `error`. */
@@ -13,7 +16,10 @@ export const DISCORD_LOGIN_ERRORS = [
 	"access_denied",
 	"invalid_state",
 	"discord_unavailable",
-	"not_linked",
+	// The Discord account has no verified email, which accounts are matched and created by.
+	"email_unverified",
+	// The email belongs to an account that cannot take this Discord account.
+	"account_conflict",
 ] as const;
 export type DiscordLoginError = (typeof DISCORD_LOGIN_ERRORS)[number];
 

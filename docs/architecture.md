@@ -166,14 +166,27 @@ new Elysia({ prefix: "/me/missions" }).guard({}, (app) =>
 | Step | Route | What happens |
 | --- | --- | --- |
 | 1 | `GET /auth/discord/start?origin=&redirect=` | The browser navigates here (a page navigation, not a fetch). The API signs a short-lived `state`, sets the `discord_login_nonce` cookie and redirects to Discord. |
-| 2 | `GET /auth/discord/callback` | Discord sends the browser back. The API checks the `state` against the cookie, trades Discord's code for the account identity, finds the user whose `discord_id` matches and redirects to the frontend with a single-use `code`, or with `error`. |
-| 3 | `POST /auth/discord/session` | The frontend trades that `code` for the session (`LoginSchema`, the same shape as `POST /users/login`). |
+| 2 | `GET /auth/discord/callback` | Discord sends the browser back. The API checks the `state` against the cookie, trades Discord's code for the account identity, decides what that identity may do (table below) and redirects to the frontend. |
+| 3a | `POST /auth/discord/session` | Signed in: the frontend trades the `code` for the session (`LoginSchema`, the same shape as `POST /users/login`). |
+| 3b | `POST /auth/discord/register` | New user: the frontend sends the `register` ticket with the username and account password the user chose, and gets the same body as `POST /users/register`. |
+
+What the callback decides, in order (`AdmitDiscordIdentity`):
+
+| Situation | Result sent to the frontend |
+| --- | --- |
+| A user has that `discord_id` | `code`, `redirect` |
+| Discord sent no email, or one it has not verified | `error=email_unverified` |
+| Nobody has that email | `register`, `username` (a suggestion cut to 14 characters), `redirect` |
+| One live user has that email (ignoring case) and no Discord account | The account is linked, `email_verified_at` is set, its owner gets an email, then `code`, `redirect` |
+| The email belongs to a deleted user, to one with another Discord account, or to two users in different case | `error=account_conflict` |
 
 - **Why a code and not the JWT in the redirect:** a URL ends up in browser history and logs. The code lives 60 seconds in Redis and works once.
 - **Why the cookie:** a signed `state` proves the API issued it, not that this browser asked for it. Without the nonce, someone could start a sign-in with their own Discord account and hand the callback URL to a victim, who would land inside the attacker's account.
 - **Where the browser returns:** `origin` only selects an entry of `config.discordLogin.frontends`; the URL comes from that registry, never from the request.
 - **Discord tokens** are used once to read the identity and are not stored.
-- **`error` values:** `access_denied`, `invalid_state`, `discord_unavailable`, `not_linked` (no user has that Discord account).
+- **Linking by email:** safe only because Discord verified the address. Registration here never verified emails, so the linked account may have been created by someone else; the notice email tells the owner the account already had a password and how to reset it. The password is left as it is.
+- **Registering:** the email and the Discord account come from the ticket (15 minutes in Redis), never from the request. The account always gets an account password, because clients that sign in to this API without Discord need one. The ticket survives a `400` or `409`, so the form can be corrected, and is removed once the account exists.
+- **Other `error` values:** `access_denied`, `invalid_state`, `discord_unavailable`.
 
 ## Workers
 
