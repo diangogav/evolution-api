@@ -67,7 +67,6 @@ describe("changing the email address", () => {
 	let world: World;
 	let sent: Mail[];
 	let failMail: boolean;
-	let user: User;
 	const emailSender = {
 		send: async (to: string, data: Record<string, string>) => {
 			if (failMail) throw new Error("mail provider down");
@@ -82,7 +81,7 @@ describe("changing the email address", () => {
 		world = new World();
 		sent = [];
 		failMail = false;
-		user = world.add(
+		world.add(
 			UserMother.create({
 				id: "user-1",
 				username: "duelist",
