@@ -220,6 +220,7 @@ export const userRouter = new Elysia({ prefix: "/users" })
 				emailSender,
 				logger,
 				jwt,
+				userRepository,
 			).resetPassword({
 				token,
 				newPassword: body.password,

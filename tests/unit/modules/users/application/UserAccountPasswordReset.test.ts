@@ -114,4 +114,44 @@ describe("UserAccountPasswordReset", () => {
 			NotFoundError,
 		);
 	});
+
+	describe("email verification", () => {
+		const NOW = new Date("2026-11-13T12:00:00Z");
+		let verified: { userId: string; at: Date }[];
+
+		beforeEach(() => {
+			verified = [];
+			reset = new UserAccountPasswordReset(repository, hash, emailSender, logger, jwt, {
+				markVerified: async (userId, at) => {
+					verified.push({ userId, at });
+				},
+			});
+			spyOn(repository, "findById").mockResolvedValue(user);
+		});
+
+		it("marks the email as verified when the token is the one mailed for the reset", async () => {
+			const mailed = jwt.generate({ id: user.id, purpose: "password-reset" });
+
+			await reset.resetPassword({ token: mailed, newPassword: "NewPass2024", now: NOW });
+
+			expect(verified).toEqual([{ userId: user.id, at: NOW }]);
+		});
+
+		it("does not mark it for a token that did not come from the reset email", async () => {
+			const sessionToken = jwt.generate({ id: user.id, role: user.role });
+
+			await reset.resetPassword({ token: sessionToken, newPassword: "NewPass2024", now: NOW });
+
+			expect(verified).toEqual([]);
+		});
+
+		it("does not mark it when the new password is rejected", async () => {
+			const mailed = jwt.generate({ id: user.id, purpose: "password-reset" });
+
+			await expect(
+				reset.resetPassword({ token: mailed, newPassword: "weak", now: NOW }),
+			).rejects.toThrow(InvalidArgumentError);
+			expect(verified).toEqual([]);
+		});
+	});
 });

@@ -188,6 +188,17 @@ What the callback decides, in order (`AdmitDiscordIdentity`):
 - **Registering:** the email and the Discord account come from the ticket (15 minutes in Redis), never from the request. The account always gets an account password, because clients that sign in to this API without Discord need one. The ticket survives a `400` or `409`, so the form can be corrected, and is removed once the account exists.
 - **Other `error` values:** `access_denied`, `invalid_state`, `discord_unavailable`.
 
+### Verified emails
+
+`users.email_verified_at` records when an address was proven to belong to its user. Registration with email and password does not verify the address, so the column is set only by flows that carry proof:
+
+| Flow | Proof |
+| --- | --- |
+| Registering or linking through Discord | Discord verified the address |
+| `POST /users/reset-account-password` with the token mailed by `POST /users/forgot-password` | The user opened the email; the token carries `purpose: "password-reset"` |
+
+The reset endpoint accepts any valid token of this API, so a reset made with another token (a session token, for example) changes the password and leaves the column alone. An earlier verification date is never overwritten.
+
 ## Workers
 
 Background loops run in-process when their env flag is `true`, or standalone with `bun run src/worker.ts`. Instances share a lock per worker, so only one makes progress at a time.

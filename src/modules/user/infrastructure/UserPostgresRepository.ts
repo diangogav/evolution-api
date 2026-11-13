@@ -1,9 +1,18 @@
 import { dataSource } from "../../../evolution-types/src/data-source";
 import { UserProfileEntity } from "../../../evolution-types/src/entities/UserProfileEntity";
+import { EmailVerifications } from "../domain/EmailVerifications";
 import { User } from "../domain/User";
 import { UserRepository, VerifiedDiscordIdentity } from "../domain/UserRepository";
 
-export class UserPostgresRepository implements UserRepository {
+// COALESCE keeps the date of an earlier verification.
+const MARK_EMAIL_VERIFIED = `UPDATE "users"
+SET "email_verified_at" = COALESCE("email_verified_at", $2) WHERE "id" = $1`;
+
+export class UserPostgresRepository implements UserRepository, EmailVerifications {
+	async markVerified(userId: string, at: Date): Promise<void> {
+		await dataSource.query(MARK_EMAIL_VERIFIED, [userId, at]);
+	}
+
 	async findByEmailOrUsername(email: string, username: string): Promise<User | null> {
 		const repository = dataSource.getRepository(UserProfileEntity);
 		const userProfileEntity = await repository.findOne({
