@@ -8,6 +8,7 @@ import { DiscordLoginState } from "../../../../src/modules/auth/application/Disc
 import { ExchangeLoginCode } from "../../../../src/modules/auth/application/ExchangeLoginCode";
 import { LinkDiscordToUser } from "../../../../src/modules/auth/application/LinkDiscordToUser";
 import { ManageDiscordLink } from "../../../../src/modules/auth/application/ManageDiscordLink";
+import { SessionTokens } from "../../../../src/modules/auth/application/SessionTokens";
 import { RegisterWithDiscord } from "../../../../src/modules/auth/application/RegisterWithDiscord";
 import { StartDiscordLogin } from "../../../../src/modules/auth/application/StartDiscordLogin";
 import type { EmailAccount } from "../../../../src/modules/auth/domain/DiscordAccounts";
@@ -21,6 +22,7 @@ import { createDiscordAuthRouter } from "../../../../src/server/routes/discord-a
 import { mapDomainErrorStatus } from "../../../../src/server/server";
 import { Hash } from "../../../../src/shared/Hash";
 import { JWT } from "../../../../src/shared/JWT";
+import { InMemoryRefreshTokens } from "../../modules/auth/InMemoryRefreshTokens";
 import { UserMother } from "../../modules/users/mothers/UserMother";
 
 const FRONTEND = "https://evoduel.com";
@@ -113,6 +115,8 @@ function buildApp({ configured = true, secureCookie = true, users = [] }: World 
 		},
 	};
 	const intents = new DiscordLinkIntent(jwt);
+	const refreshTokens = new InMemoryRefreshTokens();
+	const sessionTokens = new SessionTokens(refreshTokens);
 	const userRepository = {
 		create: async (user: User, discord?: VerifiedDiscordIdentity) => {
 			created.push({ user, discord });
@@ -125,6 +129,7 @@ function buildApp({ configured = true, secureCookie = true, users = [] }: World 
 		findById: async (id: string) => rows.find((row) => row.user.id === id)?.user ?? null,
 		update: async () => undefined,
 	};
+	const exchange = new ExchangeLoginCode(loginCodes, userRepository, jwt);
 	const emailSender = {
 		send: async (to: string) => {
 			emails.push(to);
@@ -159,7 +164,9 @@ function buildApp({ configured = true, secureCookie = true, users = [] }: World 
 						new LinkDiscordToUser(accounts),
 					),
 					link: new ManageDiscordLink(accounts, intents, `${BASE}/start`),
-					exchange: new ExchangeLoginCode(loginCodes, userRepository, jwt),
+					exchange: {
+						run: async (input) => sessionTokens.attach(await exchange.run(input), new Date()),
+					},
 					register: new RegisterWithDiscord(
 						registrations,
 						new UserRegister(userRepository, new Hash(), logger, emailSender, jwt),
@@ -171,6 +178,7 @@ function buildApp({ configured = true, secureCookie = true, users = [] }: World 
 	return {
 		app: new Elysia().onError(mapDomainErrorStatus).use(router),
 		jwt,
+		refreshTokens,
 		rows,
 		created,
 		emails,
@@ -256,6 +264,7 @@ describe("discord auth router", () => {
 		const body = (await session.json()) as { id: string; token: string; username: string };
 		expect(body).toMatchObject({ id: "user-1", username: "duelist", mustUpgrade: false });
 		expect(jwt.decode(body.token)).toMatchObject({ id: "user-1" });
+		expect((body as { refreshToken?: string }).refreshToken).toBeString();
 
 		const replay = await app.handle(
 			new Request(`${BASE}/session`, {

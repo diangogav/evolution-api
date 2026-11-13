@@ -159,6 +159,23 @@ new Elysia({ prefix: "/me/missions" }).guard({}, (app) =>
 
 `requireUser` applies only to the routes inside that guard. **`user-router.ts`** (its authenticated, non-admin endpoints), **`ticket-router.ts`**, **`me-cosmetics-router.ts`**, **`loadout-router.ts`**, **`emote-bar-router.ts`**, **`missions-router.ts`**, **`shop-router.ts`**, **`event-run-router.ts`**, **`player-reports-router.ts`** and the player routes of **`lightning-router.ts`** use it. Public reads (`cosmetics-router.ts`, `public-loadout-router.ts`, `bot-loadout-router.ts`, `public-emote-bar-router.ts`, `achievements-router.ts`, `community-decks-router.ts`, and the list, detail and ranking of `lightning-router.ts`) have no token to check. Admin routes (`admin-*-router.ts`, the admin half of `player-reports-router.ts`, create and cancel in `lightning-router.ts` (its chat delete calls `adminAuthorizer` inside the `requireUser` guard), and the ban endpoints of `user-router.ts`) use `bearer()` with `adminAuthorizer` instead, and stay outside `requireUser` so an admin can act on a banned user.
 
+### Sessions and refresh tokens
+
+A sign-in answers with a JWT (its lifetime is `JWT_EXPIRES_IN`) and a refresh token. The JWT is what every authenticated route takes; the refresh token only buys a new JWT.
+
+| Route | What it does |
+| --- | --- |
+| `POST /auth/refresh` | `{ refreshToken }`. Answers a new session: JWT plus a new refresh token. `401` for an unknown, expired, used or revoked token; `403` for a banned user. |
+| `POST /auth/logout` | `{ refreshToken }`. Revokes that sign-in. Always `204`. |
+
+- **Additive.** Clients that ignore `refreshToken` behave as before: they sign in again when the JWT expires.
+- **Storage.** Table `refresh_tokens` (API-owned, `src/migrations/`). Only the SHA-256 of a token is stored.
+- **Rotation.** A token works once. Renewing marks it used and issues a successor in the same family; a family is one sign-in on one device.
+- **Reuse.** A used token that comes back means it exists in two places, and which holder is legitimate cannot be told, so the whole family is revoked. Two tabs renewing at once would look the same, so a repeat within ten seconds is refused without revoking.
+- **Lifetime.** 30 days from issue; every renewal restarts it.
+- **`mustUpgrade`** is stored with the family and carried across renewals.
+- **Where tokens are issued:** `POST /users/login` and `POST /auth/discord/session`, through `SessionTokens.attach` (`src/server/composition/sessionTokens.ts`).
+
 ### Signing in with Discord
 
 `discord-auth-router.ts` adds a second way to get the same JWT. It is on only when the three `DISCORD_*` variables are set (see [operations.md](operations.md)); otherwise its routes answer `404`.

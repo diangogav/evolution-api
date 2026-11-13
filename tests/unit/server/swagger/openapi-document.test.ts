@@ -91,6 +91,7 @@ const PROTECTED_OPERATIONS = [
 
 // Operations whose success has no body; they declare it with `emptyOk`.
 const EMPTY_BODY_OPERATIONS = [
+	"POST /api/v1/auth/logout",
 	"DELETE /api/v1/auth/discord/link",
 	"PUT /api/v1/me/push-subscriptions",
 	"DELETE /api/v1/me/push-subscriptions",
