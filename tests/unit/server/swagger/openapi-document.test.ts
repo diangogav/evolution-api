@@ -96,6 +96,10 @@ const EMPTY_BODY_OPERATIONS = [
 // declare a 2xx text/event-stream response.
 const STREAM_OPERATIONS = ["GET /api/v1/lightning/{id}/chat/stream"];
 
+// Operations the browser opens as a page navigation and that always answer with a
+// redirect; they declare a 302 response instead of a 2xx one.
+const REDIRECT_OPERATIONS = ["GET /api/v1/auth/discord/start", "GET /api/v1/auth/discord/callback"];
+
 // Operations that still lack a 2xx application/json schema. This list only
 // shrinks: documenting an operation's response requires removing it here.
 const PENDING_RESPONSE_SCHEMAS: string[] = [];
@@ -241,6 +245,7 @@ describe("OpenAPI document", () => {
 		const exempt = new Set([
 			...EMPTY_BODY_OPERATIONS,
 			...STREAM_OPERATIONS,
+			...REDIRECT_OPERATIONS,
 			...PENDING_RESPONSE_SCHEMAS,
 		]);
 		const undocumented = operations
@@ -258,6 +263,19 @@ describe("OpenAPI document", () => {
 				!successResponses(operation).some(
 					(response) => response.content?.["text/event-stream"]?.schema !== undefined,
 				)
+			);
+		});
+		expect(invalid).toEqual([]);
+	});
+
+	it("declares a 302 response and no success response on every redirect operation", () => {
+		const byKey = new Map(operations.map(({ key, operation }) => [key, operation]));
+		const invalid = REDIRECT_OPERATIONS.filter((key) => {
+			const operation = byKey.get(key);
+			return (
+				operation === undefined ||
+				operation.responses?.["302"] === undefined ||
+				successResponses(operation).length > 0
 			);
 		});
 		expect(invalid).toEqual([]);

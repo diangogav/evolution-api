@@ -10,3 +10,12 @@ export const LoginSchema = t.Object({
 			"True when the user signed in with the game password and must set an account password",
 	}),
 });
+
+/** Body of POST /auth/discord/session. */
+export const LoginCodeExchangeSchema = t.Object({
+	code: t.String({
+		minLength: 1,
+		maxLength: 128,
+		description: "Single-use code received in the redirect back from Discord",
+	}),
+});

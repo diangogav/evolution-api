@@ -82,6 +82,7 @@ Routers (`src/server/routes/`) and `src/server/composition/` are the composition
 | Router | Prefix | Source |
 | --- | --- | --- |
 | `userRouter` | `/users` | `src/server/routes/user-router.ts` |
+| `discordAuthRouter` | `/auth/discord` | `src/server/routes/discord-auth-router.ts` |
 | `achievementsRouter` | `/achievements` | `src/server/routes/achievements-router.ts` |
 | `userAchievementsRouter` | `/users` | `src/server/routes/achievements-router.ts` |
 | `leaderboardRouter` | `/stats` | `src/server/routes/leaderboard-router.ts` |
@@ -158,6 +159,22 @@ new Elysia({ prefix: "/me/missions" }).guard({}, (app) =>
 
 `requireUser` applies only to the routes inside that guard. **`user-router.ts`** (its authenticated, non-admin endpoints), **`ticket-router.ts`**, **`me-cosmetics-router.ts`**, **`loadout-router.ts`**, **`emote-bar-router.ts`**, **`missions-router.ts`**, **`shop-router.ts`**, **`event-run-router.ts`**, **`player-reports-router.ts`** and the player routes of **`lightning-router.ts`** use it. Public reads (`cosmetics-router.ts`, `public-loadout-router.ts`, `bot-loadout-router.ts`, `public-emote-bar-router.ts`, `achievements-router.ts`, `community-decks-router.ts`, and the list, detail and ranking of `lightning-router.ts`) have no token to check. Admin routes (`admin-*-router.ts`, the admin half of `player-reports-router.ts`, create and cancel in `lightning-router.ts` (its chat delete calls `adminAuthorizer` inside the `requireUser` guard), and the ban endpoints of `user-router.ts`) use `bearer()` with `adminAuthorizer` instead, and stay outside `requireUser` so an admin can act on a banned user.
 
+### Signing in with Discord
+
+`discord-auth-router.ts` adds a second way to get the same JWT. It is on only when the three `DISCORD_*` variables are set (see [operations.md](operations.md)); otherwise its routes answer `404`.
+
+| Step | Route | What happens |
+| --- | --- | --- |
+| 1 | `GET /auth/discord/start?origin=&redirect=` | The browser navigates here (a page navigation, not a fetch). The API signs a short-lived `state`, sets the `discord_login_nonce` cookie and redirects to Discord. |
+| 2 | `GET /auth/discord/callback` | Discord sends the browser back. The API checks the `state` against the cookie, trades Discord's code for the account identity, finds the user whose `discord_id` matches and redirects to the frontend with a single-use `code`, or with `error`. |
+| 3 | `POST /auth/discord/session` | The frontend trades that `code` for the session (`LoginSchema`, the same shape as `POST /users/login`). |
+
+- **Why a code and not the JWT in the redirect:** a URL ends up in browser history and logs. The code lives 60 seconds in Redis and works once.
+- **Why the cookie:** a signed `state` proves the API issued it, not that this browser asked for it. Without the nonce, someone could start a sign-in with their own Discord account and hand the callback URL to a victim, who would land inside the attacker's account.
+- **Where the browser returns:** `origin` only selects an entry of `config.discordLogin.frontends`; the URL comes from that registry, never from the request.
+- **Discord tokens** are used once to read the identity and are not stored.
+- **`error` values:** `access_denied`, `invalid_state`, `discord_unavailable`, `not_linked` (no user has that Discord account).
+
 ## Workers
 
 Background loops run in-process when their env flag is `true`, or standalone with `bun run src/worker.ts`. Instances share a lock per worker, so only one makes progress at a time.
@@ -195,7 +212,7 @@ The ratchet enforces:
 - Every operation has a non-empty `summary`.
 - `security: [{ bearerAuth: [] }]` is present on exactly the operations listed in `PROTECTED_OPERATIONS` — an explicit, reviewed list (not a regex over handler source), so a new protected route must be added there by hand.
 - `info.title` is not tournament-specific, `info.version` matches semver, and `servers` is exactly production + local.
-- Every operation has a 2xx `application/json` schema, unless it is listed in `EMPTY_BODY_OPERATIONS` (genuinely empty body) or `PENDING_RESPONSE_SCHEMAS` (an explicit, shrinking allowlist for work still in progress).
+- Every operation has a 2xx `application/json` schema, unless it is listed in `EMPTY_BODY_OPERATIONS` (genuinely empty body), `REDIRECT_OPERATIONS` (always answers with a redirect and declares a `302`) or `PENDING_RESPONSE_SCHEMAS` (an explicit, shrinking allowlist for work still in progress).
 - Every response example that ships alongside a schema actually validates against that schema (`Value.Check`).
 
 ### Adding a new endpoint: checklist

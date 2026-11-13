@@ -19,6 +19,7 @@ import { achievementsRouter, userAchievementsRouter } from "./routes/achievement
 import { banListRouter } from "./routes/ban-list-router";
 import { communityDecksRouter } from "./routes/community-decks-router";
 import { cosmeticsRouter } from "./routes/cosmetics-router";
+import { discordAuthRouter } from "./routes/discord-auth-router";
 import { leaderboardRouter } from "./routes/leaderboard-router";
 import { emoteBarRouter } from "./routes/emote-bar-router";
 import { botLoadoutRouter } from "./routes/bot-loadout-router";
@@ -107,6 +108,7 @@ export function mountApiV1Routes(app: Elysia) {
 	return app.group("/api/v1", (group: Elysia) => {
 		return group
 			.use(userRouter)
+			.use(discordAuthRouter)
 			.use(achievementsRouter)
 			.use(userAchievementsRouter)
 			.use(leaderboardRouter)
