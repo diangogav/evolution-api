@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it } from "bun:test";
 
+import type { DiscordLinkResult } from "../../../../../src/modules/auth/application/LinkDiscordToUser";
 import type { DiscordAdmission } from "../../../../../src/modules/auth/application/AdmitDiscordIdentity";
 import { CompleteDiscordLogin } from "../../../../../src/modules/auth/application/CompleteDiscordLogin";
+import { DiscordLinkIntent } from "../../../../../src/modules/auth/application/DiscordLinkIntent";
 import { DiscordLoginState } from "../../../../../src/modules/auth/application/DiscordLoginState";
 import { ExchangeLoginCode } from "../../../../../src/modules/auth/application/ExchangeLoginCode";
 import { StartDiscordLogin } from "../../../../../src/modules/auth/application/StartDiscordLogin";
@@ -52,6 +54,9 @@ describe("signing in with Discord", () => {
 	let loginCodes: FakeLoginCodes;
 	let admission: DiscordAdmission;
 	let admitted: DiscordIdentity[];
+	let linkResult: DiscordLinkResult;
+	let linkRequests: string[];
+	let intents: DiscordLinkIntent;
 	let identityRequests: string[];
 	let failIdentity: boolean;
 	let start: StartDiscordLogin;
@@ -67,6 +72,9 @@ describe("signing in with Discord", () => {
 		loginCodes = new FakeLoginCodes();
 		admission = { kind: "login", userId: "user-1" };
 		admitted = [];
+		linkResult = { linked: true };
+		linkRequests = [];
+		intents = new DiscordLinkIntent(jwt);
 		identityRequests = [];
 		failIdentity = false;
 
@@ -86,20 +94,35 @@ describe("signing in with Discord", () => {
 		};
 		const logger = { info: () => undefined, error: () => undefined } as never;
 
-		start = new StartDiscordLogin(oauthClient, state, links, () => "nonce-1");
-		complete = new CompleteDiscordLogin(oauthClient, admit, loginCodes, state, links, logger);
+		const linkToUser = {
+			run: async (userId: string) => {
+				linkRequests.push(userId);
+				return linkResult;
+			},
+		};
+
+		start = new StartDiscordLogin(oauthClient, state, links, () => "nonce-1", intents);
+		complete = new CompleteDiscordLogin(
+			oauthClient,
+			admit,
+			loginCodes,
+			state,
+			links,
+			logger,
+			linkToUser,
+		);
 	});
 
-	function startedState(input: { origin?: string; redirect?: string } = {}): string {
-		const { authorizeUrl } = start.run(input);
-		return authorizeUrl.split("state=")[1];
+	function startedState(input: { origin?: string; redirect?: string; link?: string } = {}): string {
+		const { location } = start.run(input);
+		return location.split("state=")[1];
 	}
 
 	describe("StartDiscordLogin", () => {
 		it("sends the browser to Discord with a state bound to the nonce it returns", () => {
-			const { authorizeUrl, nonce } = start.run({ origin: LOCAL_ORIGIN, redirect: "/decks" });
+			const { location, nonce } = start.run({ origin: LOCAL_ORIGIN, redirect: "/decks" });
 
-			const payload = state.read(authorizeUrl.split("state=")[1]);
+			const payload = state.read(location.split("state=")[1]);
 			expect(nonce).toBe("nonce-1");
 			expect(payload).toMatchObject({ origin: LOCAL_ORIGIN, redirect: "/decks" });
 			expect(payload && state.matchesNonce(payload, "nonce-1")).toBe(true);
@@ -112,6 +135,62 @@ describe("signing in with Discord", () => {
 			);
 
 			expect(payload).toMatchObject({ origin: DEFAULT_ORIGIN, redirect: "/" });
+		});
+	});
+
+	describe("linking from settings", () => {
+		it("carries the signed-in user through the flow and reports the link", async () => {
+			const linkState = startedState({ link: intents.sign("user-5"), redirect: "/settings" });
+
+			const { redirectUrl } = await complete.run({
+				now: NOW,
+				code: "discord-code",
+				state: linkState,
+				nonce: "nonce-1",
+			});
+
+			expect(state.read(linkState)?.linkUserId).toBe("user-5");
+			expect(Object.fromEntries(resultOf(redirectUrl))).toEqual({
+				linked: "true",
+				redirect: "/settings",
+			});
+			expect(linkRequests).toEqual(["user-5"]);
+			expect(admitted).toEqual([]);
+			expect(loginCodes.issued.size).toBe(0);
+		});
+
+		it("reports why the Discord account could not be linked", async () => {
+			linkResult = { linked: false, error: "discord_in_use" };
+
+			const { redirectUrl } = await complete.run({
+				now: NOW,
+				code: "discord-code",
+				state: startedState({ link: intents.sign("user-5") }),
+				nonce: "nonce-1",
+			});
+
+			expect(resultOf(redirectUrl).get("error")).toBe("discord_in_use");
+		});
+
+		it("refuses to start with an intent it did not issue, instead of signing someone in", () => {
+			const forged = new DiscordLinkIntent(new JWT({ issuer: "issuer", secret: "other" })).sign(
+				"user-5",
+			);
+
+			const { location, nonce } = start.run({ link: forged, origin: LOCAL_ORIGIN });
+
+			expect(location).toBe(`${LOCAL_ORIGIN}/#/auth/discord?error=invalid_state`);
+			expect(nonce).toBeNull();
+		});
+
+		it("does not accept a session token as a link intent", () => {
+			const sessionToken = jwt.generate({ id: "user-5", role: "USER" });
+
+			expect(start.run({ link: sessionToken }).nonce).toBeNull();
+		});
+
+		it("issues intents that do not work as a session", () => {
+			expect(jwt.decode(intents.sign("user-5"))).not.toHaveProperty("id");
 		});
 	});
 

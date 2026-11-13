@@ -188,6 +188,20 @@ What the callback decides, in order (`AdmitDiscordIdentity`):
 - **Registering:** the email and the Discord account come from the ticket (15 minutes in Redis), never from the request. The account always gets an account password, because clients that sign in to this API without Discord need one. The ticket survives a `400` or `409`, so the form can be corrected, and is removed once the account exists.
 - **Other `error` values:** `access_denied`, `invalid_state`, `discord_unavailable`.
 
+#### Linking from settings
+
+A signed-in user links or removes a Discord account without signing out. The three routes sit under `requireUser`:
+
+| Route | What it does |
+| --- | --- |
+| `GET /auth/discord/link` | `{ linked, canUnlink }` for the caller |
+| `POST /auth/discord/link` | Returns the URL the browser must navigate to: `/auth/discord/start` with a `link` intent |
+| `DELETE /auth/discord/link` | Removes the link; `409` when the caller has no account password and would be left without a way to sign in |
+
+- **Why an intent:** the OAuth flow starts with a page navigation, which cannot carry the session token in a header. The intent is a five-minute signed token that names the user as `linkUserId`, never as `id`, so it cannot be used as a session.
+- **In the flow:** `start` copies the user from the intent into the `state`; the callback then runs `LinkDiscordToUser` instead of the sign-in rules and redirects with `linked=true`, or with `error=discord_in_use` (the Discord account belongs to another user) or `error=already_linked`.
+- **Emails need not match here:** the session already proved who the user is. `email_verified_at` is set only when Discord vouches for the same address the account has.
+
 ### Verified emails
 
 `users.email_verified_at` records when an address was proven to belong to its user. Registration with email and password does not verify the address, so the column is set only by flows that carry proof:

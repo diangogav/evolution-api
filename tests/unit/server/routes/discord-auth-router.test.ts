@@ -3,8 +3,11 @@ import { Elysia } from "elysia";
 
 import { AdmitDiscordIdentity } from "../../../../src/modules/auth/application/AdmitDiscordIdentity";
 import { CompleteDiscordLogin } from "../../../../src/modules/auth/application/CompleteDiscordLogin";
+import { DiscordLinkIntent } from "../../../../src/modules/auth/application/DiscordLinkIntent";
 import { DiscordLoginState } from "../../../../src/modules/auth/application/DiscordLoginState";
 import { ExchangeLoginCode } from "../../../../src/modules/auth/application/ExchangeLoginCode";
+import { LinkDiscordToUser } from "../../../../src/modules/auth/application/LinkDiscordToUser";
+import { ManageDiscordLink } from "../../../../src/modules/auth/application/ManageDiscordLink";
 import { RegisterWithDiscord } from "../../../../src/modules/auth/application/RegisterWithDiscord";
 import { StartDiscordLogin } from "../../../../src/modules/auth/application/StartDiscordLogin";
 import type { EmailAccount } from "../../../../src/modules/auth/domain/DiscordAccounts";
@@ -13,6 +16,7 @@ import { DiscordReturnLinkBuilder } from "../../../../src/modules/auth/domain/Di
 import { UserRegister } from "../../../../src/modules/user/application/UserRegister";
 import type { User } from "../../../../src/modules/user/domain/User";
 import type { VerifiedDiscordIdentity } from "../../../../src/modules/user/domain/UserRepository";
+import { createRequireUser } from "../../../../src/server/auth/requireUser";
 import { createDiscordAuthRouter } from "../../../../src/server/routes/discord-auth-router";
 import { mapDomainErrorStatus } from "../../../../src/server/server";
 import { Hash } from "../../../../src/shared/Hash";
@@ -93,7 +97,22 @@ function buildApp({ configured = true, secureCookie = true, users = [] }: World 
 			row.discordId = discordId;
 			return true;
 		},
+		findLinkStatus: async (userId: string) => {
+			const row = rows.find((candidate) => candidate.user.id === userId);
+			return row
+				? {
+						discordId: row.discordId,
+						email: row.user.email,
+						hasPassword: row.user.securePassword !== null,
+					}
+				: null;
+		},
+		unlink: async (userId: string) => {
+			const row = rows.find((candidate) => candidate.user.id === userId);
+			if (row) row.discordId = null;
+		},
 	};
+	const intents = new DiscordLinkIntent(jwt);
 	const userRepository = {
 		create: async (user: User, discord?: VerifiedDiscordIdentity) => {
 			created.push({ user, discord });
@@ -116,9 +135,20 @@ function buildApp({ configured = true, secureCookie = true, users = [] }: World 
 
 	const router = createDiscordAuthRouter({
 		secureCookie,
+		// The bearer token is the user id, so a test signs in by naming the user.
+		requireUser: createRequireUser({
+			jwt: { decode: (token) => ({ id: token }) },
+			activeBans: { execute: async () => null },
+		}),
 		useCases: configured
 			? {
-					start: new StartDiscordLogin(oauthClient, state, links, () => `nonce-${++nonces}`),
+					start: new StartDiscordLogin(
+						oauthClient,
+						state,
+						links,
+						() => `nonce-${++nonces}`,
+						intents,
+					),
 					complete: new CompleteDiscordLogin(
 						oauthClient,
 						new AdmitDiscordIdentity(accounts, registrations, emailSender, logger),
@@ -126,7 +156,9 @@ function buildApp({ configured = true, secureCookie = true, users = [] }: World 
 						state,
 						links,
 						logger,
+						new LinkDiscordToUser(accounts),
 					),
+					link: new ManageDiscordLink(accounts, intents, `${BASE}/start`),
 					exchange: new ExchangeLoginCode(loginCodes, userRepository, jwt),
 					register: new RegisterWithDiscord(
 						registrations,
@@ -318,6 +350,84 @@ describe("discord auth router", () => {
 
 		expect(conflict.status).toBe(409);
 		expect(retry.status).toBe(200);
+	});
+
+	describe("linking from settings", () => {
+		const PASSWORDLESS = UserMother.create({ id: "user-8", email: "p@example.com" });
+		const WITH_PASSWORD = UserMother.create({
+			id: "user-9",
+			email: "other@example.com",
+			securePassword: "hashed",
+		});
+		const as = (userId: string) => ({ authorization: `Bearer ${userId}` });
+
+		it("links Discord to the signed-in user end to end and then reports it as linked", async () => {
+			const { app, rows } = buildApp({ users: [{ user: WITH_PASSWORD, discordId: null }] });
+
+			const begin = await app.handle(
+				new Request(`${BASE}/link`, {
+					method: "POST",
+					headers: { ...as("user-9"), "content-type": "application/json" },
+					body: JSON.stringify({ origin: FRONTEND, redirect: "/settings" }),
+				}),
+			);
+			const { url } = (await begin.json()) as { url: string };
+			const started = await app.handle(new Request(url));
+			const state = (started.headers.get("location") ?? "").split("state=")[1];
+			const cookie = (started.headers.get("set-cookie") ?? "").split(";")[0];
+			const callback = await app.handle(
+				new Request(`${BASE}/callback?code=discord-code&state=${state}`, { headers: { cookie } }),
+			);
+
+			expect(begin.status).toBe(200);
+			expect(callback.headers.get("location")).toBe(
+				`${FRONTEND}/#/auth/discord?linked=true&redirect=%2Fsettings`,
+			);
+			expect(rows[0].discordId).toBe("discord-1");
+
+			const status = await app.handle(new Request(`${BASE}/link`, { headers: as("user-9") }));
+			expect(await status.json()).toEqual({ linked: true, canUnlink: true });
+		});
+
+		it("unlinks a user who has a password", async () => {
+			const { app, rows } = buildApp({ users: [{ user: WITH_PASSWORD, discordId: "discord-1" }] });
+
+			const response = await app.handle(
+				new Request(`${BASE}/link`, { method: "DELETE", headers: as("user-9") }),
+			);
+
+			expect(response.status).toBe(204);
+			expect(rows[0].discordId).toBeNull();
+		});
+
+		it("answers 409 to unlinking a user who has no account password", async () => {
+			const { app, rows } = buildApp({ users: [{ user: PASSWORDLESS, discordId: "discord-1" }] });
+
+			const response = await app.handle(
+				new Request(`${BASE}/link`, { method: "DELETE", headers: as("user-8") }),
+			);
+
+			expect(response.status).toBe(409);
+			expect(rows[0].discordId).toBe("discord-1");
+		});
+
+		it.each([
+			["GET", undefined],
+			["POST", "{}"],
+			["DELETE", undefined],
+		])("answers 401 to %s /link without a session", async (method, body) => {
+			const { app } = buildApp();
+
+			const response = await app.handle(
+				new Request(`${BASE}/link`, {
+					method,
+					headers: { "content-type": "application/json" },
+					body,
+				}),
+			);
+
+			expect(response.status).toBe(401);
+		});
 	});
 
 	it("sends a callback without the cookie back with invalid_state", async () => {

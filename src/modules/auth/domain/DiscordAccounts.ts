@@ -14,6 +14,15 @@ export type EmailAccount = {
 	deleted: boolean;
 };
 
+/** What the settings screen needs to know about a user's Discord link. */
+export type LinkStatus = {
+	/** Discord account linked to the user, if any. */
+	discordId: string | null;
+	email: string;
+	/** False for a user who never set an account password and signs in some other way. */
+	hasPassword: boolean;
+};
+
 /** Looks users up by their Discord account and links one to a user. */
 export interface DiscordAccounts {
 	findByDiscordId(discordId: string): Promise<LinkedAccount | null>;
@@ -22,8 +31,14 @@ export interface DiscordAccounts {
 	findByEmail(email: string): Promise<EmailAccount[]>;
 
 	/**
-	 * Links the Discord account to the user and records the email as verified.
+	 * Links the Discord account to the user. `verifiedAt` records the email as verified
+	 * and is null when the link proves nothing about the user's address.
 	 * Does nothing and answers false when the user already has a Discord account.
 	 */
-	link(userId: string, discordId: string, verifiedAt: Date): Promise<boolean>;
+	link(userId: string, discordId: string, verifiedAt: Date | null): Promise<boolean>;
+
+	/** The link of a live user, or null when the user does not exist. */
+	findLinkStatus(userId: string): Promise<LinkStatus | null>;
+
+	unlink(userId: string): Promise<void>;
 }

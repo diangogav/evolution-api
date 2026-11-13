@@ -1,6 +1,11 @@
 import { dataSource } from "../../../evolution-types/src/data-source";
 import { UserProfileEntity } from "../../../evolution-types/src/entities/UserProfileEntity";
-import { DiscordAccounts, EmailAccount, LinkedAccount } from "../domain/DiscordAccounts";
+import {
+	DiscordAccounts,
+	EmailAccount,
+	LinkedAccount,
+	LinkStatus,
+} from "../domain/DiscordAccounts";
 
 // Raw SQL: the match ignores case and must see deleted users, which the entity
 // repository hides.
@@ -13,6 +18,13 @@ const LINK = `UPDATE "users"
 SET "discord_id" = $2, "email_verified_at" = COALESCE("email_verified_at", $3)
 WHERE "id" = $1 AND "discord_id" IS NULL AND "deleted_at" IS NULL
 RETURNING "id"`;
+
+const FIND_LINK_STATUS = `SELECT "discord_id", "email", "secure_password" IS NOT NULL AS "has_password"
+FROM "users" WHERE "id" = $1 AND "deleted_at" IS NULL`;
+
+const UNLINK = `UPDATE "users" SET "discord_id" = NULL WHERE "id" = $1`;
+
+type LinkStatusRow = { discord_id: string | null; email: string; has_password: boolean };
 
 type EmailAccountRow = {
 	id: string;
@@ -44,7 +56,20 @@ export class DiscordAccountsPostgresRepository implements DiscordAccounts {
 		}));
 	}
 
-	async link(userId: string, discordId: string, verifiedAt: Date): Promise<boolean> {
+	async findLinkStatus(userId: string): Promise<LinkStatus | null> {
+		const rows: LinkStatusRow[] = await dataSource.query(FIND_LINK_STATUS, [userId]);
+		const [row] = rows;
+
+		return row
+			? { discordId: row.discord_id || null, email: row.email, hasPassword: row.has_password }
+			: null;
+	}
+
+	async unlink(userId: string): Promise<void> {
+		await dataSource.query(UNLINK, [userId]);
+	}
+
+	async link(userId: string, discordId: string, verifiedAt: Date | null): Promise<boolean> {
 		const result: unknown = await dataSource.query(LINK, [userId, discordId, verifiedAt]);
 
 		return linkedRows(result) > 0;
