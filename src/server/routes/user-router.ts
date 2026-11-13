@@ -437,7 +437,7 @@ export const userRouter = new Elysia({ prefix: "/users" })
 
 	.post(
 		"/verify-email",
-		({ body }) =>
+		async ({ body }) =>
 			new VerifyEmail(verificationLinks, userRepository, userRepository).run({
 				token: body.token,
 				now: new Date(),
@@ -459,7 +459,7 @@ export const userRouter = new Elysia({ prefix: "/users" })
 
 	.post(
 		"/confirm-email-change",
-		({ body }) =>
+		async ({ body }) =>
 			new ConfirmEmailChange(
 				emailChangeLinks,
 				userRepository,
@@ -490,7 +490,7 @@ export const userRouter = new Elysia({ prefix: "/users" })
 	.guard({}, (app) =>
 		app
 			.use(requireUser)
-			.get("/email-verification", ({ userId }) => emailVerificationStatus.get(userId), {
+			.get("/email-verification", async ({ userId }) => emailVerificationStatus.get(userId), {
 				detail: {
 					tags: ["User Management"],
 					summary: "Get the caller's email verification",
@@ -506,7 +506,7 @@ export const userRouter = new Elysia({ prefix: "/users" })
 			})
 			.post(
 				"/change-email",
-				({ userId, body, request }) =>
+				async ({ userId, body, request }) =>
 					requestEmailChange.run({
 						userId,
 						...body,
@@ -532,7 +532,7 @@ export const userRouter = new Elysia({ prefix: "/users" })
 			)
 			.post(
 				"/email-verification/resend",
-				({ userId, request }) =>
+				async ({ userId, request }) =>
 					emailVerificationStatus.resend({
 						userId,
 						origin: request.headers.get("origin"),

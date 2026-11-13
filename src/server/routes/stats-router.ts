@@ -6,7 +6,8 @@ import { jsonOk } from "../openapi/responses";
 export const statsRouter = new Elysia().group("/historical-stats", (app) =>
 	app.get(
 		"/",
-		({ query }) => new StatsController().getGlobalStats({ query: query as { season?: string } }),
+		async ({ query }) =>
+			new StatsController().getGlobalStats({ query: query as { season?: string } }),
 		{
 			detail: {
 				tags: ["Statistics"],

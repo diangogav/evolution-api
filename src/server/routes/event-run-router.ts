@@ -82,7 +82,7 @@ export const eventsRouter = new Elysia({ prefix: "/events" }).guard({}, (app) =>
 		.use(requireUser)
 		.get(
 			"/:eventId",
-			({ userId, params, request }) =>
+			async ({ userId, params, request }) =>
 				getEvent.run({
 					userId,
 					eventId: params.eventId,
@@ -106,7 +106,7 @@ export const eventsRouter = new Elysia({ prefix: "/events" }).guard({}, (app) =>
 		)
 		.post(
 			"/:eventId/runs",
-			({ userId, params, body }) =>
+			async ({ userId, params, body }) =>
 				startEventRun.run({
 					userId,
 					eventId: params.eventId,
@@ -165,7 +165,7 @@ export const eventRunsRouter = new Elysia({ prefix: "/event-runs" }).guard({}, (
 		)
 		.post(
 			"/:runId/duel",
-			({ userId, params }) =>
+			async ({ userId, params }) =>
 				requestEventDuel.run({ userId, runId: params.runId, now: new Date() }),
 			{
 				params: t.Object({ runId: t.String() }),

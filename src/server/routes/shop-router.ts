@@ -86,7 +86,7 @@ export const shopRouter = new Elysia({ prefix: "/shop" }).guard({}, (app) =>
 		})
 		.post(
 			"/:cosmeticId/purchase",
-			({ userId, params }) =>
+			async ({ userId, params }) =>
 				purchaseCosmetic.run({
 					userId,
 					cosmeticId: params.cosmeticId,
