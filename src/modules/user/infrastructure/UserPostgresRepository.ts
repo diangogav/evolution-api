@@ -8,7 +8,15 @@ import { UserRepository, VerifiedDiscordIdentity } from "../domain/UserRepositor
 const MARK_EMAIL_VERIFIED = `UPDATE "users"
 SET "email_verified_at" = COALESCE("email_verified_at", $2) WHERE "id" = $1`;
 
+const IS_EMAIL_VERIFIED = `SELECT "email_verified_at" IS NOT NULL AS "verified" FROM "users" WHERE "id" = $1`;
+
 export class UserPostgresRepository implements UserRepository, EmailVerifications {
+	async isVerified(userId: string): Promise<boolean> {
+		const rows: { verified: boolean }[] = await dataSource.query(IS_EMAIL_VERIFIED, [userId]);
+
+		return rows[0]?.verified === true;
+	}
+
 	async markVerified(userId: string, at: Date): Promise<void> {
 		await dataSource.query(MARK_EMAIL_VERIFIED, [userId, at]);
 	}

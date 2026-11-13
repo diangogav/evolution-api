@@ -210,6 +210,17 @@ A signed-in user links or removes a Discord account without signing out. The thr
 | --- | --- |
 | Registering or linking through Discord | Discord verified the address |
 | `POST /users/reset-account-password` with the token mailed by `POST /users/forgot-password` | The user opened the email; the token carries `purpose: "password-reset"` |
+| `POST /users/verify-email` with the token from the confirmation link | The user opened the email; the token carries `purpose: "email-verification"` and the address it was mailed to |
+
+The confirmation link goes out in the welcome email of an email-and-password registration, and again on request:
+
+| Route | What it does |
+| --- | --- |
+| `POST /users/verify-email` | Public. Marks the address as verified; `401` for an unknown or expired link (24 hours), or one mailed to an address the account no longer uses |
+| `GET /users/email-verification` | `{ verified }` for the caller |
+| `POST /users/email-verification/resend` | Mails the caller a new link; `{ sent: false }` when already verified, `429` when one was sent less than a minute ago |
+
+An unverified address blocks nothing: the client only reminds the user. The link opens the frontend page listed in `config.emailVerification`, chosen by the request origin. Its token names the user as `verifyUserId`, never as `id`, so it cannot be used as a session.
 
 The reset endpoint takes only that mailed token. A session token names a user too, but accepting it would let whoever holds a session set a new password without the current one, so it answers `401`; signed-in users change their password through `POST /users/change-account-password`, which asks for the current one. An earlier verification date is never overwritten.
 

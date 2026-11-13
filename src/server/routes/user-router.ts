@@ -13,6 +13,8 @@ import { UserStatsSchema } from "../../modules/stats/infrastructure/StatsSchemas
 import { UserStatsPostgresRepository } from "../../modules/stats/infrastructure/UserStatsPostgresRepository";
 import { TierResolver } from "../../modules/tiers/application/TierResolver";
 import { TiersPostgresRepository } from "../../modules/tiers/infrastructure/TiersPostgresRepository";
+import { EmailVerificationLinks } from "../../modules/user/application/EmailVerificationLinks";
+import { EmailVerificationStatus } from "../../modules/user/application/EmailVerificationStatus";
 import { UserForgotPassword } from "../../modules/user/application/UserForgotPassword";
 import { UserGamePasswordGenerator } from "../../modules/user/application/UserGamePasswordGenerator";
 import { UserRegister } from "../../modules/user/application/UserRegister";
@@ -22,10 +24,16 @@ import { UserUpgradePassword } from "../../modules/user/application/UserUpgradeP
 import { UserTokenValidator } from "../../modules/user/application/UserTokenValidator";
 import { UserUsernameUpdater } from "../../modules/user/application/UserUsernameUpdater";
 import { UserUsernameAvailabilityChecker } from "../../modules/user/application/UserUsernameAvailabilityChecker";
+import { VerifyEmail } from "../../modules/user/application/VerifyEmail";
 import { ResetPasswordLinkBuilder } from "../../modules/user/domain/ResetPasswordLinkBuilder";
+import { BunRedisVerificationResendThrottle } from "../../modules/user/infrastructure/BunRedisVerificationResendThrottle";
 import { UserPostgresRepository } from "../../modules/user/infrastructure/UserPostgresRepository";
 import {
 	AccountPasswordResetSchema,
+	EmailVerificationBodySchema,
+	EmailVerificationResendSchema,
+	EmailVerificationStatusSchema,
+	EmailVerifiedSchema,
 	GamePasswordSchema,
 	PasswordResetRequestSchema,
 	PasswordUpgradeSchema,
@@ -36,6 +44,7 @@ import {
 import { ResendEmailSender } from "../../shared/email/infrastructure/ResendEmailSender";
 import { AuthenticationError } from "../../shared/errors/AuthenticationError";
 import { Hash } from "../../shared/Hash";
+import { redisClient } from "../../shared/redis/redisClient";
 import { apiJwt } from "../auth/apiJwt";
 import { Pino } from "../../shared/logger/infrastructure/Pino";
 import { emptyOk, errorResponses, jsonOk } from "../openapi/responses";
@@ -66,22 +75,47 @@ const resetPasswordLinkBuilder = new ResetPasswordLinkBuilder(
 	config.passwordRecovery.defaultResetUrl,
 );
 
+const verificationLinks = new EmailVerificationLinks(
+	jwt,
+	new ResetPasswordLinkBuilder(
+		config.emailVerification.frontends,
+		config.emailVerification.defaultUrl,
+	),
+);
+const emailVerificationStatus = new EmailVerificationStatus(
+	userRepository,
+	userRepository,
+	verificationLinks,
+	emailSender,
+	new BunRedisVerificationResendThrottle(redisClient),
+);
+
 export const userRouter = new Elysia({ prefix: "/users" })
 	// Public Endpoints
 	.post(
 		"/register",
-		async ({ body }) => {
+		async ({ body, request }) => {
 			const id = randomUUID();
-			return new UserRegister(userRepository, hash, logger, emailSender, jwt).register({
+			return new UserRegister(
+				userRepository,
+				hash,
+				logger,
+				emailSender,
+				jwt,
+				verificationLinks,
+			).register({
 				...body,
 				id,
+				origin: request.headers.get("origin"),
+				referer: request.headers.get("referer"),
 			});
 		},
 		{
 			detail: {
 				tags: ["Authentication"],
 				summary: "Register new user",
-				description: "Creates a new user account with a strong password and sends a welcome email",
+				description:
+					"Creates a new user account with a strong password and sends a welcome email that carries the link to confirm the address",
 				responses: {
 					200: jsonOk(RegisteredUserSchema, "User registered successfully", {
 						id: "5b2c0e9e-7a4f-4c3b-9d1e-2f6a8b0c4d3e",
@@ -373,11 +407,71 @@ export const userRouter = new Elysia({ prefix: "/users" })
 		},
 	)
 
+	.post(
+		"/verify-email",
+		({ body }) =>
+			new VerifyEmail(verificationLinks, userRepository, userRepository).run({
+				token: body.token,
+				now: new Date(),
+			}),
+		{
+			detail: {
+				tags: ["Authentication"],
+				summary: "Confirm an email address",
+				description:
+					"Marks the email as verified for whoever opens the link mailed to it. Idempotent. Answers 401 when the link is unknown, expired (24 hours) or was mailed to an address the account no longer uses.",
+				responses: {
+					200: jsonOk(EmailVerifiedSchema, "The address is confirmed", { verified: true }),
+					...errorResponses(401, 422),
+				},
+			},
+			body: EmailVerificationBodySchema,
+		},
+	)
+
 	// Authenticated Endpoints: requireUser verifies the token and rejects banned users
 	.use(bearer())
 	.guard({}, (app) =>
 		app
 			.use(requireUser)
+			.get("/email-verification", ({ userId }) => emailVerificationStatus.get(userId), {
+				detail: {
+					tags: ["User Management"],
+					summary: "Get the caller's email verification",
+					description: "Tells whether the caller's email address is confirmed.",
+					security: [{ bearerAuth: [] }],
+					responses: {
+						200: jsonOk(EmailVerificationStatusSchema, "The caller's email verification", {
+							verified: false,
+						}),
+						...errorResponses(401, 403),
+					},
+				},
+			})
+			.post(
+				"/email-verification/resend",
+				({ userId, request }) =>
+					emailVerificationStatus.resend({
+						userId,
+						origin: request.headers.get("origin"),
+						referer: request.headers.get("referer"),
+					}),
+				{
+					detail: {
+						tags: ["User Management"],
+						summary: "Send the verification email again",
+						description:
+							"Mails the caller a new link to confirm their address. Answers `sent: false` when the address is already confirmed, and 429 when an email was sent less than a minute ago.",
+						security: [{ bearerAuth: [] }],
+						responses: {
+							200: jsonOk(EmailVerificationResendSchema, "Whether an email was sent", {
+								sent: true,
+							}),
+							...errorResponses(401, 403, 404, 429),
+						},
+					},
+				},
+			)
 			.post(
 				"/change-username",
 				async ({ body, userId: id }) => {

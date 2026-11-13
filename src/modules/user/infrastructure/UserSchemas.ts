@@ -45,3 +45,25 @@ export const AccountPasswordResetSchema = t.Object({
 
 /** Response of POST /users/game-password. */
 export const GamePasswordSchema = t.Object({ gamePassword });
+
+/** Body of POST /users/verify-email. */
+export const EmailVerificationBodySchema = t.Object({
+	token: t.String({
+		minLength: 1,
+		maxLength: 2048,
+		description: "Token from the link in the verification email",
+	}),
+});
+
+/** Response of POST /users/verify-email. */
+export const EmailVerifiedSchema = t.Object({ verified: t.Literal(true) });
+
+/** Response of GET /users/email-verification. */
+export const EmailVerificationStatusSchema = t.Object({
+	verified: t.Boolean({ description: "True when the caller's email address is confirmed" }),
+});
+
+/** Response of POST /users/email-verification/resend. */
+export const EmailVerificationResendSchema = t.Object({
+	sent: t.Boolean({ description: "False when the address was already confirmed" }),
+});

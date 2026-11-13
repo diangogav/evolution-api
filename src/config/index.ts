@@ -155,6 +155,24 @@ export const config = {
 		],
 	},
 	annulment: { enabled: process.env.ANNULMENT_ENABLED === "true" },
+	// Frontend page that confirms an email address; the first entry is also the default.
+	emailVerification: {
+		defaultUrl: "https://evoduel.com/#/verify-email?token={token}",
+		frontends: [
+			{
+				origin: "https://evoduel.com",
+				template: "https://evoduel.com/#/verify-email?token={token}",
+			},
+			...(isProduction
+				? []
+				: [
+						{
+							origin: "http://localhost:5173",
+							template: "http://localhost:5173/#/verify-email?token={token}",
+						},
+					]),
+		],
+	},
 	passwordRecovery: {
 		defaultResetUrl: "https://evolutionygo.com/reset-account-password?token={token}",
 		frontends: [

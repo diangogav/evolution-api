@@ -2,7 +2,17 @@
 export interface EmailVerifications {
 	/** Marks the user's email as verified at `at`; an earlier verification is kept. */
 	markVerified(userId: string, at: Date): Promise<void>;
+	isVerified(userId: string): Promise<boolean>;
 }
+
+/** Limits how often a user can ask for the verification email again. */
+export interface VerificationResendThrottle {
+	/** True when the user may be sent another email now; counts the attempt. */
+	allow(userId: string): Promise<boolean>;
+}
+
+/** One email a minute is plenty for someone waiting on an inbox. */
+export const VERIFICATION_RESEND_WINDOW_SECONDS = 60;
 
 /**
  * Claim carried by the token mailed for a password reset. Whoever presents a
