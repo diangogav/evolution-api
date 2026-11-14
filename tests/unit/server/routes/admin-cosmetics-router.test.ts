@@ -3,6 +3,7 @@ import { Elysia } from "elysia";
 
 import type { CosmeticAssetStorage } from "../../../../src/modules/catalog/domain/CosmeticAssetStorage";
 import type { AssetUrlSigner } from "../../../../src/modules/catalog/domain/AssetUrlSigner";
+import { SetCosmeticPreview } from "../../../../src/modules/catalog/application/SetCosmeticPreview";
 import { PublishCosmetic } from "../../../../src/modules/catalog/application/PublishCosmetic";
 import { Cosmetic } from "../../../../src/modules/catalog/domain/Cosmetic";
 import type { CosmeticRepository } from "../../../../src/modules/catalog/domain/CosmeticRepository";
@@ -56,6 +57,7 @@ function buildApp(existingCosmetic: Cosmetic | null = null, onSave?: (cosmetic: 
 				cosmetics,
 				signer,
 				publish: new PublishCosmetic(cosmetics, storage),
+				setPreview: new SetCosmeticPreview(cosmetics, storage),
 				entitlements,
 				users: { findUserIdByUsername: async () => null },
 			}),
@@ -143,6 +145,56 @@ describe("admin cosmetics routes", () => {
 		expect(body.assetFiles).toHaveLength(200);
 		expect(body.assetFiles).toContain("digits/197.png");
 		expect(saved).toHaveLength(1);
+	});
+
+	describe("PUT /admin/cosmetics/:id/preview", () => {
+		const pack = Cosmetic.from({
+			id: "4244bc19-0f5c-4e13-b260-137fd178ff2d",
+			type: CosmeticType.EMOTE_PACK,
+			tier: CosmeticTier.EXCLUSIVE,
+			assetRef: "emote-packs/angry-face/",
+			displayName: "Angry Face",
+			active: true,
+			assetFiles: ["pack.json", "angry.json"],
+		});
+		const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3]);
+		const send = (
+			app: ReturnType<typeof buildApp>,
+			bytes: Uint8Array<ArrayBuffer>,
+			token = "admin-token",
+		) => {
+			const form = new FormData();
+			form.append("file", new File([bytes], "anything.jpg", { type: "image/jpeg" }));
+			return app.handle(
+				new Request(`http://localhost/admin/cosmetics/${pack.id}/preview`, {
+					method: "PUT",
+					headers: { Authorization: `Bearer ${token}` },
+					body: form,
+				}),
+			);
+		};
+
+		it("stores the uploaded image as the cosmetic's preview", async () => {
+			const saved: Cosmetic[] = [];
+
+			const response = await send(
+				buildApp(pack, (cosmetic) => saved.push(cosmetic)),
+				jpeg,
+			);
+
+			expect(response.status).toBe(200);
+			expect(await response.json()).toMatchObject({
+				id: pack.id,
+				assetFiles: ["pack.json", "angry.json", "preview.jpg"],
+			});
+			expect(saved[0]?.assetFiles).toEqual(["pack.json", "angry.json", "preview.jpg"]);
+		});
+
+		it("rejects a caller who is not an administrator", async () => {
+			const response = await send(buildApp(pack), jpeg, "user-token");
+
+			expect(response.status).toBe(403);
+		});
 	});
 
 	it("no longer exposes the companion animation and model endpoints", async () => {
