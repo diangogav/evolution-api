@@ -83,6 +83,24 @@ export class Cosmetic {
 		);
 	}
 
+	/**
+	 * The same cosmetic with one more file in its folder. A cosmetic without a recorded
+	 * file list is served by listing its folder, so it has nothing to add to.
+	 */
+	withAssetFile(name: string): Cosmetic {
+		if (this.assetFiles === null || this.assetFiles.includes(name)) return this;
+		return new Cosmetic(
+			this.id,
+			this.type,
+			this.tier,
+			this.assetRef,
+			this.displayName,
+			this.active,
+			[...this.assetFiles, name],
+			this.essencePrice,
+		);
+	}
+
 	toPrimitives(): {
 		id: string;
 		type: CosmeticType;

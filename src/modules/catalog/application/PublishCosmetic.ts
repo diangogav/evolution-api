@@ -4,6 +4,7 @@ import { InvalidArgumentError } from "../../../shared/errors/InvalidArgumentErro
 import type { CatalogChangeNotifier } from "../domain/CatalogChangeNotifier";
 import { Cosmetic } from "../domain/Cosmetic";
 import type { CosmeticRepository } from "../domain/CosmeticRepository";
+import { assertPreviewImage, COSMETIC_PREVIEW, takesPreview } from "../domain/CosmeticPreview";
 import { CosmeticTier } from "../domain/CosmeticTier";
 import { CosmeticType } from "../domain/CosmeticType";
 import { AMBIENCE_MANIFEST, parseAmbience } from "../domain/Ambience";
@@ -17,7 +18,8 @@ import { parseZonePlate, ZONE_PLATE_MANIFEST } from "../domain/ZonePlate";
 
 const MAX_FILES = 8;
 const MAX_FILES_BY_TYPE: Partial<Record<CosmeticType, number>> = {
-	[CosmeticType.EMOTE_PACK]: MAX_EMOTE_PACK_FILES,
+	// The pack's own files plus its preview.
+	[CosmeticType.EMOTE_PACK]: MAX_EMOTE_PACK_FILES + 1,
 	[CosmeticType.CARD_FRAME]: MAX_CARD_FRAME_FILES,
 };
 const MAX_TOTAL_BYTES = 25 * 1024 * 1024;
@@ -194,18 +196,27 @@ export class PublishCosmetic {
 		if (totalBytes > MAX_TOTAL_BYTES) {
 			throw new InvalidArgumentError("Cosmetic assets exceed the 25 MB upload limit");
 		}
-		assertRequiredFiles(input.type, names);
+		// A preview travels with the cosmetic but is not one of the files it is drawn from,
+		// so the type's own rules are checked against the rest.
+		const preview = takesPreview(input.type)
+			? input.files.find((file) => file.name === COSMETIC_PREVIEW)
+			: undefined;
+		if (preview) assertPreviewImage(preview.bytes);
+		const ownFiles = input.files.filter((file) => file !== preview);
+		const ownNames = new Set(ownFiles.map((file) => file.name));
+
+		assertRequiredFiles(input.type, ownNames);
 		if (input.type === CosmeticType.EMOTE_PACK) {
-			assertEmotePackFiles(slugOf(input.assetRef), input.files);
+			assertEmotePackFiles(slugOf(input.assetRef), ownFiles);
 		}
 		if (input.type === CosmeticType.CARD_FRAME) {
 			assertCardFrameKitFiles(input.files);
 		}
 		if (input.type === CosmeticType.LANE) {
-			parseZonePlate(input.files[0].bytes);
+			parseZonePlate(ownFiles[0].bytes);
 		}
 		if (input.type === CosmeticType.AMBIENCE) {
-			parseAmbience(input.files[0].bytes);
+			parseAmbience(ownFiles[0].bytes);
 		}
 
 		const duplicate = (await this.cosmetics.findAll()).find(
