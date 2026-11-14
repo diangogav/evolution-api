@@ -32,6 +32,9 @@ export class CosmeticEntity {
 	@Column({ name: "asset_files", type: "text", array: true, nullable: true })
 	assetFiles: string[] | null;
 
+	@Column({ name: "essence_price", type: "integer", nullable: true })
+	essencePrice: number | null;
+
 	@CreateDateColumn({ name: "created_at" })
 	createdAt: Date;
 

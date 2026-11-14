@@ -7,6 +7,7 @@ import { createR2AssetUrlSigner } from "../../modules/assets/infrastructure/crea
 import { createR2CosmeticAssetStorage } from "../../modules/assets/infrastructure/createR2CosmeticAssetStorage";
 import { GetAdminCosmetics } from "../../modules/catalog/application/GetAdminCosmetics";
 import { PublishCosmetic } from "../../modules/catalog/application/PublishCosmetic";
+import { MAX_ESSENCE_PRICE } from "../../modules/catalog/domain/Cosmetic";
 import type { CosmeticRepository } from "../../modules/catalog/domain/CosmeticRepository";
 import { CosmeticTier } from "../../modules/catalog/domain/CosmeticTier";
 import { CosmeticType } from "../../modules/catalog/domain/CosmeticType";
@@ -85,6 +86,7 @@ export function createAdminCosmeticsRouter(deps: AdminCosmeticsRouterDependencie
 					tier: body.tier,
 					assetRef: body.assetRef,
 					displayName: body.displayName,
+					essencePrice: body.essencePrice,
 					files: await Promise.all(
 						body.files.map(async (file) => ({
 							name: file.name,
@@ -99,13 +101,14 @@ export function createAdminCosmeticsRouter(deps: AdminCosmeticsRouterDependencie
 					tier: t.Enum(CosmeticTier),
 					assetRef: t.String({ minLength: 1, maxLength: 180 }),
 					displayName: t.String({ minLength: 1, maxLength: 80 }),
+					essencePrice: t.Optional(t.Numeric({ minimum: 1, maximum: MAX_ESSENCE_PRICE })),
 					files: t.Files({ minItems: 1, maxItems: 200, maxSize: "12m" }),
 				}),
 				detail: {
 					tags: ["Cosmetics Admin"],
 					summary: "Upload and publish a cosmetic atomically",
 					description:
-						"Each file is stored under the assetRef by its multipart file name. Per-type rules apply: most types take up to 8 flat file names (13 for EMOTE_PACK). A CARD_FRAME kit takes up to 200 files: layout.json, preview.webp and .png layers, whose file names may carry the kit-relative path with up to two lowercase folders (frame/normal.png, digits/1.png). All files together stay under 25 MB.",
+						"essencePrice puts the cosmetic in the shop at that price in essence and is only accepted for DONOR and EXCLUSIVE; without it the cosmetic is not for sale. Each file is stored under the assetRef by its multipart file name. Per-type rules apply: most types take up to 8 flat file names (13 for EMOTE_PACK). A CARD_FRAME kit takes up to 200 files: layout.json, preview.webp and .png layers, whose file names may carry the kit-relative path with up to two lowercase folders (frame/normal.png, digits/1.png). All files together stay under 25 MB.",
 					security: [{ bearerAuth: [] }],
 					responses: {
 						200: jsonOk(PublishedCosmeticSchema, "Cosmetic published successfully", {
@@ -116,6 +119,7 @@ export function createAdminCosmeticsRouter(deps: AdminCosmeticsRouterDependencie
 							displayName: "Bronce",
 							active: true,
 							assetFiles: ["plate.json"],
+							essencePrice: null,
 						}),
 						...errorResponses(400, 401, 403, 409, 422),
 					},

@@ -57,4 +57,5 @@ export const PublishedCosmeticSchema = t.Object({
 	displayName: t.String(),
 	active: t.Boolean(),
 	assetFiles: t.Array(t.String()),
+	essencePrice: t.Union([t.Number(), t.Null()]),
 });
