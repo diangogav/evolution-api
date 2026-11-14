@@ -12,19 +12,23 @@ interface FakeR2 {
 
 function fakeClient({ exists = false, written, statSize = 0, listedSize }: FakeR2) {
 	const deleteObject = mock(async (_key: string) => undefined);
+	const writes: string[] = [];
 	const client = {
 		file: (key: string) => ({
 			exists: async () => exists,
 			stat: async () => ({ size: statSize }),
 			delete: () => deleteObject(key),
 		}),
-		write: async (_key: string, bytes: Uint8Array) => written ?? bytes.byteLength,
+		write: async (key: string, bytes: Uint8Array) => {
+			writes.push(key);
+			return written ?? bytes.byteLength;
+		},
 		list: async ({ prefix }: { prefix: string }) => ({
 			contents: listedSize === undefined ? [] : [{ key: prefix, size: listedSize }],
 		}),
 		delete: (key: string) => deleteObject(key),
 	};
-	return { client: client as unknown as S3Client, deleteObject };
+	return { client: client as unknown as S3Client, deleteObject, writes };
 }
 
 const upload = {
@@ -39,6 +43,15 @@ describe("R2CosmeticAssetStorage.put", () => {
 
 		await new R2CosmeticAssetStorage(client).put(upload);
 
+		expect(deleteObject).not.toHaveBeenCalled();
+	});
+
+	it("replaces an object that is already at the key", async () => {
+		const { client, deleteObject, writes } = fakeClient({ exists: true, listedSize: 538 });
+
+		await new R2CosmeticAssetStorage(client).put(upload);
+
+		expect(writes).toEqual([upload.key]);
 		expect(deleteObject).not.toHaveBeenCalled();
 	});
 
