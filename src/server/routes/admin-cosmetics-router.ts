@@ -8,6 +8,7 @@ import { createR2CosmeticAssetStorage } from "../../modules/assets/infrastructur
 import { GetAdminCosmetics } from "../../modules/catalog/application/GetAdminCosmetics";
 import { PublishCosmetic } from "../../modules/catalog/application/PublishCosmetic";
 import { SetCosmeticPreview } from "../../modules/catalog/application/SetCosmeticPreview";
+import { UpdateCosmetic } from "../../modules/catalog/application/UpdateCosmetic";
 import { MAX_ESSENCE_PRICE } from "../../modules/catalog/domain/Cosmetic";
 import { MAX_PREVIEW_BYTES } from "../../modules/catalog/domain/CosmeticPreview";
 import type { CosmeticRepository } from "../../modules/catalog/domain/CosmeticRepository";
@@ -36,6 +37,7 @@ export interface AdminCosmeticsRouterDependencies {
 	readonly signer: AssetUrlSigner;
 	readonly publish: PublishCosmetic;
 	readonly setPreview: Pick<SetCosmeticPreview, "run">;
+	readonly update: Pick<UpdateCosmetic, "run">;
 	readonly entitlements: EntitlementRepository;
 	readonly users: UserDirectory;
 }
@@ -68,6 +70,7 @@ export function createAdminCosmeticsRouter(deps: AdminCosmeticsRouterDependencie
 								displayName: "Magma Forge",
 								active: true,
 								assetFiles: ["background.webp"],
+								essencePrice: null,
 								assets: {
 									"background.webp":
 										"https://assets.evolutionygo.com/playmats/magma-forge/background.webp?sig=...",
@@ -125,6 +128,53 @@ export function createAdminCosmeticsRouter(deps: AdminCosmeticsRouterDependencie
 							essencePrice: null,
 						}),
 						...errorResponses(400, 401, 403, 409, 422),
+					},
+				},
+			},
+		)
+		.put(
+			"/:id",
+			async ({ bearer: token, params, body }) => {
+				deps.authorizer.requireAdmin(token);
+				return deps.update.run({
+					cosmeticId: params.id,
+					tier: body.tier,
+					displayName: body.displayName,
+					essencePrice: body.essencePrice,
+					files: await Promise.all(
+						(body.files ?? []).map(async (file) => ({
+							name: file.name,
+							bytes: new Uint8Array(await file.arrayBuffer()),
+						})),
+					),
+				});
+			},
+			{
+				params: t.Object({ id: t.String() }),
+				body: t.Object({
+					tier: t.Enum(CosmeticTier),
+					displayName: t.String({ minLength: 1, maxLength: 80 }),
+					essencePrice: t.Optional(t.Numeric({ minimum: 1, maximum: MAX_ESSENCE_PRICE })),
+					files: t.Optional(t.Files({ maxItems: 200, maxSize: "12m" })),
+				}),
+				detail: {
+					tags: ["Cosmetics Admin"],
+					summary: "Update a published cosmetic",
+					description:
+						"States the whole cosmetic, so sending the same request twice leaves the same result. tier and displayName replace the current ones. essencePrice puts the cosmetic in the shop at that price and is only accepted for DONOR and EXCLUSIVE; leaving it out takes the cosmetic out of the shop. files is optional: when sent, the files replace the folder's under the same rules as a publication, and the ones no longer named are removed; when left out, the files stay. The type and the assetRef cannot change. Lowering who holds a cosmetic by tier takes it away from players who had it through their tier.",
+					security: [{ bearerAuth: [] }],
+					responses: {
+						200: jsonOk(PublishedCosmeticSchema, "Cosmetic updated successfully", {
+							id: "4244bc19-0f5c-4e13-b260-137fd178ff2d",
+							type: "AVATAR",
+							tier: "EXCLUSIVE",
+							assetRef: "avatars/frog-mage/",
+							displayName: "Frog Mage",
+							active: true,
+							assetFiles: ["render.jpg", "preview.jpg"],
+							essencePrice: 800,
+						}),
+						...errorResponses(400, 401, 403, 404, 422),
 					},
 				},
 			},
@@ -208,6 +258,7 @@ export const adminCosmeticsRouter = createAdminCosmeticsRouter({
 	signer: createR2AssetUrlSigner(),
 	publish: new PublishCosmetic(cosmetics, storage, catalogChange),
 	setPreview: new SetCosmeticPreview(cosmetics, storage, catalogChange),
+	update: new UpdateCosmetic(cosmetics, storage, catalogChange),
 	entitlements: new EntitlementPostgresRepository(),
 	users: new UserDirectoryPostgresRepository(),
 });

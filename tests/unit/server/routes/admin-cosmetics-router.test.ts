@@ -3,6 +3,7 @@ import { Elysia } from "elysia";
 
 import type { CosmeticAssetStorage } from "../../../../src/modules/catalog/domain/CosmeticAssetStorage";
 import type { AssetUrlSigner } from "../../../../src/modules/catalog/domain/AssetUrlSigner";
+import { UpdateCosmetic } from "../../../../src/modules/catalog/application/UpdateCosmetic";
 import { SetCosmeticPreview } from "../../../../src/modules/catalog/application/SetCosmeticPreview";
 import { PublishCosmetic } from "../../../../src/modules/catalog/application/PublishCosmetic";
 import { Cosmetic } from "../../../../src/modules/catalog/domain/Cosmetic";
@@ -58,6 +59,7 @@ function buildApp(existingCosmetic: Cosmetic | null = null, onSave?: (cosmetic: 
 				signer,
 				publish: new PublishCosmetic(cosmetics, storage),
 				setPreview: new SetCosmeticPreview(cosmetics, storage),
+				update: new UpdateCosmetic(cosmetics, storage),
 				entitlements,
 				users: { findUserIdByUsername: async () => null },
 			}),
@@ -145,6 +147,70 @@ describe("admin cosmetics routes", () => {
 		expect(body.assetFiles).toHaveLength(200);
 		expect(body.assetFiles).toContain("digits/197.png");
 		expect(saved).toHaveLength(1);
+	});
+
+	describe("PUT /admin/cosmetics/:id", () => {
+		const avatar = Cosmetic.from({
+			id: "4244bc19-0f5c-4e13-b260-137fd178ff2d",
+			type: CosmeticType.AVATAR,
+			tier: CosmeticTier.STANDARD,
+			assetRef: "avatars/frog-mage/",
+			displayName: "Frog",
+			active: true,
+			assetFiles: ["render.jpg"],
+		});
+		const send = (form: FormData, saved: Cosmetic[] = []) =>
+			buildApp(avatar, (cosmetic) => saved.push(cosmetic)).handle(
+				new Request(`http://localhost/admin/cosmetics/${avatar.id}`, {
+					method: "PUT",
+					headers: { Authorization: "Bearer admin-token" },
+					body: form,
+				}),
+			);
+
+		it("updates the name, tier and price without files", async () => {
+			const form = new FormData();
+			form.set("tier", "EXCLUSIVE");
+			form.set("displayName", "Frog Mage");
+			form.set("essencePrice", "800");
+			const saved: Cosmetic[] = [];
+
+			const response = await send(form, saved);
+
+			expect(response.status).toBe(200);
+			expect(await response.json()).toMatchObject({
+				tier: "EXCLUSIVE",
+				displayName: "Frog Mage",
+				essencePrice: 800,
+				assetFiles: ["render.jpg"],
+			});
+			expect(saved[0]?.essencePrice).toBe(800);
+		});
+
+		it("accepts a single file", async () => {
+			const form = new FormData();
+			form.set("tier", "STANDARD");
+			form.set("displayName", "Frog");
+			form.append("files", new File([new Uint8Array([1, 2])], "render.jpg"));
+
+			const response = await send(form);
+
+			expect(response.status).toBe(200);
+			expect(await response.json()).toMatchObject({ assetFiles: ["render.jpg"] });
+		});
+
+		it("replaces the files when they are sent", async () => {
+			const form = new FormData();
+			form.set("tier", "STANDARD");
+			form.set("displayName", "Frog");
+			form.append("files", new File([new Uint8Array([1, 2])], "render.jpg"));
+			form.append("files", new File([new Uint8Array([3, 4])], "preview.jpg"));
+
+			const response = await send(form);
+
+			expect(response.status).toBe(200);
+			expect(await response.json()).toMatchObject({ assetFiles: ["render.jpg", "preview.jpg"] });
+		});
 	});
 
 	describe("PUT /admin/cosmetics/:id/preview", () => {

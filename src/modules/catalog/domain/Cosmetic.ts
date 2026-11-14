@@ -84,6 +84,37 @@ export class Cosmetic {
 	}
 
 	/**
+	 * The same cosmetic with what an administrator may change after it is published. Its
+	 * type and folder stay: clients and loadouts refer to it through them. The changes
+	 * pass the same checks as a new cosmetic, and whether it is active is kept.
+	 */
+	changed(changes: {
+		tier: CosmeticTier;
+		displayName: string;
+		essencePrice: number | null;
+		assetFiles: readonly string[] | null;
+	}): Cosmetic {
+		const checked = Cosmetic.create({
+			id: this.id,
+			type: this.type,
+			assetRef: this.assetRef,
+			tier: changes.tier,
+			displayName: changes.displayName,
+			essencePrice: changes.essencePrice,
+		});
+		return new Cosmetic(
+			checked.id,
+			checked.type,
+			checked.tier,
+			checked.assetRef,
+			checked.displayName,
+			this.active,
+			changes.assetFiles === null ? null : [...changes.assetFiles],
+			checked.essencePrice,
+		);
+	}
+
+	/**
 	 * The same cosmetic with one more file in its folder. A cosmetic without a recorded
 	 * file list is served by listing its folder, so it has nothing to add to.
 	 */

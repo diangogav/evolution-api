@@ -11,6 +11,7 @@ export interface AdminCosmeticDto {
 	readonly displayName: string;
 	readonly active: boolean;
 	readonly assetFiles: readonly string[];
+	readonly essencePrice: number | null;
 	readonly assets: Readonly<Record<string, string>>;
 	readonly assetsExpiresAt: string | null;
 }
@@ -37,6 +38,7 @@ export class GetAdminCosmetics {
 					displayName: cosmetic.displayName,
 					active: cosmetic.active,
 					assetFiles: cosmetic.assetFiles ?? [],
+					essencePrice: cosmetic.essencePrice,
 					assets: manifest.assets,
 					assetsExpiresAt: manifest.expiresAt,
 				};

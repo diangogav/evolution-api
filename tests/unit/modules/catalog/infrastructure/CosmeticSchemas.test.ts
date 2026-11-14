@@ -192,7 +192,13 @@ describe("public asset URLs never expire", () => {
 		);
 		expect(
 			Value.Check(AdminCosmeticCatalogSchema, [
-				{ ...entry, assetRef: "sleeves/a/", active: true, assetFiles: ["render.jpg"] },
+				{
+					...entry,
+					assetRef: "sleeves/a/",
+					active: true,
+					assetFiles: ["render.jpg"],
+					essencePrice: null,
+				},
 			]),
 		).toBe(true);
 	});

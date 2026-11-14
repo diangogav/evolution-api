@@ -42,6 +42,7 @@ describe("GetAdminCosmetics", () => {
 				displayName: "Magma Forge",
 				active: true,
 				assetFiles: ["background.webp"],
+				essencePrice: null,
 				assets: {
 					"background.webp": "https://r2.test/playmats/magma-forge/background.webp",
 				},

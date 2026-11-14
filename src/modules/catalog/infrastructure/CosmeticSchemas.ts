@@ -41,6 +41,7 @@ export const AdminCosmeticSchema = t.Object({
 	displayName: t.String(),
 	active: t.Boolean(),
 	assetFiles: t.Array(t.String()),
+	essencePrice: t.Union([t.Number(), t.Null()]),
 	assets: signedAssets,
 	assetsExpiresAt,
 });
@@ -48,7 +49,7 @@ export const AdminCosmeticSchema = t.Object({
 /** Response of GET /admin/cosmetics/. */
 export const AdminCosmeticCatalogSchema = t.Array(AdminCosmeticSchema);
 
-/** Response of POST /admin/cosmetics/: the newly published cosmetic, without asset URLs. */
+/** Response of the admin routes that write a cosmetic: the cosmetic as saved, without asset URLs. */
 export const PublishedCosmeticSchema = t.Object({
 	id: t.String(),
 	type: t.Enum(CosmeticType),
