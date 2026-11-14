@@ -5,3 +5,8 @@ import { LoadoutItem } from "./Loadout";
 export interface BotLoadoutRepository {
 	findByBotName(botName: string): Promise<LoadoutItem[]>;
 }
+
+// Kept apart from `BotLoadoutRepository` because only admin reads need every bot.
+export interface BotLoadoutListing {
+	list(): Promise<{ botName: string; cosmeticId: string }[]>;
+}

@@ -1,46 +1,14 @@
-import type { CosmeticAssetStorage } from "../domain/CosmeticAssetStorage";
 import { ConflictError } from "../../../shared/errors/ConflictError";
-import { InvalidArgumentError } from "../../../shared/errors/InvalidArgumentError";
 import type { CatalogChangeNotifier } from "../domain/CatalogChangeNotifier";
 import { Cosmetic } from "../domain/Cosmetic";
+import type { CosmeticAssetStorage } from "../domain/CosmeticAssetStorage";
+import { assertAssetRef, assertCosmeticFiles, type CosmeticFile } from "../domain/CosmeticFiles";
 import type { CosmeticRepository } from "../domain/CosmeticRepository";
-import { assertPreviewImage, COSMETIC_PREVIEW, takesPreview } from "../domain/CosmeticPreview";
-import { CosmeticTier } from "../domain/CosmeticTier";
-import { CosmeticType } from "../domain/CosmeticType";
-import { AMBIENCE_MANIFEST, parseAmbience } from "../domain/Ambience";
-import {
-	assertCardFrameKitFiles,
-	isSafeKitPath,
-	MAX_CARD_FRAME_FILES,
-} from "../domain/CardFrameKit";
-import { assertEmotePackFiles, MAX_EMOTE_PACK_FILES } from "../domain/EmotePack";
-import { parseZonePlate, ZONE_PLATE_MANIFEST } from "../domain/ZonePlate";
+import type { CosmeticTier } from "../domain/CosmeticTier";
+import type { CosmeticType } from "../domain/CosmeticType";
+import { uploadCosmeticFiles } from "./uploadCosmeticFiles";
 
-const MAX_FILES = 8;
-const MAX_FILES_BY_TYPE: Partial<Record<CosmeticType, number>> = {
-	// The pack's own files plus its preview.
-	[CosmeticType.EMOTE_PACK]: MAX_EMOTE_PACK_FILES + 1,
-	[CosmeticType.CARD_FRAME]: MAX_CARD_FRAME_FILES,
-};
-const MAX_TOTAL_BYTES = 25 * 1024 * 1024;
-const SAFE_FILE_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
-const SAFE_SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-const STAGE_FILE = /^background\.(?:webp|png|jpe?g)$/;
-
-const PREFIX_BY_TYPE: Partial<Record<CosmeticType, string>> = {
-	[CosmeticType.SLEEVE]: "sleeves",
-	[CosmeticType.PLAYMAT]: "playmats",
-	[CosmeticType.AVATAR]: "avatars",
-	[CosmeticType.LANE]: "lanes",
-	[CosmeticType.AMBIENCE]: "ambience",
-	[CosmeticType.EMOTE_PACK]: "emote-packs",
-	[CosmeticType.CARD_FRAME]: "frames",
-};
-
-export interface PublishCosmeticFile {
-	readonly name: string;
-	readonly bytes: Uint8Array;
-}
+export type PublishCosmeticFile = CosmeticFile;
 
 export interface PublishCosmeticInput {
 	readonly type: CosmeticType;
@@ -63,73 +31,17 @@ export interface PublishedCosmeticDto {
 	readonly essencePrice: number | null;
 }
 
-/** A card frame kit carries up to 200 files: upload several at once so a publish answers in seconds. */
-const UPLOAD_CONCURRENCY = 8;
-
-function contentTypeFor(fileName: string): string {
-	const extension = fileName.split(".").pop()?.toLowerCase();
-	switch (extension) {
-		case "jpg":
-		case "jpeg":
-			return "image/jpeg";
-		case "png":
-			return "image/png";
-		case "webp":
-			return "image/webp";
-		case "json":
-			return "application/json";
-		default:
-			return "application/octet-stream";
-	}
-}
-
-function assertAssetRef(type: CosmeticType, assetRef: string): void {
-	const prefix = PREFIX_BY_TYPE[type];
-	if (!prefix) {
-		throw new InvalidArgumentError(`Cosmetic type ${type} is not supported by the backoffice`);
-	}
-
-	const match = assetRef.match(/^([^/]+)\/([^/]+)\/$/);
-	if (!match || match[1] !== prefix || !SAFE_SLUG.test(match[2] ?? "")) {
-		throw new InvalidArgumentError(`assetRef for ${type} must match ${prefix}/kebab-case-slug/`);
-	}
-}
-
-// Only a card frame kit is a folder tree; every other type stays a flat list
-// of files so its keys keep the shape the client already fetches.
-function isSafeAssetName(type: CosmeticType, name: string): boolean {
-	return type === CosmeticType.CARD_FRAME ? isSafeKitPath(name) : SAFE_FILE_NAME.test(name);
-}
-
-function slugOf(assetRef: string): string {
-	return assetRef.split("/")[1] ?? "";
-}
-
-function assertRequiredFiles(type: CosmeticType, names: ReadonlySet<string>): void {
-	const lower = new Set(Array.from(names, (name) => name.toLowerCase()));
-	if ((type === CosmeticType.SLEEVE || type === CosmeticType.AVATAR) && !lower.has("render.jpg")) {
-		throw new InvalidArgumentError(`${type} requires render.jpg`);
-	}
-
-	// A playmat is one low-poly stage: background.<image> is the backdrop the
-	// board paints behind the zones, and the only file the client reads.
-	if (type === CosmeticType.PLAYMAT && ![...lower].some((name) => STAGE_FILE.test(name))) {
-		throw new InvalidArgumentError(
-			"PLAYMAT requires background.webp, background.png or background.jpg",
-		);
-	}
-
-	// A lane is a zone plate the board draws procedurally from plate.json alone;
-	// any extra file would be served but never used. The name is exact: the
-	// client fetches the lowercase key from the signed manifest.
-	if (type === CosmeticType.LANE && (names.size !== 1 || !names.has(ZONE_PLATE_MANIFEST))) {
-		throw new InvalidArgumentError(`LANE requires exactly one file: ${ZONE_PLATE_MANIFEST}`);
-	}
-
-	// Ambience is drawn from ambience.json alone, fetched by its exact key.
-	if (type === CosmeticType.AMBIENCE && (names.size !== 1 || !names.has(AMBIENCE_MANIFEST))) {
-		throw new InvalidArgumentError(`AMBIENCE requires exactly one file: ${AMBIENCE_MANIFEST}`);
-	}
+export function publishedCosmeticDto(cosmetic: Cosmetic): PublishedCosmeticDto {
+	return {
+		id: cosmetic.id,
+		type: cosmetic.type,
+		tier: cosmetic.tier,
+		assetRef: cosmetic.assetRef,
+		displayName: cosmetic.displayName,
+		active: cosmetic.active,
+		assetFiles: cosmetic.assetFiles ?? [],
+		essencePrice: cosmetic.essencePrice,
+	};
 }
 
 export class PublishCosmetic {
@@ -139,85 +51,9 @@ export class PublishCosmetic {
 		private readonly catalogChange?: CatalogChangeNotifier,
 	) {}
 
-	/**
-	 * Uploads every file, a few at a time, recording each stored key in
-	 * `uploaded` so a failure can delete them. After the first failure no new
-	 * upload starts; the ones in flight finish before the error is rethrown.
-	 */
-	private async uploadAll(input: PublishCosmeticInput, uploaded: string[]): Promise<void> {
-		let next = 0;
-		let failure: unknown;
-		const worker = async (): Promise<void> => {
-			while (failure === undefined && next < input.files.length) {
-				const file = input.files[next++];
-				const key = `${input.assetRef}${file.name}`;
-				try {
-					await this.storage.put({
-						key,
-						bytes: file.bytes,
-						contentType: contentTypeFor(file.name),
-					});
-					uploaded.push(key);
-				} catch (error) {
-					failure ??= error;
-				}
-			}
-		};
-		await Promise.all(
-			Array.from({ length: Math.min(UPLOAD_CONCURRENCY, input.files.length) }, worker),
-		);
-		if (failure !== undefined) throw failure;
-	}
-
 	async run(input: PublishCosmeticInput): Promise<PublishedCosmeticDto> {
 		assertAssetRef(input.type, input.assetRef);
-
-		const maxFiles = MAX_FILES_BY_TYPE[input.type] ?? MAX_FILES;
-		if (input.files.length === 0 || input.files.length > maxFiles) {
-			throw new InvalidArgumentError(`A cosmetic requires between 1 and ${maxFiles} files`);
-		}
-
-		const names = new Set<string>();
-		let totalBytes = 0;
-		for (const file of input.files) {
-			if (!isSafeAssetName(input.type, file.name)) {
-				throw new InvalidArgumentError(`Unsafe asset filename "${file.name}"`);
-			}
-			if (names.has(file.name)) {
-				throw new InvalidArgumentError(`Duplicate asset filename "${file.name}"`);
-			}
-			if (file.bytes.byteLength === 0) {
-				throw new InvalidArgumentError(`Asset file "${file.name}" is empty`);
-			}
-			names.add(file.name);
-			totalBytes += file.bytes.byteLength;
-		}
-
-		if (totalBytes > MAX_TOTAL_BYTES) {
-			throw new InvalidArgumentError("Cosmetic assets exceed the 25 MB upload limit");
-		}
-		// A preview travels with the cosmetic but is not one of the files it is drawn from,
-		// so the type's own rules are checked against the rest.
-		const preview = takesPreview(input.type)
-			? input.files.find((file) => file.name === COSMETIC_PREVIEW)
-			: undefined;
-		if (preview) assertPreviewImage(preview.bytes);
-		const ownFiles = input.files.filter((file) => file !== preview);
-		const ownNames = new Set(ownFiles.map((file) => file.name));
-
-		assertRequiredFiles(input.type, ownNames);
-		if (input.type === CosmeticType.EMOTE_PACK) {
-			assertEmotePackFiles(slugOf(input.assetRef), ownFiles);
-		}
-		if (input.type === CosmeticType.CARD_FRAME) {
-			assertCardFrameKitFiles(input.files);
-		}
-		if (input.type === CosmeticType.LANE) {
-			parseZonePlate(ownFiles[0].bytes);
-		}
-		if (input.type === CosmeticType.AMBIENCE) {
-			parseAmbience(ownFiles[0].bytes);
-		}
+		const names = assertCosmeticFiles(input.type, input.assetRef, input.files);
 
 		const duplicate = (await this.cosmetics.findAll()).find(
 			(cosmetic) => cosmetic.assetRef === input.assetRef,
@@ -232,13 +68,13 @@ export class PublishCosmetic {
 			tier: input.tier,
 			assetRef: input.assetRef,
 			displayName: input.displayName,
-			assetFiles: [...names],
+			assetFiles: names,
 			essencePrice: input.essencePrice,
 		});
 
 		const uploaded: string[] = [];
 		try {
-			await this.uploadAll(input, uploaded);
+			await uploadCosmeticFiles(this.storage, input.assetRef, input.files, uploaded);
 			await this.cosmetics.save(cosmetic);
 		} catch (error) {
 			await Promise.allSettled(uploaded.map((key) => this.storage.delete(key)));
@@ -250,15 +86,6 @@ export class PublishCosmetic {
 		// refresh logs its own failures.
 		void this.catalogChange?.catalogChanged().catch(() => undefined);
 
-		return {
-			id: cosmetic.id,
-			type: cosmetic.type,
-			tier: cosmetic.tier,
-			assetRef: cosmetic.assetRef,
-			displayName: cosmetic.displayName,
-			active: cosmetic.active,
-			assetFiles: cosmetic.assetFiles ?? [],
-			essencePrice: cosmetic.essencePrice,
-		};
+		return publishedCosmeticDto(cosmetic);
 	}
 }
