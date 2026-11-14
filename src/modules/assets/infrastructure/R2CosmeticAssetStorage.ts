@@ -1,17 +1,16 @@
 import { S3Client } from "bun";
 
-import { ConflictError } from "../../../shared/errors/ConflictError";
 import type { CosmeticAssetStorage, CosmeticAssetUpload } from "../../catalog";
 
-/** Writes private cosmetic objects to R2 and verifies the persisted byte size. */
+/** Writes private cosmetic objects to R2, replacing what is there, and verifies the persisted byte size. */
 export class R2CosmeticAssetStorage implements CosmeticAssetStorage {
 	constructor(private readonly client: S3Client) {}
 
 	async put(upload: CosmeticAssetUpload): Promise<void> {
+		// An object already at the key is replaced. Which folder a cosmetic may write to is
+		// decided against the catalog, by the use cases; refusing here would make it
+		// impossible to update a cosmetic or to register one whose files were uploaded first.
 		const target = this.client.file(upload.key);
-		if (await target.exists()) {
-			throw new ConflictError(`Asset "${upload.key}" already exists`);
-		}
 
 		const written = await this.client.write(upload.key, upload.bytes, {
 			type: upload.contentType,
