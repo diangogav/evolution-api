@@ -43,6 +43,8 @@ describe("GetAdminCosmetics", () => {
 				active: true,
 				assetFiles: ["background.webp"],
 				essencePrice: null,
+				bots: [],
+				prizeOf: [],
 				assets: {
 					"background.webp": "https://r2.test/playmats/magma-forge/background.webp",
 				},
@@ -77,5 +79,39 @@ describe("GetAdminCosmetics", () => {
 		const [result] = await new GetAdminCosmetics(repository, signer).run();
 
 		expect(result).not.toHaveProperty("animation");
+	});
+
+	it("says which bots wear a cosmetic and which events give it away", async () => {
+		const sleeve = Cosmetic.create({
+			id: "sleeve-id",
+			type: CosmeticType.SLEEVE,
+			tier: CosmeticTier.EXCLUSIVE,
+			assetRef: "sleeves/graveyard/",
+			displayName: "Graveyard",
+			assetFiles: ["render.jpg"],
+		});
+		const repository: CosmeticRepository = {
+			findAll: async () => [sleeve],
+			findById: async () => null,
+			save: async () => undefined,
+		};
+		const signer: AssetUrlSigner = {
+			sign: () => "",
+			signMany: () => ({}),
+			signManifest: async () => ({ assets: {}, expiresAt: null }),
+		};
+		const usage = new Map([
+			[
+				"sleeve-id",
+				{ bots: ["Lich"], prizeOf: [{ eventId: "halloween-2026", name: "Halloween Gauntlet" }] },
+			],
+		]);
+
+		const [result] = await new GetAdminCosmetics(repository, signer, {
+			usage: async () => usage,
+		}).run();
+
+		expect(result?.bots).toEqual(["Lich"]);
+		expect(result?.prizeOf).toEqual([{ eventId: "halloween-2026", name: "Halloween Gauntlet" }]);
 	});
 });

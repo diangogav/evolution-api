@@ -198,6 +198,8 @@ describe("public asset URLs never expire", () => {
 					active: true,
 					assetFiles: ["render.jpg"],
 					essencePrice: null,
+					bots: [],
+					prizeOf: [],
 				},
 			]),
 		).toBe(true);

@@ -42,6 +42,8 @@ export const AdminCosmeticSchema = t.Object({
 	active: t.Boolean(),
 	assetFiles: t.Array(t.String()),
 	essencePrice: t.Union([t.Number(), t.Null()]),
+	bots: t.Array(t.String()),
+	prizeOf: t.Array(t.Object({ eventId: t.String(), name: t.String() })),
 	assets: signedAssets,
 	assetsExpiresAt,
 });

@@ -12,6 +12,7 @@ import { UpdateCosmetic } from "../../modules/catalog/application/UpdateCosmetic
 import { MAX_ESSENCE_PRICE } from "../../modules/catalog/domain/Cosmetic";
 import { MAX_PREVIEW_BYTES } from "../../modules/catalog/domain/CosmeticPreview";
 import type { CosmeticRepository } from "../../modules/catalog/domain/CosmeticRepository";
+import type { CosmeticUsageSource } from "../../modules/catalog/domain/CosmeticUsageSource";
 import { CosmeticTier } from "../../modules/catalog/domain/CosmeticTier";
 import { CosmeticType } from "../../modules/catalog/domain/CosmeticType";
 import { CosmeticPostgresRepository } from "../../modules/catalog/infrastructure/CosmeticPostgresRepository";
@@ -19,6 +20,9 @@ import {
 	AdminCosmeticCatalogSchema,
 	PublishedCosmeticSchema,
 } from "../../modules/catalog/infrastructure/CosmeticSchemas";
+import { EventCatalogPostgresRepository } from "../../modules/event-run/infrastructure/EventCatalogPostgresRepository";
+import { BotLoadoutPostgresRepository } from "../../modules/loadout/infrastructure/BotLoadoutPostgresRepository";
+import { buildCosmeticUsage } from "../composition/buildCosmeticUsage";
 import { GrantCosmeticToUser } from "../../modules/entitlements/application/GrantCosmeticToUser";
 import type { EntitlementRepository } from "../../modules/entitlements/domain/EntitlementRepository";
 import { EntitlementSource } from "../../modules/entitlements/domain/EntitlementSource";
@@ -36,6 +40,7 @@ export interface AdminCosmeticsRouterDependencies {
 	readonly cosmetics: CosmeticRepository;
 	readonly signer: AssetUrlSigner;
 	readonly publish: PublishCosmetic;
+	readonly usage?: CosmeticUsageSource;
 	readonly setPreview: Pick<SetCosmeticPreview, "run">;
 	readonly update: Pick<UpdateCosmetic, "run">;
 	readonly entitlements: EntitlementRepository;
@@ -43,7 +48,7 @@ export interface AdminCosmeticsRouterDependencies {
 }
 
 export function createAdminCosmeticsRouter(deps: AdminCosmeticsRouterDependencies) {
-	const list = new GetAdminCosmetics(deps.cosmetics, deps.signer);
+	const list = new GetAdminCosmetics(deps.cosmetics, deps.signer, deps.usage);
 	const grant = new GrantCosmeticToUser(deps.cosmetics, deps.entitlements, deps.users);
 
 	return new Elysia({ prefix: "/admin/cosmetics" })
@@ -71,6 +76,8 @@ export function createAdminCosmeticsRouter(deps: AdminCosmeticsRouterDependencie
 								active: true,
 								assetFiles: ["background.webp"],
 								essencePrice: null,
+								bots: ["Lich"],
+								prizeOf: [{ eventId: "halloween-2026", name: "Halloween Gauntlet" }],
 								assets: {
 									"background.webp":
 										"https://assets.evolutionygo.com/playmats/magma-forge/background.webp?sig=...",
@@ -256,6 +263,10 @@ export const adminCosmeticsRouter = createAdminCosmeticsRouter({
 	authorizer: adminAuthorizer,
 	cosmetics,
 	signer: createR2AssetUrlSigner(),
+	usage: buildCosmeticUsage(
+		new BotLoadoutPostgresRepository(),
+		new EventCatalogPostgresRepository(),
+	),
 	publish: new PublishCosmetic(cosmetics, storage, catalogChange),
 	setPreview: new SetCosmeticPreview(cosmetics, storage, catalogChange),
 	update: new UpdateCosmetic(cosmetics, storage, catalogChange),

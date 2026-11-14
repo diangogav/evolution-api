@@ -4,6 +4,7 @@
 export type { CatalogChangeNotifier } from "./domain/CatalogChangeNotifier";
 export { Cosmetic } from "./domain/Cosmetic";
 export type { CosmeticRepository } from "./domain/CosmeticRepository";
+export type { CosmeticUsage, CosmeticUsageSource } from "./domain/CosmeticUsageSource";
 export { CosmeticTier } from "./domain/CosmeticTier";
 export { CosmeticType, isEquippableType } from "./domain/CosmeticType";
 export { EMOTE_PACK_MANIFEST } from "./domain/EmotePack";
