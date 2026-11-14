@@ -7,7 +7,9 @@ import { createR2AssetUrlSigner } from "../../modules/assets/infrastructure/crea
 import { createR2CosmeticAssetStorage } from "../../modules/assets/infrastructure/createR2CosmeticAssetStorage";
 import { GetAdminCosmetics } from "../../modules/catalog/application/GetAdminCosmetics";
 import { PublishCosmetic } from "../../modules/catalog/application/PublishCosmetic";
+import { SetCosmeticPreview } from "../../modules/catalog/application/SetCosmeticPreview";
 import { MAX_ESSENCE_PRICE } from "../../modules/catalog/domain/Cosmetic";
+import { MAX_PREVIEW_BYTES } from "../../modules/catalog/domain/CosmeticPreview";
 import type { CosmeticRepository } from "../../modules/catalog/domain/CosmeticRepository";
 import { CosmeticTier } from "../../modules/catalog/domain/CosmeticTier";
 import { CosmeticType } from "../../modules/catalog/domain/CosmeticType";
@@ -33,6 +35,7 @@ export interface AdminCosmeticsRouterDependencies {
 	readonly cosmetics: CosmeticRepository;
 	readonly signer: AssetUrlSigner;
 	readonly publish: PublishCosmetic;
+	readonly setPreview: Pick<SetCosmeticPreview, "run">;
 	readonly entitlements: EntitlementRepository;
 	readonly users: UserDirectory;
 }
@@ -108,7 +111,7 @@ export function createAdminCosmeticsRouter(deps: AdminCosmeticsRouterDependencie
 					tags: ["Cosmetics Admin"],
 					summary: "Upload and publish a cosmetic atomically",
 					description:
-						"essencePrice puts the cosmetic in the shop at that price in essence and is only accepted for DONOR and EXCLUSIVE; without it the cosmetic is not for sale. Each file is stored under the assetRef by its multipart file name. Per-type rules apply: most types take up to 8 flat file names (13 for EMOTE_PACK). A CARD_FRAME kit takes up to 200 files: layout.json, preview.webp and .png layers, whose file names may carry the kit-relative path with up to two lowercase folders (frame/normal.png, digits/1.png). All files together stay under 25 MB.",
+						"EMOTE_PACK, LANE and AMBIENCE may also carry a preview.jpg (a JPEG of at most 512 KB), the picture shown where the cosmetic appears as one piece. essencePrice puts the cosmetic in the shop at that price in essence and is only accepted for DONOR and EXCLUSIVE; without it the cosmetic is not for sale. Each file is stored under the assetRef by its multipart file name. Per-type rules apply: most types take up to 8 flat file names (13 for EMOTE_PACK). A CARD_FRAME kit takes up to 200 files: layout.json, preview.webp and .png layers, whose file names may carry the kit-relative path with up to two lowercase folders (frame/normal.png, digits/1.png). All files together stay under 25 MB.",
 					security: [{ bearerAuth: [] }],
 					responses: {
 						200: jsonOk(PublishedCosmeticSchema, "Cosmetic published successfully", {
@@ -122,6 +125,40 @@ export function createAdminCosmeticsRouter(deps: AdminCosmeticsRouterDependencie
 							essencePrice: null,
 						}),
 						...errorResponses(400, 401, 403, 409, 422),
+					},
+				},
+			},
+		)
+		.put(
+			"/:id/preview",
+			async ({ bearer: token, params, body }) => {
+				deps.authorizer.requireAdmin(token);
+				return deps.setPreview.run({
+					cosmeticId: params.id,
+					bytes: new Uint8Array(await body.file.arrayBuffer()),
+				});
+			},
+			{
+				params: t.Object({ id: t.String() }),
+				body: t.Object({ file: t.File({ maxSize: MAX_PREVIEW_BYTES }) }),
+				detail: {
+					tags: ["Cosmetics Admin"],
+					summary: "Set the preview image of a published cosmetic",
+					description:
+						"Stores the file as preview.jpg in the cosmetic's folder, replacing the one it has, and records it among its files. Only for the types the client draws from data alone and that have no image of their own: EMOTE_PACK, LANE and AMBIENCE. The file must be a JPEG of at most 512 KB.",
+					security: [{ bearerAuth: [] }],
+					responses: {
+						200: jsonOk(PublishedCosmeticSchema, "Preview stored successfully", {
+							id: "4244bc19-0f5c-4e13-b260-137fd178ff2d",
+							type: "LANE",
+							tier: "STANDARD",
+							assetRef: "lanes/bronze/",
+							displayName: "Bronce",
+							active: true,
+							assetFiles: ["plate.json", "preview.jpg"],
+							essencePrice: null,
+						}),
+						...errorResponses(400, 401, 403, 404, 422),
 					},
 				},
 			},
@@ -163,16 +200,14 @@ export function createAdminCosmeticsRouter(deps: AdminCosmeticsRouterDependencie
 
 const cosmetics = new CosmeticPostgresRepository();
 const storage = createR2CosmeticAssetStorage();
+const catalogChange = createCatalogChangeNotifier(cosmetics, new Pino());
 
 export const adminCosmeticsRouter = createAdminCosmeticsRouter({
 	authorizer: adminAuthorizer,
 	cosmetics,
 	signer: createR2AssetUrlSigner(),
-	publish: new PublishCosmetic(
-		cosmetics,
-		storage,
-		createCatalogChangeNotifier(cosmetics, new Pino()),
-	),
+	publish: new PublishCosmetic(cosmetics, storage, catalogChange),
+	setPreview: new SetCosmeticPreview(cosmetics, storage, catalogChange),
 	entitlements: new EntitlementPostgresRepository(),
 	users: new UserDirectoryPostgresRepository(),
 });

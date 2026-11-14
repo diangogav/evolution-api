@@ -120,6 +120,80 @@ describe("PublishCosmetic", () => {
 		});
 	});
 
+	describe("preview image", () => {
+		const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3]);
+		const plate = new TextEncoder().encode(
+			JSON.stringify({ version: 1, base: "#c98a3a", accent: "#f0c070", rim: "#8a5a2a" }),
+		);
+		const lane = (files: { name: string; bytes: Uint8Array }[]) => ({
+			type: CosmeticType.LANE,
+			tier: CosmeticTier.STANDARD,
+			assetRef: "lanes/bronze/",
+			displayName: "Bronce",
+			files,
+		});
+
+		it("stores a preview next to the file the cosmetic is drawn from", async () => {
+			const { publish, uploads, saved } = setup();
+
+			const published = await publish.run(
+				lane([
+					{ name: "preview.jpg", bytes: jpeg },
+					{ name: "plate.json", bytes: plate },
+				]),
+			);
+
+			expect(uploads.map((upload) => [upload.key, upload.contentType]).sort()).toEqual([
+				["lanes/bronze/plate.json", "application/json"],
+				["lanes/bronze/preview.jpg", "image/jpeg"],
+			]);
+			expect([...published.assetFiles].sort()).toEqual(["plate.json", "preview.jpg"]);
+			expect(saved).toHaveLength(1);
+		});
+
+		it("still publishes without one", async () => {
+			const { publish } = setup();
+
+			const published = await publish.run(lane([{ name: "plate.json", bytes: plate }]));
+
+			expect(published.assetFiles).toEqual(["plate.json"]);
+		});
+
+		it("rejects a preview that is not a JPEG or is too large, before touching storage", async () => {
+			const { publish, uploads } = setup();
+			const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47]);
+			const huge = new Uint8Array(512 * 1024 + 1);
+			huge.set([0xff, 0xd8, 0xff]);
+
+			for (const bytes of [png, huge]) {
+				await expect(
+					publish.run(
+						lane([
+							{ name: "plate.json", bytes: plate },
+							{ name: "preview.jpg", bytes },
+						]),
+					),
+				).rejects.toThrow(InvalidArgumentError);
+			}
+
+			expect(uploads).toHaveLength(0);
+		});
+
+		it("still rejects any other extra file next to plate.json", async () => {
+			const { publish } = setup();
+
+			await expect(
+				publish.run(
+					lane([
+						{ name: "plate.json", bytes: plate },
+						{ name: "preview.jpg", bytes: jpeg },
+						{ name: "notes.json", bytes: plate },
+					]),
+				),
+			).rejects.toThrow("LANE requires exactly one file: plate.json");
+		});
+	});
+
 	it("rolls back uploaded objects when catalog persistence fails", async () => {
 		const { publish, deleted } = setup({ failSave: true });
 
