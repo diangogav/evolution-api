@@ -67,6 +67,59 @@ describe("PublishCosmetic", () => {
 		]);
 	});
 
+	describe("essence price", () => {
+		const sleeve = (overrides: { tier: CosmeticTier; essencePrice?: number }) => ({
+			type: CosmeticType.PLAYMAT,
+			assetRef: "playmats/kagura-castle/",
+			displayName: "Castillo de Kagura",
+			files: [{ name: "background.webp", bytes: new Uint8Array([1]) }],
+			...overrides,
+		});
+
+		it("saves the price and answers with it", async () => {
+			const { publish, saved } = setup();
+
+			const published = await publish.run(sleeve({ tier: CosmeticTier.DONOR, essencePrice: 800 }));
+
+			expect(published.essencePrice).toBe(800);
+			expect(saved[0]?.essencePrice).toBe(800);
+		});
+
+		it("leaves a cosmetic published without a price out of the shop", async () => {
+			const { publish, saved } = setup();
+
+			const published = await publish.run(sleeve({ tier: CosmeticTier.EXCLUSIVE }));
+
+			expect(published.essencePrice).toBeNull();
+			expect(saved[0]?.essencePrice).toBeNull();
+		});
+
+		it("rejects a price on a tier everyone already holds, before touching storage", async () => {
+			const { publish, uploads, saved } = setup();
+
+			for (const tier of [CosmeticTier.STANDARD, CosmeticTier.REGISTERED]) {
+				await expect(publish.run(sleeve({ tier, essencePrice: 100 }))).rejects.toThrow(
+					`A ${tier} cosmetic cannot have a price`,
+				);
+			}
+
+			expect(uploads).toHaveLength(0);
+			expect(saved).toHaveLength(0);
+		});
+
+		it("rejects a price that is not a whole number within the limit", async () => {
+			const { publish, uploads } = setup();
+
+			for (const essencePrice of [0, -5, 1.5, 1_000_001]) {
+				await expect(
+					publish.run(sleeve({ tier: CosmeticTier.DONOR, essencePrice })),
+				).rejects.toThrow(InvalidArgumentError);
+			}
+
+			expect(uploads).toHaveLength(0);
+		});
+	});
+
 	it("rolls back uploaded objects when catalog persistence fails", async () => {
 		const { publish, deleted } = setup({ failSave: true });
 

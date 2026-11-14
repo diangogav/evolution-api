@@ -24,6 +24,7 @@ export class CosmeticPostgresRepository implements CosmeticRepository {
 				displayName: entity.displayName,
 				active: entity.active,
 				assetFiles: entity.assetFiles,
+				essencePrice: entity.essencePrice,
 			}),
 		);
 	}
@@ -48,6 +49,7 @@ export class CosmeticPostgresRepository implements CosmeticRepository {
 			displayName: entity.displayName,
 			active: entity.active,
 			assetFiles: entity.assetFiles,
+			essencePrice: entity.essencePrice,
 		});
 	}
 
@@ -63,6 +65,7 @@ export class CosmeticPostgresRepository implements CosmeticRepository {
 			displayName: data.displayName,
 			active: data.active,
 			assetFiles: data.assetFiles ? [...data.assetFiles] : null,
+			essencePrice: data.essencePrice,
 		});
 
 		await repository.save(entity);

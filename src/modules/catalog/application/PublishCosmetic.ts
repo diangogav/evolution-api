@@ -45,6 +45,8 @@ export interface PublishCosmeticInput {
 	readonly tier: CosmeticTier;
 	readonly assetRef: string;
 	readonly displayName: string;
+	/** Price in essence in the shop; omitted means not for sale. */
+	readonly essencePrice?: number;
 	readonly files: readonly PublishCosmeticFile[];
 }
 
@@ -56,6 +58,7 @@ export interface PublishedCosmeticDto {
 	readonly displayName: string;
 	readonly active: boolean;
 	readonly assetFiles: readonly string[];
+	readonly essencePrice: number | null;
 }
 
 /** A card frame kit carries up to 200 files: upload several at once so a publish answers in seconds. */
@@ -219,6 +222,7 @@ export class PublishCosmetic {
 			assetRef: input.assetRef,
 			displayName: input.displayName,
 			assetFiles: [...names],
+			essencePrice: input.essencePrice,
 		});
 
 		const uploaded: string[] = [];
@@ -243,6 +247,7 @@ export class PublishCosmetic {
 			displayName: cosmetic.displayName,
 			active: cosmetic.active,
 			assetFiles: cosmetic.assetFiles ?? [],
+			essencePrice: cosmetic.essencePrice,
 		};
 	}
 }
