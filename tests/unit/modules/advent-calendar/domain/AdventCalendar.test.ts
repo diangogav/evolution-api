@@ -22,6 +22,7 @@ function calendar(overrides: Partial<AdventCalendar> = {}): AdventCalendar {
 			botName: `Sentinel${index + 1}`,
 			prize: { essence: 50, cosmeticIds: [] },
 		})),
+		decks: [],
 		die: { essence: [10, 20, 30, 40, 60], rare: { essence: 100, cosmeticIds: ["sleeve-frost"] } },
 		...overrides,
 	};

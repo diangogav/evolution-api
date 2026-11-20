@@ -14,6 +14,14 @@ export type AdventDoor = {
 	prize: AdventPrize;
 };
 
+// A deck the event supplies. The player picks one per duel and plays it exactly as listed.
+export type AdventDeck = {
+	id: string;
+	name: LocalizedText;
+	main: number[];
+	extra: number[];
+};
+
 // The bonus die rolled after a door is cleared: `essence[n - 1]` is paid by faces 1 to 5,
 // `rare` by a 6.
 export type AdventDie = {
@@ -34,6 +42,7 @@ export type AdventCalendar = {
 	/** Essence a player pays to reopen one missed door. */
 	recoveryPrice: number;
 	doors: AdventDoor[];
+	decks: AdventDeck[];
 	die: AdventDie;
 };
 
@@ -59,4 +68,22 @@ export function nextDoorAt(calendar: AdventCalendar, now: Date): Date | null {
 
 export function doorOf(calendar: AdventCalendar, day: number): AdventDoor | null {
 	return calendar.doors.find((door) => door.day === day) ?? null;
+}
+
+export function deckOf(calendar: AdventCalendar, deckId: string): AdventDeck | null {
+	return calendar.decks.find((deck) => deck.id === deckId) ?? null;
+}
+
+// Ledger reference keys. With the ledger's unique (user, kind, key) they make each payment
+// and each recovery charge happen once per door, whatever is retried.
+export function doorPrizeKey(calendarId: string, day: number): string {
+	return `advent:${calendarId}:door:${day}`;
+}
+
+export function dieBonusKey(calendarId: string, day: number): string {
+	return `advent:${calendarId}:die:${day}`;
+}
+
+export function recoveryKey(calendarId: string, day: number): string {
+	return `advent:${calendarId}:recover:${day}`;
 }
