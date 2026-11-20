@@ -77,6 +77,14 @@ describe("RequestDoorDuel", () => {
 		expect(result.duel?.botName).toBe("Sentinel3");
 	});
 
+	it("asks for recovery of the last door too once its day has passed", async () => {
+		const afterLastDay = new Date("2026-12-28T12:00:00Z");
+		await expect(request(24, "chaos", afterLastDay)).rejects.toThrow(UnprocessableError);
+
+		world.seedDoor(24, { recoveredAt: afterLastDay });
+		expect((await request(24, "chaos", afterLastDay)).duel?.botName).toBe("Sentinel24");
+	});
+
 	it("applies a pending win first: the door is cleared, its prize paid, and no duel is issued", async () => {
 		world.seedDoor(TODAY, { currentReservationId: "OLD" });
 		world.record("OLD", decided(0));

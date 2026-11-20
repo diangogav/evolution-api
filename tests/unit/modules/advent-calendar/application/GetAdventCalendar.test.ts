@@ -181,6 +181,15 @@ describe("GetAdventCalendar", () => {
 		expect(lookedUpInsideTransaction).toBe(false);
 	});
 
+	it("shows the last door as missed once its day has passed, like every other door", async () => {
+		const view = await get(new Date("2026-12-28T12:00:00Z"));
+
+		expect(view.today).toBe(28);
+		expect(view.nextDoorAt).toBeNull();
+		expect(view.doors[23].status).toBe("missed");
+		expect(view.doors[22].status).toBe("missed");
+	});
+
 	it("answers 404 for an unknown calendar", async () => {
 		await expect(
 			useCase.run({ userId: USER, calendarId: "nope", locale: "en", now: NOW }),

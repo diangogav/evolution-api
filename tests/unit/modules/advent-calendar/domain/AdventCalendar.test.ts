@@ -42,9 +42,10 @@ describe("calendarDay", () => {
 		expect(calendarDay(calendar(), new Date("2026-12-06T00:00:00Z"))).toBe(6);
 	});
 
-	it("stays at the last door after day 24", () => {
+	it("keeps counting after the last door, so day 24 becomes a past day like any other", () => {
 		expect(calendarDay(calendar(), new Date("2026-12-24T12:00:00Z"))).toBe(24);
-		expect(calendarDay(calendar(), new Date("2026-12-30T12:00:00Z"))).toBe(24);
+		expect(calendarDay(calendar(), new Date("2026-12-25T00:00:00Z"))).toBe(25);
+		expect(calendarDay(calendar(), new Date("2026-12-30T12:00:00Z"))).toBe(30);
 	});
 });
 
@@ -70,8 +71,9 @@ describe("nextDoorAt", () => {
 		);
 	});
 
-	it("is null once the last door is open", () => {
+	it("is null once the last door is open, and stays null afterwards", () => {
 		expect(nextDoorAt(calendar(), new Date("2026-12-24T00:00:00Z"))).toBeNull();
+		expect(nextDoorAt(calendar(), new Date("2026-12-28T00:00:00Z"))).toBeNull();
 	});
 });
 

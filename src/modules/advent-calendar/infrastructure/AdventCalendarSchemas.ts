@@ -55,7 +55,10 @@ export const AdventCalendarViewSchema = t.Object({
 	open: t.Boolean({ description: "Whether doors can be played or recovered now" }),
 	startsAt: t.String({ format: "date-time" }),
 	endsAt: t.String({ format: "date-time" }),
-	today: t.Integer({ description: "Latest door whose day has come; 0 before the calendar starts" }),
+	today: t.Integer({
+		description:
+			"Current day of the calendar: 0 before it starts, and above the last door once its day has passed",
+	}),
 	nextDoorAt: t.Nullable(
 		t.String({ format: "date-time", description: "When the next door opens (00:00 UTC)" }),
 	),

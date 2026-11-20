@@ -50,13 +50,14 @@ export function isCalendarOpen(calendar: AdventCalendar, now: Date): boolean {
 	return now.getTime() >= calendar.startsAt.getTime() && now.getTime() < calendar.endsAt.getTime();
 }
 
-// The latest door whose day has come: 0 before the calendar starts, then one more every
-// 24 hours from `startsAt`, capped at the last door. Counted from the start instant rather
-// than from each player's clock, so every player shares the same reset moment.
+// The calendar's current day: 0 before it starts, then one more every 24 hours from
+// `startsAt`. Counted from the start instant rather than from each player's clock, so every
+// player shares the same reset moment. It keeps counting past the last door while the window
+// stays open, which is what turns the last door into a missed one like the rest.
 export function calendarDay(calendar: AdventCalendar, now: Date): number {
 	const elapsed = now.getTime() - calendar.startsAt.getTime();
 	if (elapsed < 0) return 0;
-	return Math.min(Math.floor(elapsed / DAY_MS) + 1, calendar.doors.length);
+	return Math.floor(elapsed / DAY_MS) + 1;
 }
 
 // When the next door opens, for clients to count down to. Null once every door has opened.
