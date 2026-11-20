@@ -54,6 +54,7 @@ Modules that exist today (`src/modules/*`):
 | `match-annulment` | Batch annulment and reinstatement of ranked matches. |
 | `points-ledger` | Per-match points entries that feed the ranked tiers. |
 | `rating` | Elo rating compensation when a match is annulled or reinstated. |
+| `advent-calendar` | The December advent calendar: its catalog, each player's door progress, door duels, the bonus die and paid recovery of missed doors. Builds on `reserved-duel`; duel results are applied when the player reads the calendar or acts on a door. |
 | `reserved-duel` | The reservation contract shared with the duel server: issuing and revoking reservations in Redis, and the read-only view of the `reserved_duels` records the server writes. `event-run` builds on it. |
 | `rewards` | Essence ledger, missions, the worker that projects progress from match results, the shop (see `rewards.md`). |
 | `stats` | Player and global statistics, leaderboard, player of the week. |
@@ -108,6 +109,7 @@ Routers (`src/server/routes/`) and `src/server/composition/` are the composition
 | `shopRouter` | `/shop` | `src/server/routes/shop-router.ts` |
 | `eventsRouter` | `/events` | `src/server/routes/event-run-router.ts` |
 | `eventRunsRouter` | `/event-runs` | `src/server/routes/event-run-router.ts` |
+| `adventCalendarsRouter` | `/advent-calendars` | `src/server/routes/advent-calendar-router.ts` |
 | `communityDecksRouter` | `/community-decks` | `src/server/routes/community-decks-router.ts` |
 | `lightningRouter` | `/lightning` | `src/server/routes/lightning-router.ts` |
 
@@ -122,7 +124,7 @@ Both `DataSource`s point at the same Postgres instance but track migrations inde
 
 `src/evolution-types/` is the schema package shared by this API and EDOpro-server-ts, vendored by both as a git submodule. Its entities and migrations change in the evolution-types repository and reach this API by bumping the submodule; they are never edited inside this checkout. Its migrations run with the package's own `migration:run`. The cosmetics `DataSource` declares its foreign key to `users(id)` in raw SQL inside its own migration, so it never manages the shared `users` table.
 
-Module-to-DataSource mapping: `catalog`, `loadout`, `emote-bar`, `entitlements`, `community-decks`, `event-run`, `event-stats`, `lightning`, `player-reports`, `reserved-duel`, and `rewards` use the cosmetics `DataSource` (`rewards` also reads matches and achievements from the shared schema through its `*Source` adapters; `user`'s `UserDirectoryPostgresRepository` reads usernames from the shared `users` table; `event-run`, `event-stats`, `lightning` and `reserved-duel` query through `src/shared/persistence/runQuery.ts`, and `lightning` reads usernames and bans from the shared tables in place). Every other module that touches Postgres (`activity-stats`, `user`, `achievements`, `match`, `match-annulment`, `points-ledger`, `rating`, `stats`, `tiers`, `ban-list`) uses the shared `evolution-types` `DataSource`. `ticket` uses Redis, not Postgres. Both `DataSource`s are initialized at startup in `src/index.ts`.
+Module-to-DataSource mapping: `catalog`, `loadout`, `emote-bar`, `entitlements`, `community-decks`, `advent-calendar`, `event-run`, `event-stats`, `lightning`, `player-reports`, `reserved-duel`, and `rewards` use the cosmetics `DataSource` (`rewards` also reads matches and achievements from the shared schema through its `*Source` adapters; `user`'s `UserDirectoryPostgresRepository` reads usernames from the shared `users` table; `advent-calendar`, `event-run`, `event-stats`, `lightning` and `reserved-duel` query through `src/shared/persistence/runQuery.ts`, and `lightning` reads usernames and bans from the shared tables in place). Every other module that touches Postgres (`activity-stats`, `user`, `achievements`, `match`, `match-annulment`, `points-ledger`, `rating`, `stats`, `tiers`, `ban-list`) uses the shared `evolution-types` `DataSource`. `ticket` uses Redis, not Postgres. Both `DataSource`s are initialized at startup in `src/index.ts`.
 
 ## Errors
 
@@ -157,7 +159,7 @@ new Elysia({ prefix: "/me/missions" }).guard({}, (app) =>
 );
 ```
 
-`requireUser` applies only to the routes inside that guard. **`user-router.ts`** (its authenticated, non-admin endpoints), **`ticket-router.ts`**, **`me-cosmetics-router.ts`**, **`loadout-router.ts`**, **`emote-bar-router.ts`**, **`missions-router.ts`**, **`shop-router.ts`**, **`event-run-router.ts`**, **`player-reports-router.ts`** and the player routes of **`lightning-router.ts`** use it. Public reads (`cosmetics-router.ts`, `public-loadout-router.ts`, `bot-loadout-router.ts`, `public-emote-bar-router.ts`, `achievements-router.ts`, `community-decks-router.ts`, and the list, detail and ranking of `lightning-router.ts`) have no token to check. Admin routes (`admin-*-router.ts`, the admin half of `player-reports-router.ts`, create and cancel in `lightning-router.ts` (its chat delete calls `adminAuthorizer` inside the `requireUser` guard), and the ban endpoints of `user-router.ts`) use `bearer()` with `adminAuthorizer` instead, and stay outside `requireUser` so an admin can act on a banned user.
+`requireUser` applies only to the routes inside that guard. **`user-router.ts`** (its authenticated, non-admin endpoints), **`ticket-router.ts`**, **`me-cosmetics-router.ts`**, **`loadout-router.ts`**, **`emote-bar-router.ts`**, **`missions-router.ts`**, **`shop-router.ts`**, **`event-run-router.ts`**, **`advent-calendar-router.ts`**, **`player-reports-router.ts`** and the player routes of **`lightning-router.ts`** use it. Public reads (`cosmetics-router.ts`, `public-loadout-router.ts`, `bot-loadout-router.ts`, `public-emote-bar-router.ts`, `achievements-router.ts`, `community-decks-router.ts`, and the list, detail and ranking of `lightning-router.ts`) have no token to check. Admin routes (`admin-*-router.ts`, the admin half of `player-reports-router.ts`, create and cancel in `lightning-router.ts` (its chat delete calls `adminAuthorizer` inside the `requireUser` guard), and the ban endpoints of `user-router.ts`) use `bearer()` with `adminAuthorizer` instead, and stay outside `requireUser` so an admin can act on a banned user.
 
 ### Sessions and refresh tokens
 

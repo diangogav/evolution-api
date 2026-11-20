@@ -14,6 +14,7 @@ Essence is never stored as a number. It is the sum of a user's rows in `essence_
 | `purchase` | `cosmetics.id` | minus the cosmetic's `essence_price` | shop endpoint |
 | `adjustment` | free text | any | manual repairs |
 | `event_run` | `event:<event_id>:tier:<waves>` | the event prize tier's essence, once per player and tier | event run apply (`/event-runs/me`, duel request, event run worker) |
+| `advent_calendar` | `advent:<calendar_id>:door:<day>`, `advent:<calendar_id>:die:<day>`, `advent:<calendar_id>:recover:<day>` | a door's prize essence, its bonus die essence, and the (negative) charge for recovering a missed door, each once per player and door | advent calendar read, door duel request, die roll, door recovery |
 | `lightning_tournament` | `lightning:<tournament_id>:<user_id>` | the essence the player's final position earns, once per tournament | lightning worker, when the tournament completes |
 
 `GET /me/essence` returns the balance. Domain code: `src/modules/rewards/domain/EssenceLedgerEntry.ts`.

@@ -17,6 +17,7 @@ import { Logger } from "../shared/logger/domain/Logger";
 
 import { achievementsRouter, userAchievementsRouter } from "./routes/achievements-router";
 import { banListRouter } from "./routes/ban-list-router";
+import { adventCalendarsRouter } from "./routes/advent-calendar-router";
 import { communityDecksRouter } from "./routes/community-decks-router";
 import { cosmeticsRouter } from "./routes/cosmetics-router";
 import { discordAuthRouter } from "./routes/discord-auth-router";
@@ -134,6 +135,7 @@ export function mountApiV1Routes(app: Elysia) {
 			.use(shopRouter)
 			.use(eventsRouter)
 			.use(eventRunsRouter)
+			.use(adventCalendarsRouter)
 			.use(communityDecksRouter)
 			.use(lightningRouter)
 			.use(pushRouter)

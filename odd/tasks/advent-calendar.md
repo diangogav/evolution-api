@@ -12,18 +12,20 @@ Branch `feat/advent-calendar` (worktree `../.wt-api-advent`), released in Decemb
 - **S5** Rune die. After a door is cleared the server rolls 1-6 once and stores it: 1-5 pay extra essence, 6 pays a rare prize. Asking again returns the same roll.
 - **S6** Recovery. A missed door is reopened by paying essence, under the user's ledger lock, at most once per door.
 - **S7** No leaderboard in this edition. User: "si, medianoche UTC y sin leaderboard". Attempts per door are still stored (a duel the player leaves before it starts counts), so a merit prize or a later leaderboard needs no data change.
-- **S8** Bots are Goat format (client doc S8). Which deck the player brings is not decided yet.
+- **S8** Bots are Goat format (client doc S8). User: "decks del evento". The player picks one of the decks the calendar supplies; the reservation locks it exactly.
 
 Assumptions (not user requirements): results are applied when the player reads the calendar or requests a duel, with no background worker; one ledger kind `advent_calendar` with distinct reference keys for door, die and recovery; the calendar window may outlast day 24 so missed days can still be recovered.
 
 ## Tasks
 
 - [x] T1 (S1, S2, S5, S7) Domain rules: calendar day, door status, duel effect on a door, rune die. Route: inline. RED: the three test files failed on a missing module, then 31 tests green (module boundaries ratchet included).
-- [ ] T2 (S3, S4, S5, S6) Migrations: catalog, door progress, reservations, applied-duel gate, ledger kind. Route: inline. High risk item 1. Written and tested only, never run from here.
-- [ ] T3 (S3, S4) Request a door duel and apply its result. Route: inline. Blocked on the player deck decision (S8).
-- [ ] T4 (S5, S6) Roll the die, recover a door. Route: inline.
-- [ ] T5 (S1) Calendar view endpoint and router, OpenAPI ratchet. Route: inline.
-- [ ] T6 Seed the December 2026 calendar. Blocked on the 24 bots, their decks and the prize table.
+- [x] T2 (S3, S4, S5, S6) Migrations: catalog, door progress, reservations, applied-duel gate, ledger kind `advent_calendar`. Route: inline. Commit 59c88a4. High risk item 1. RED: the migration test failed on missing modules, then green. Only new tables and one new enum value; never run from here.
+- [x] T3 (S3, S4, S8) Request a door duel and apply its result. Route: inline. Commit 68ff250. RED: the four use case test files failed on missing modules. The player picks one of the calendar's decks per duel, locked exactly.
+- [x] T4 (S5, S6) Roll the die, recover a door. Route: inline. Commit 68ff250.
+- [x] T5 (S1) Calendar view, Postgres repositories, router `/advent-calendars`, OpenAPI ratchet, docs. Route: inline. RED: the router test failed on a missing module. Full suite 1934 pass, lint clean, type check clean.
+- [ ] T6 Seed the December 2026 calendar. Blocked on the 24 bots, the event decks and the prize table.
+- [ ] T7 Prize cosmetics in the calendar view with type, name and signed asset URLs (as `GetEvent` does). Not started; the view returns cosmetic ids only.
+- [ ] T8 Client: replace the preview store with these endpoints (client doc T4).
 
 ## Log
 
@@ -34,3 +36,8 @@ Assumptions (not user requirements): results are applied when the player reads t
 - L5 (2026-11-19, user): "si, medianoche UTC y sin leaderboard"
 - L6 Decision: a separate module `advent-calendar`; it imports `PickIndex`, `randomPickIndex`, `resolveDuelRecord` and `DuelResolution` through the `event-run` index, which now exports them.
 - L7 Open: Halloween locks the player to a deck the event supplies (`deckLock: "exact"`). Whether the advent duel uses the player's own Goat deck or supplied decks is the user's call; it shapes the catalog and the duel request.
+- L8 (2026-11-19, user, on own deck versus supplied decks): "decks del evento"
+- L9 Decision: results are applied under the door's row lock by every use case that touches a door (read, duel request, roll, recovery); no worker. A win nobody reads stays pending until the player's next request, including after the calendar closes, since the read applies it regardless of the window.
+- L10 Decision: a roll and an unread win stay claimable after the calendar closes; requesting a duel and recovering a door require the calendar to be open.
+- L11 Evidence: a path `day` declared as `t.Integer({ minimum: 1 })` reaches the handler as a number and answers 422 for `0`, `abc` and `2.5` (probed with a throwaway Elysia app).
+- L12 Not verified: nothing ran against a real Postgres or a real duel server. Repository tests check the SQL text and parameters, as the rest of the repo does.
