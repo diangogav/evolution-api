@@ -4,3 +4,7 @@
 export type { EventCatalogListing, EventCatalogRepository } from "./domain/EventCatalogRepository";
 export type { EventDefinition } from "./domain/EventDefinition";
 export type { EventRunStatus } from "./domain/EventRun";
+export type { DuelResolution } from "./domain/ReservedDuelRecord";
+export { resolveDuelRecord } from "./domain/ReservedDuelRecord";
+export { randomPickIndex } from "./domain/WaveRival";
+export type { PickIndex } from "./domain/WaveRival";
