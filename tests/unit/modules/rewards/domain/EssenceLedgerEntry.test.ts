@@ -54,7 +54,7 @@ describe("essenceLedgerEntry", () => {
 });
 
 describe("ESSENCE_LEDGER_KINDS", () => {
-	it("keeps every existing kind, in order, and adds the event and lightning prize kinds", () => {
+	it("keeps every existing kind, in order, and adds the event, lightning and advent kinds", () => {
 		expect([...ESSENCE_LEDGER_KINDS]).toEqual([
 			"mission",
 			"daily_bonus",
@@ -63,6 +63,7 @@ describe("ESSENCE_LEDGER_KINDS", () => {
 			"adjustment",
 			"event_run",
 			"lightning_tournament",
+			"advent_calendar",
 		]);
 	});
 });

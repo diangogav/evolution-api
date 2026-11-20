@@ -6,6 +6,7 @@ export const ESSENCE_LEDGER_KINDS = [
 	"adjustment",
 	"event_run",
 	"lightning_tournament",
+	"advent_calendar",
 ] as const;
 
 export type EssenceLedgerKind = (typeof ESSENCE_LEDGER_KINDS)[number];
