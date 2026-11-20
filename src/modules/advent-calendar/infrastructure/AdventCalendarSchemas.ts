@@ -1,10 +1,26 @@
 import { t } from "elysia";
 
+import { CosmeticType } from "../../catalog";
 import { DOOR_STATUSES } from "../domain/DoorProgress";
 
 export const AdventPrizeSchema = t.Object({
 	essence: t.Integer({ description: "Essence credited, 0 when the prize has none" }),
 	cosmeticIds: t.Array(t.String(), { description: "Cosmetics granted with the prize" }),
+});
+
+export const AdventCosmeticSchema = t.Object({
+	id: t.String(),
+	type: t.Enum(CosmeticType),
+	name: t.String({ description: "Catalog display name" }),
+	assets: t.Record(t.String(), t.String(), {
+		description: "Signed URLs keyed by file name (render.jpg, background.webp, ...)",
+	}),
+	assetsExpiresAt: t.Optional(
+		t.Union([t.String(), t.Null()], {
+			description:
+				"ISO 8601 expiry of the signed asset URLs, or null when they are public and never expire",
+		}),
+	),
 });
 
 export const DoorViewSchema = t.Object({
@@ -51,6 +67,10 @@ export const AdventCalendarViewSchema = t.Object({
 		rare: AdventPrizeSchema,
 	}),
 	doors: t.Array(DoorViewSchema),
+	cosmetics: t.Array(AdventCosmeticSchema, {
+		description:
+			"Every cosmetic a door or the die can pay, once each; an id the catalog does not know is left out",
+	}),
 });
 
 export const DoorDuelTicketSchema = t.Object({

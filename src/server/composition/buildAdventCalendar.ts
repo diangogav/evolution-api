@@ -7,6 +7,7 @@ import { RollRuneDie } from "../../modules/advent-calendar/application/RollRuneD
 import { AdventCatalogPostgresRepository } from "../../modules/advent-calendar/infrastructure/AdventCatalogPostgresRepository";
 import { AdventDuelPostgresRepository } from "../../modules/advent-calendar/infrastructure/AdventDuelPostgresRepository";
 import { DoorProgressPostgresRepository } from "../../modules/advent-calendar/infrastructure/DoorProgressPostgresRepository";
+import { createR2AssetUrlSigner } from "../../modules/assets/infrastructure/createR2AssetUrlSigner";
 import { CosmeticPostgresRepository } from "../../modules/catalog/infrastructure/CosmeticPostgresRepository";
 import { GrantCosmeticToUser } from "../../modules/entitlements";
 import { EntitlementPostgresRepository } from "../../modules/entitlements/infrastructure/EntitlementPostgresRepository";
@@ -37,7 +38,14 @@ export function buildAdventCalendar() {
 	const applyDuel = new ApplyDoorDuel(doors, duels, payPrize);
 
 	return {
-		getCalendar: new GetAdventCalendar(catalog, doors, applyDuel, transactions),
+		getCalendar: new GetAdventCalendar(
+			catalog,
+			doors,
+			applyDuel,
+			transactions,
+			new CosmeticPostgresRepository(),
+			createR2AssetUrlSigner(),
+		),
 		requestDoorDuel: new RequestDoorDuel(
 			catalog,
 			doors,
