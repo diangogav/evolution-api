@@ -53,6 +53,7 @@ beforeEach(() => {
 		world.catalog,
 		world.doorRepository,
 		world.applyDuel,
+		world.ledgerRepository,
 		{
 			run: async (work) => {
 				insideTransaction = true;
@@ -112,6 +113,14 @@ describe("GetAdventCalendar", () => {
 			duelLive: false,
 		});
 		expect(view.doors[1]).toMatchObject({ firstTry: false, dieRoll: null, canRoll: true });
+	});
+
+	it("carries the player's essence, counting a prize it has just paid", async () => {
+		world.credit(120);
+		world.seedDoor(TODAY, { currentReservationId: "OLD" });
+		world.record("OLD", decided(0));
+
+		expect((await get()).balance).toBe(170);
 	});
 
 	it("localizes the texts", async () => {

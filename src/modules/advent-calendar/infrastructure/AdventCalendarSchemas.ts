@@ -64,6 +64,7 @@ export const AdventCalendarViewSchema = t.Object({
 	),
 	recoveryPrice: t.Integer({ description: "Essence charged to reopen one missed door" }),
 	sealsBroken: t.Integer({ description: "Doors the player cleared" }),
+	balance: t.Integer({ description: "The player's essence, after any prize this read paid" }),
 	decks: t.Array(t.Object({ id: t.String(), name: t.String() })),
 	die: t.Object({
 		essence: t.Array(t.Integer(), { description: "Essence paid by faces 1 to 5, in order" }),

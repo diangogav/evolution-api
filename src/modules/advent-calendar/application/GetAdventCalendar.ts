@@ -1,7 +1,7 @@
 import { NotFoundError } from "../../../shared/errors/NotFoundError";
 import type { QueryableManager } from "../../../shared/persistence/QueryableManager";
 import { AssetUrlSigner, CosmeticRepository, CosmeticType } from "../../catalog";
-import { Locale, localize, TransactionRunner } from "../../rewards";
+import { EssenceLedgerRepository, Locale, localize, TransactionRunner } from "../../rewards";
 import { AdventDie, calendarDay, isCalendarOpen, nextDoorAt } from "../domain/AdventCalendar";
 import { AdventCatalogRepository } from "../domain/AdventCatalogRepository";
 import { DoorProgress } from "../domain/DoorProgress";
@@ -36,6 +36,8 @@ export type AdventCalendarView = {
 	nextDoorAt: string | null;
 	recoveryPrice: number;
 	sealsBroken: number;
+	/** The player's essence, after any prize this read paid. */
+	balance: number;
 	decks: Array<{ id: string; name: string }>;
 	die: AdventDie;
 	doors: DoorView[];
@@ -50,6 +52,7 @@ export class GetAdventCalendar {
 		private readonly catalog: AdventCatalogRepository,
 		private readonly doors: DoorProgressRepository,
 		private readonly applyDuel: Pick<ApplyDoorDuel, "applyCurrent">,
+		private readonly ledger: Pick<EssenceLedgerRepository, "balanceOf">,
 		private readonly transactions: TransactionRunner,
 		private readonly cosmetics: Pick<CosmeticRepository, "findById">,
 		private readonly signer: Pick<AssetUrlSigner, "signManifest">,
@@ -123,6 +126,7 @@ export class GetAdventCalendar {
 			nextDoorAt: nextDoorAt(calendar, input.now)?.toISOString() ?? null,
 			recoveryPrice: calendar.recoveryPrice,
 			sealsBroken: doors.filter((door) => door.status === "cleared").length,
+			balance: await this.ledger.balanceOf(input.userId, manager),
 			decks: calendar.decks.map((deck) => ({
 				id: deck.id,
 				name: localize(deck.name, input.locale),

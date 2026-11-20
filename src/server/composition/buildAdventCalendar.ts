@@ -42,6 +42,7 @@ export function buildAdventCalendar() {
 			catalog,
 			doors,
 			applyDuel,
+			ledger,
 			transactions,
 			new CosmeticPostgresRepository(),
 			createR2AssetUrlSigner(),
