@@ -69,6 +69,17 @@ describe("RecoverDoor", () => {
 		expect(world.balance()).toBe(500);
 	});
 
+	it("answers 409 while the door's duel is live, so a win in progress is never charged for", async () => {
+		world.credit(100);
+		world.seedDoor(4, { currentReservationId: "OLD" });
+		world.record("OLD", { startedAt: new Date("2026-12-04T23:58:00Z") });
+
+		await expect(recover(4)).rejects.toThrow(ConflictError);
+
+		expect(world.balance()).toBe(100);
+		expect(world.door(4)?.recoveredAt ?? null).toBeNull();
+	});
+
 	it("rejects a closed calendar and unknown doors", async () => {
 		world.credit(500);
 		await expect(recover(3, new Date("2027-01-01T00:00:00Z"))).rejects.toThrow(UnprocessableError);

@@ -42,6 +42,8 @@ export class RecoverDoor {
 			const locked = await this.doors.lockDoor(input.userId, calendar.id, door.day, manager);
 			// A duel won on the door's own day may still be unread; it must not be charged for.
 			const applied = await this.applyDuel.applyCurrent(locked, calendar, manager, input.now);
+			// A duel still being played may yet clear the door; charging now could bill a win.
+			if (applied.duelLive) throw new ConflictError("A duel is in progress for this door");
 			if (!canRecoverDoor(door.day, today, applied.progress)) {
 				throw new ConflictError("Only a missed door can be recovered");
 			}
@@ -62,7 +64,7 @@ export class RecoverDoor {
 			const progress = { ...applied.progress, recoveredAt: input.now };
 			await this.doors.save(progress, input.now, manager);
 			return {
-				door: toDoorView(calendar, door, today, progress, applied.duelLive),
+				door: toDoorView(calendar, door, today, progress),
 				balance: await this.ledger.balanceOf(input.userId, manager),
 			};
 		});

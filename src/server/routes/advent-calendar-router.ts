@@ -168,7 +168,7 @@ export const adventCalendarsRouter = new Elysia({ prefix: "/advent-calendars" })
 							balance: 70,
 						}),
 						...errorResponses(401, 402, 403, 404),
-						...conflict("The door is not missed"),
+						...conflict("The door is not missed, or its duel is in progress"),
 						...unprocessable("Calendar closed, or invalid request"),
 					},
 				},
