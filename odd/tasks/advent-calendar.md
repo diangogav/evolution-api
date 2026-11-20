@@ -25,7 +25,7 @@ Assumptions (not user requirements): results are applied when the player reads t
 - [x] T5 (S1) Calendar view, Postgres repositories, router `/advent-calendars`, OpenAPI ratchet, docs. Route: inline. RED: the router test failed on a missing module. Full suite 1934 pass, lint clean, type check clean.
 - [ ] T6 Seed the December 2026 calendar. Blocked on the 24 bots, the event decks and the prize table.
 - [x] T7 (S4) Prize cosmetics in the calendar view: a top-level `cosmetics` list with type, name and signed asset URLs, each cosmetic once, built after the transaction. Route: inline. RED: three new view tests failed, then green. Full suite 1938 pass, lint and type check clean.
-- [ ] T8 Client: replace the preview store with these endpoints (client doc T4).
+- [x] T8 Client: the advent page runs on these endpoints (client doc T4, `evolution-card-game` branch `feat/advent-event`). The calendar view gained `balance` for it (commit 5ae09ac). Not run end to end.
 
 ## Log
 
