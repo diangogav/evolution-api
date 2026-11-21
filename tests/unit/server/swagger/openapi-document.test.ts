@@ -58,6 +58,9 @@ const PROTECTED_OPERATIONS = [
 	"PUT /api/v1/me/loadout/",
 	"GET /api/v1/me/emote-bar/",
 	"PUT /api/v1/me/emote-bar/",
+	"GET /api/v1/me/avatar/",
+	"PUT /api/v1/me/avatar/",
+	"DELETE /api/v1/me/avatar/",
 	"GET /api/v1/me/missions/",
 	"POST /api/v1/me/missions/{code}/claim",
 	"GET /api/v1/me/essence/",
@@ -100,6 +103,7 @@ const EMPTY_BODY_OPERATIONS = [
 	"POST /api/v1/users/change-username",
 	"POST /api/v1/users/change-account-password",
 	"DELETE /api/v1/lightning/{id}/chat/{messageId}",
+	"DELETE /api/v1/me/avatar/",
 ];
 
 // Operations that answer with a Server-Sent Events stream instead of a JSON body; they

@@ -8,6 +8,7 @@ import { CosmeticEntity } from "./modules/catalog/infrastructure/CosmeticEntity"
 import { EntitlementEntity } from "./modules/entitlements/infrastructure/EntitlementEntity";
 import { UserEmoteBarEntity } from "./modules/emote-bar/infrastructure/UserEmoteBarEntity";
 import { UserLoadoutEntity } from "./modules/loadout/infrastructure/UserLoadoutEntity";
+import { PlayerAvatarEntity } from "./modules/player-avatars/infrastructure/PlayerAvatarEntity";
 
 // Cosmetics owns its own DataSource and migration history, isolated from the shared
 // schema in evolution-types. It points at the same Postgres but tracks migrations in
@@ -28,7 +29,13 @@ const options: DataSourceOptions = {
 		"player_reports",
 		"player_report_reviews",
 	]),
-	entities: [CosmeticEntity, UserLoadoutEntity, EntitlementEntity, UserEmoteBarEntity],
+	entities: [
+		CosmeticEntity,
+		UserLoadoutEntity,
+		EntitlementEntity,
+		UserEmoteBarEntity,
+		PlayerAvatarEntity,
+	],
 	subscribers: [],
 	migrations: [join(__dirname, "/migrations/*.ts")],
 	migrationsTableName: "cosmetics_migrations",

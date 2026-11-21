@@ -22,6 +22,7 @@ import { cosmeticsRouter } from "./routes/cosmetics-router";
 import { discordAuthRouter } from "./routes/discord-auth-router";
 import { leaderboardRouter } from "./routes/leaderboard-router";
 import { emoteBarRouter } from "./routes/emote-bar-router";
+import { playerAvatarRouter } from "./routes/player-avatar-router";
 import { botLoadoutRouter } from "./routes/bot-loadout-router";
 import { eventRunsRouter, eventsRouter } from "./routes/event-run-router";
 import { lightningRouter } from "./routes/lightning-router";
@@ -30,6 +31,7 @@ import { meCosmeticsRouter } from "./routes/me-cosmetics-router";
 import { missionsRouter } from "./routes/missions-router";
 import { essenceRouter, shopRouter } from "./routes/shop-router";
 import { publicEmoteBarRouter } from "./routes/public-emote-bar-router";
+import { publicAvatarsRouter } from "./routes/public-avatars-router";
 import { publicLoadoutRouter } from "./routes/public-loadout-router";
 import { rankedTiersRouter } from "./routes/ranked-tiers-router";
 import { adminCosmeticsRouter } from "./routes/admin-cosmetics-router";
@@ -121,10 +123,12 @@ export function mountApiV1Routes(app: Elysia) {
 			.use(cosmeticsRouter)
 			.use(meCosmeticsRouter)
 			.use(emoteBarRouter)
+			.use(playerAvatarRouter)
 			.use(loadoutRouter)
 			.use(publicLoadoutRouter)
 			.use(botLoadoutRouter)
 			.use(publicEmoteBarRouter)
+			.use(publicAvatarsRouter)
 			.use(adminCosmeticsRouter)
 			.use(adminModerationRouter)
 			.use(adminStatsRouter)
