@@ -37,6 +37,7 @@ Modules that exist today (`src/modules/*`):
 | Module | Responsibility |
 | --- | --- |
 | `achievements` | Achievement catalog and a user's achievement record. |
+| `account-formats` | The formats a signed-in player chose to play, stored on their account (`users.formats`): `null` until they choose, an empty list is a choice of none. Validated against the format catalogue (`tcg`, `ocg`, `edison`, `goat`, `jtp`, `jtp-adv-2007-03`, `genesys`, `rush`, `pre`, `speed`) and stored deduplicated in catalogue order; nothing is inferred from decks or history. |
 | `assets` | Signed URLs and storage for cosmetic asset files, backed by R2. |
 | `auth` | Login use case and its request/response schemas. |
 | `activity-stats` | Daily, weekly and monthly server activity (new users, active players, ranked/unranked/EvoDuel matches, per ban list) for the backoffice. |
@@ -92,6 +93,7 @@ Routers (`src/server/routes/`) and `src/server/composition/` are the composition
 | `ticketRouter` | `/game-tickets` | `src/server/routes/ticket-router.ts` |
 | `cosmeticsRouter` | `/cosmetics` | `src/server/routes/cosmetics-router.ts` |
 | `meCosmeticsRouter` | `/me/cosmetics` | `src/server/routes/me-cosmetics-router.ts` |
+| `meFormatsRouter` | `/me/formats` | `src/server/routes/me-formats-router.ts` |
 | `emoteBarRouter` | `/me/emote-bar` | `src/server/routes/emote-bar-router.ts` |
 | `loadoutRouter` | `/me/loadout` | `src/server/routes/loadout-router.ts` |
 | `publicLoadoutRouter` | `/users/by-username/:username/loadout` | `src/server/routes/public-loadout-router.ts` |
@@ -122,7 +124,7 @@ Both `DataSource`s point at the same Postgres instance but track migrations inde
 
 `src/evolution-types/` is the schema package shared by this API and EDOpro-server-ts, vendored by both as a git submodule. Its entities and migrations change in the evolution-types repository and reach this API by bumping the submodule; they are never edited inside this checkout. Its migrations run with the package's own `migration:run`. The cosmetics `DataSource` declares its foreign key to `users(id)` in raw SQL inside its own migration, so it never manages the shared `users` table.
 
-Module-to-DataSource mapping: `catalog`, `loadout`, `emote-bar`, `entitlements`, `community-decks`, `event-run`, `event-stats`, `lightning`, `player-reports`, `reserved-duel`, and `rewards` use the cosmetics `DataSource` (`rewards` also reads matches and achievements from the shared schema through its `*Source` adapters; `user`'s `UserDirectoryPostgresRepository` reads usernames from the shared `users` table; `event-run`, `event-stats`, `lightning` and `reserved-duel` query through `src/shared/persistence/runQuery.ts`, and `lightning` reads usernames and bans from the shared tables in place). Every other module that touches Postgres (`activity-stats`, `user`, `achievements`, `match`, `match-annulment`, `points-ledger`, `rating`, `stats`, `tiers`, `ban-list`) uses the shared `evolution-types` `DataSource`. `ticket` uses Redis, not Postgres. Both `DataSource`s are initialized at startup in `src/index.ts`.
+Module-to-DataSource mapping: `catalog`, `loadout`, `emote-bar`, `entitlements`, `community-decks`, `event-run`, `event-stats`, `lightning`, `player-reports`, `reserved-duel`, and `rewards` use the cosmetics `DataSource` (`account-formats` reads and writes `formats` on the shared `users` table; `rewards` also reads matches and achievements from the shared schema through its `*Source` adapters; `user`'s `UserDirectoryPostgresRepository` reads usernames from the shared `users` table; `account-formats`, `event-run`, `event-stats`, `lightning` and `reserved-duel` query through `src/shared/persistence/runQuery.ts`, and `lightning` reads usernames and bans from the shared tables in place). Every other module that touches Postgres (`activity-stats`, `user`, `achievements`, `match`, `match-annulment`, `points-ledger`, `rating`, `stats`, `tiers`, `ban-list`) uses the shared `evolution-types` `DataSource`. `ticket` uses Redis, not Postgres. Both `DataSource`s are initialized at startup in `src/index.ts`.
 
 ## Errors
 
