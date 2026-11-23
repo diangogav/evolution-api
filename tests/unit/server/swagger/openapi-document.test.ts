@@ -37,6 +37,8 @@ const PROTECTED_OPERATIONS = [
 	"DELETE /api/v1/auth/discord/link",
 	"PUT /api/v1/me/push-subscriptions",
 	"DELETE /api/v1/me/push-subscriptions",
+	"GET /api/v1/me/formats",
+	"PUT /api/v1/me/formats",
 	"GET /api/v1/me/player-reports/matches",
 	"POST /api/v1/me/player-reports/",
 	"GET /api/v1/admin/player-reports/",
