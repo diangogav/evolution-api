@@ -20,6 +20,11 @@ WHERE "id" = $1 AND "email" = $2 AND "deleted_at" IS NULL RETURNING "id"`;
 
 const UNIQUE_VIOLATION = "23505";
 
+// Banned accounts are soft-deleted and free their name, as the exact-match lookup always did.
+const USERNAME_TAKEN = `SELECT 1 FROM "users"
+WHERE LOWER("username") = LOWER($1) AND "deleted_at" IS NULL AND ($2::varchar IS NULL OR "id" <> $2)
+LIMIT 1`;
+
 export class UserPostgresRepository implements UserRepository, EmailVerifications, EmailChanges {
 	async isEmailInUse(email: string): Promise<boolean> {
 		const rows: unknown[] = await dataSource.query(IS_EMAIL_IN_USE, [email]);
@@ -67,9 +72,11 @@ export class UserPostgresRepository implements UserRepository, EmailVerification
 
 	async findByEmailOrUsername(email: string, username: string): Promise<User | null> {
 		const repository = dataSource.getRepository(UserProfileEntity);
-		const userProfileEntity = await repository.findOne({
-			where: [{ email }, { username }],
-		});
+		const userProfileEntity = await repository
+			.createQueryBuilder("user")
+			.where("user.email = :email", { email })
+			.orWhere("LOWER(user.username) = LOWER(:username)", { username })
+			.getOne();
 
 		if (!userProfileEntity) {
 			return null;
@@ -121,6 +128,14 @@ export class UserPostgresRepository implements UserRepository, EmailVerification
 		}
 
 		return User.from(userProfileEntity);
+	}
+
+	async isUsernameTaken(username: string, exceptUserId?: string): Promise<boolean> {
+		const rows = (await dataSource.query(USERNAME_TAKEN, [
+			username,
+			exceptUserId ?? null,
+		])) as unknown[];
+		return rows.length > 0;
 	}
 
 	async findById(id: string): Promise<User | null> {

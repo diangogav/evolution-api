@@ -22,6 +22,7 @@ const loginAs = async (user: User, password: string): Promise<unknown> => {
 		findByEmailOrUsername: async () => null,
 		findByEmail: async () => user,
 		findByUsername: async () => null,
+		isUsernameTaken: async () => false,
 		findById: async () => null,
 		update: async () => undefined,
 	};

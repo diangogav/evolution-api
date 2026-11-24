@@ -12,6 +12,11 @@ export interface UserRepository {
 	findByEmailOrUsername(email: string, username: string): Promise<User | null>;
 	findByEmail(email: string): Promise<User | null>;
 	findByUsername(username: string): Promise<User | null>;
+	/**
+	 * Whether an active account other than `exceptUserId` already uses this name,
+	 * ignoring letter case: "Dizzy" and "dizzy" are the same name to players.
+	 */
+	isUsernameTaken(username: string, exceptUserId?: string): Promise<boolean>;
 	findById(id: string): Promise<User | null>;
 	update(user: User): Promise<void>;
 }

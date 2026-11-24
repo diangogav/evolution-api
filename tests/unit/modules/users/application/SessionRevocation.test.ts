@@ -35,6 +35,7 @@ describe("ending sign-ins when credentials change", () => {
 			findByEmailOrUsername: async () => null,
 			findByEmail: async () => null,
 			findByUsername: async () => null,
+			isUsernameTaken: async () => false,
 			findById: async (id) => (id === user.id ? user : null),
 			update: async () => undefined,
 		};

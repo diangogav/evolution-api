@@ -29,6 +29,7 @@ describe("UserAccountPasswordReset", () => {
 			findByEmailOrUsername: async () => null,
 			findByEmail: async () => null,
 			findByUsername: async () => null,
+			isUsernameTaken: async () => false,
 			findById: async () => null,
 			update: async () => undefined,
 		};

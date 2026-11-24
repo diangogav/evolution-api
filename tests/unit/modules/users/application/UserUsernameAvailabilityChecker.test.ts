@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it, spyOn } from "bun:test";
 
 import { UserUsernameAvailabilityChecker } from "../../../../../src/modules/user/application/UserUsernameAvailabilityChecker";
 import { UserRepository } from "../../../../../src/modules/user/domain/UserRepository";
-import { UserMother } from "../mothers/UserMother";
 
 describe("UserUsernameAvailabilityChecker", () => {
 	let repository: UserRepository;
@@ -15,13 +14,14 @@ describe("UserUsernameAvailabilityChecker", () => {
 			findByEmail: async () => null,
 			findById: async () => null,
 			findByUsername: async () => null,
+			isUsernameTaken: async () => false,
 			update: async () => undefined,
 		};
 		checker = new UserUsernameAvailabilityChecker(repository);
 	});
 
 	it("returns available true when no user owns the username", async () => {
-		spyOn(repository, "findByUsername").mockResolvedValue(null);
+		spyOn(repository, "isUsernameTaken").mockResolvedValue(false);
 
 		const result = await checker.check({ username: "free-name" });
 
@@ -29,18 +29,18 @@ describe("UserUsernameAvailabilityChecker", () => {
 	});
 
 	it("returns available false when the username is already taken", async () => {
-		spyOn(repository, "findByUsername").mockResolvedValue(UserMother.create());
+		spyOn(repository, "isUsernameTaken").mockResolvedValue(true);
 
 		const result = await checker.check({ username: "taken-name" });
 
 		expect(result).toEqual({ available: false });
 	});
 
-	it("looks the username up through the repository", async () => {
-		const findByUsernameSpy = spyOn(repository, "findByUsername");
+	it("looks the username up against every account, ignoring letter case", async () => {
+		const takenSpy = spyOn(repository, "isUsernameTaken");
 
 		await checker.check({ username: "some-name" });
 
-		expect(findByUsernameSpy).toHaveBeenCalledWith("some-name");
+		expect(takenSpy).toHaveBeenCalledWith("some-name");
 	});
 });
