@@ -214,6 +214,16 @@ describe("OpenAPI document", () => {
 		);
 	});
 
+	it("tells the caller whether the account counts as verified next to the email confirmation", () => {
+		const found = operations.find(({ key }) => key === "GET /api/v1/users/email-verification");
+		const schema = found?.operation.responses?.["200"]?.content?.["application/json"]?.schema as
+			| { properties?: Record<string, unknown>; required?: string[] }
+			| undefined;
+
+		expect(Object.keys(schema?.properties ?? {}).sort()).toEqual(["accountVerified", "verified"]);
+		expect(schema?.required?.slice().sort()).toEqual(["accountVerified", "verified"]);
+	});
+
 	it("describes the whole platform instead of only tournaments", () => {
 		expect(document.info.title).toBe("Evolution API");
 		expect(document.info.title).not.toMatch(/tournament/i);

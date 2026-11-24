@@ -2,8 +2,13 @@ import { EmailSender } from "../../../shared/email/domain/EmailSender";
 import { renderBrandedEmail } from "../../../shared/email/EmailTemplate";
 import { NotFoundError } from "../../../shared/errors/NotFoundError";
 import { TooManyRequestsError } from "../../../shared/errors/TooManyRequestsError";
-import { EmailVerifications, VerificationResendThrottle } from "../domain/EmailVerifications";
+import {
+	CONFIRM_EMAIL_PARAGRAPH,
+	EmailVerifications,
+	VerificationResendThrottle,
+} from "../domain/EmailVerifications";
 import { UserRepository } from "../domain/UserRepository";
+import { isVerifiedAccount } from "../domain/VerifiedAccount";
 import { EmailVerificationLinks } from "./EmailVerificationLinks";
 
 export type ResendVerificationInput = {
@@ -16,14 +21,29 @@ export type ResendVerificationInput = {
 export class EmailVerificationStatus {
 	constructor(
 		private readonly users: Pick<UserRepository, "findById">,
-		private readonly emailVerifications: Pick<EmailVerifications, "isVerified">,
+		private readonly emailVerifications: Pick<
+			EmailVerifications,
+			"isVerified" | "verificationFacts"
+		>,
 		private readonly links: Pick<EmailVerificationLinks, "build">,
 		private readonly emailSender: EmailSender,
 		private readonly throttle: VerificationResendThrottle,
+		private readonly cutoff: Date | null,
 	) {}
 
-	async get(userId: string): Promise<{ verified: boolean }> {
-		return { verified: await this.emailVerifications.isVerified(userId) };
+	/**
+	 * `verified` is about the email address alone. `accountVerified` is what the gates
+	 * on chat, ranked and tournaments check, which a linked Discord or an account older
+	 * than the cutoff also satisfies.
+	 */
+	async get(userId: string): Promise<{ verified: boolean; accountVerified: boolean }> {
+		const facts = await this.emailVerifications.verificationFacts(userId);
+		if (!facts) return { verified: false, accountVerified: false };
+
+		return {
+			verified: facts.emailVerifiedAt !== null,
+			accountVerified: isVerifiedAccount(facts, this.cutoff),
+		};
 	}
 
 	/** Sends the verification email again; `sent` is false when there is nothing left to verify. */
@@ -45,7 +65,7 @@ export class EmailVerificationStatus {
 		const { html, text } = renderBrandedEmail({
 			heading: `Confirm your email, ${user.username}`,
 			paragraphs: [
-				"Confirm that this address is yours so we can help you recover your account if you ever lose access. The link works for 24 hours.",
+				CONFIRM_EMAIL_PARAGRAPH,
 				"If you did not create an Evolution account, you can ignore this email.",
 			],
 			cta: { label: "Confirm my email", url: link },

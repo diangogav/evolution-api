@@ -68,6 +68,10 @@ export const EmailVerifiedSchema = t.Object({ verified: t.Literal(true) });
 /** Response of GET /users/email-verification. */
 export const EmailVerificationStatusSchema = t.Object({
 	verified: t.Boolean({ description: "True when the caller's email address is confirmed" }),
+	accountVerified: t.Boolean({
+		description:
+			"True when the account counts as verified: confirmed email, linked Discord, or created before the cutoff",
+	}),
 });
 
 /** Response of POST /users/email-verification/resend. */

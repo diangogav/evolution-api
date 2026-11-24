@@ -6,6 +6,7 @@ import { UserRegister } from "../../../../../src/modules/user/application/UserRe
 import { VerifyEmail } from "../../../../../src/modules/user/application/VerifyEmail";
 import { ResetPasswordLinkBuilder } from "../../../../../src/modules/user/domain/ResetPasswordLinkBuilder";
 import type { User } from "../../../../../src/modules/user/domain/User";
+import type { VerificationFacts } from "../../../../../src/modules/user/domain/VerifiedAccount";
 import { AuthenticationError } from "../../../../../src/shared/errors/AuthenticationError";
 import { NotFoundError } from "../../../../../src/shared/errors/NotFoundError";
 import { TooManyRequestsError } from "../../../../../src/shared/errors/TooManyRequestsError";
@@ -14,6 +15,9 @@ import { JWT } from "../../../../../src/shared/JWT";
 import { UserMother } from "../mothers/UserMother";
 
 const NOW = new Date("2026-11-13T12:00:00Z");
+const CUTOFF = new Date("2026-11-01T00:00:00Z");
+const CONFIRM_COPY =
+	"Confirm your email with the button below. You need a confirmed email or a linked Discord account to chat in rooms, play ranked and join tournaments. The link works for 24 hours.";
 const FRONTEND = "https://evoduel.com";
 const TEMPLATE = `${FRONTEND}/#/verify-email?token={token}`;
 
@@ -27,9 +31,11 @@ describe("email verification", () => {
 	let user: User;
 	let users: { findById: (id: string) => Promise<User | null> };
 	let verified: Map<string, Date>;
+	let accounts: Map<string, { discordId: string | null; createdAt: Date | null }>;
 	let emailVerifications: {
 		markVerified: (userId: string, at: Date) => Promise<void>;
 		isVerified: (userId: string) => Promise<boolean>;
+		verificationFacts: (userId: string) => Promise<VerificationFacts | null>;
 	};
 
 	beforeEach(() => {
@@ -50,11 +56,17 @@ describe("email verification", () => {
 		user = UserMother.create({ id: "user-1", username: "duelist", email: "duelist@example.com" });
 		users = { findById: async (id) => (id === user.id ? user : null) };
 		verified = new Map();
+		accounts = new Map([["user-1", { discordId: null, createdAt: NOW }]]);
 		emailVerifications = {
 			markVerified: async (userId, at) => {
 				if (!verified.has(userId)) verified.set(userId, at);
 			},
 			isVerified: async (userId) => verified.has(userId),
+			verificationFacts: async (userId) => {
+				const account = accounts.get(userId);
+				if (!account) return null;
+				return { ...account, emailVerifiedAt: verified.get(userId) ?? null };
+			},
 		};
 	});
 
@@ -173,15 +185,41 @@ describe("email verification", () => {
 						return allowed;
 					},
 				},
+				CUTOFF,
 			);
 		});
 
-		it("reports whether the address is verified", async () => {
-			expect(await status.get("user-1")).toEqual({ verified: false });
+		it("reports a new account without a confirmed email or Discord as not verified", async () => {
+			expect(await status.get("user-1")).toEqual({ verified: false, accountVerified: false });
+		});
 
+		it("counts a confirmed email as a verified account", async () => {
 			verified.set("user-1", NOW);
 
-			expect(await status.get("user-1")).toEqual({ verified: true });
+			expect(await status.get("user-1")).toEqual({ verified: true, accountVerified: true });
+		});
+
+		it("counts a linked Discord as a verified account while the email stays unconfirmed", async () => {
+			accounts.set("user-1", { discordId: "discord-1", createdAt: NOW });
+
+			expect(await status.get("user-1")).toEqual({ verified: false, accountVerified: true });
+		});
+
+		it("counts an account created before the cutoff as verified while the email stays unconfirmed", async () => {
+			accounts.set("user-1", { discordId: null, createdAt: new Date("2026-10-01T00:00:00Z") });
+
+			expect(await status.get("user-1")).toEqual({ verified: false, accountVerified: true });
+		});
+
+		it("reports nothing verified for a user that does not exist", async () => {
+			expect(await status.get("ghost")).toEqual({ verified: false, accountVerified: false });
+		});
+
+		it("explains in the email what a confirmed address unlocks", async () => {
+			await status.resend({ userId: "user-1" });
+
+			expect(sent[0].data.text).toContain(CONFIRM_COPY);
+			expect(sent[0].data.text).not.toContain("recover your account");
 		});
 
 		it("mails a working link to the account's address", async () => {
@@ -257,6 +295,14 @@ describe("email verification", () => {
 			expect(sent[0].text).toContain("http://localhost:5173/#/verify-email?token=");
 			expect(sent[0].text).toContain("Confirm my email");
 			expect(links.read(token)).toEqual({ userId: "user-2", email: "new@example.com" });
+		});
+
+		it("explains in the welcome email what a confirmed address unlocks and keeps the dueling PIN advice", async () => {
+			await register(true).register(FORM);
+
+			expect(sent[0].text).toContain(CONFIRM_COPY);
+			expect(sent[0].text).not.toContain("recover your account");
+			expect(sent[0].text).toContain("generate your dueling PIN");
 		});
 
 		it("asks for no confirmation when Discord already verified the address", async () => {
