@@ -98,6 +98,7 @@ const emailVerificationStatus = new EmailVerificationStatus(
 	verificationLinks,
 	emailSender,
 	new BunRedisVerificationResendThrottle(redisClient),
+	config.verifiedAccount.cutoff,
 );
 
 const emailChangeLinks = new EmailChangeLinks(
@@ -496,11 +497,13 @@ export const userRouter = new Elysia({ prefix: "/users" })
 				detail: {
 					tags: ["User Management"],
 					summary: "Get the caller's email verification",
-					description: "Tells whether the caller's email address is confirmed.",
+					description:
+						"Tells whether the caller's email address is confirmed (`verified`) and whether the account counts as verified (`accountVerified`): a confirmed email, a linked Discord account, or an account created before the cutoff. Chat in rooms, ranked and tournaments may require a verified account.",
 					security: [{ bearerAuth: [] }],
 					responses: {
 						200: jsonOk(EmailVerificationStatusSchema, "The caller's email verification", {
 							verified: false,
+							accountVerified: false,
 						}),
 						...errorResponses(401, 403),
 					},

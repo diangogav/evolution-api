@@ -4,12 +4,15 @@ import { EmailChanges, EmailTakenError } from "../domain/EmailChanges";
 import { EmailVerifications } from "../domain/EmailVerifications";
 import { User } from "../domain/User";
 import { UserRepository, VerifiedDiscordIdentity } from "../domain/UserRepository";
+import { VerificationFacts } from "../domain/VerifiedAccount";
 
 // COALESCE keeps the date of an earlier verification.
 const MARK_EMAIL_VERIFIED = `UPDATE "users"
 SET "email_verified_at" = COALESCE("email_verified_at", $2) WHERE "id" = $1`;
 
 const IS_EMAIL_VERIFIED = `SELECT "email_verified_at" IS NOT NULL AS "verified" FROM "users" WHERE "id" = $1`;
+
+const VERIFICATION_FACTS = `SELECT "email_verified_at", "discord_id", "created_at" FROM "users" WHERE "id" = $1`;
 
 // Deleted users count: the unique index on email covers them too.
 const IS_EMAIL_IN_USE = `SELECT 1 FROM "users" WHERE LOWER("email") = LOWER($1) LIMIT 1`;
@@ -24,6 +27,12 @@ const UNIQUE_VIOLATION = "23505";
 const USERNAME_TAKEN = `SELECT 1 FROM "users"
 WHERE LOWER("username") = LOWER($1) AND "deleted_at" IS NULL AND ($2::varchar IS NULL OR "id" <> $2)
 LIMIT 1`;
+
+// The driver answers timestamps without a time zone as strings in some setups.
+function toDate(value: Date | string | null): Date | null {
+	if (value === null) return null;
+	return value instanceof Date ? value : new Date(value);
+}
 
 export class UserPostgresRepository implements UserRepository, EmailVerifications, EmailChanges {
 	async isEmailInUse(email: string): Promise<boolean> {
@@ -64,6 +73,22 @@ export class UserPostgresRepository implements UserRepository, EmailVerification
 		const rows: { verified: boolean }[] = await dataSource.query(IS_EMAIL_VERIFIED, [userId]);
 
 		return rows[0]?.verified === true;
+	}
+
+	async verificationFacts(userId: string): Promise<VerificationFacts | null> {
+		const rows: {
+			email_verified_at: Date | string | null;
+			discord_id: string | null;
+			created_at: Date | string | null;
+		}[] = await dataSource.query(VERIFICATION_FACTS, [userId]);
+		const row = rows[0];
+		if (!row) return null;
+
+		return {
+			emailVerifiedAt: toDate(row.email_verified_at),
+			discordId: row.discord_id,
+			createdAt: toDate(row.created_at),
+		};
 	}
 
 	async markVerified(userId: string, at: Date): Promise<void> {

@@ -5,6 +5,7 @@ import { ConflictError } from "../../../shared/errors/ConflictError";
 import { Hash } from "../../../shared/Hash";
 import { JWT } from "../../../shared/JWT";
 import { Logger } from "../../../shared/logger/domain/Logger";
+import { CONFIRM_EMAIL_PARAGRAPH } from "../domain/EmailVerifications";
 import { GamePassword } from "../domain/GamePassword";
 import { EmailVerificationLinks } from "./EmailVerificationLinks";
 import { SecurePassword } from "../domain/SecurePassword";
@@ -119,11 +120,7 @@ export class UserRegister {
 			heading: `Welcome to Evolution, ${username}!`,
 			paragraphs: [
 				"Your account is ready. Log in to the website anytime with your email and the password you just created.",
-				...(verifyUrl
-					? [
-							"Confirm that this address is yours with the button below, so we can help you recover your account if you ever lose access. The link works for 24 hours.",
-						]
-					: []),
+				...(verifyUrl ? [CONFIRM_EMAIL_PARAGRAPH] : []),
 				"To play from external clients like EDOpro, generate your dueling PIN from your profile settings and use it to connect to the server. You can regenerate it whenever you need a new one.",
 				"See you in the arena!",
 			],

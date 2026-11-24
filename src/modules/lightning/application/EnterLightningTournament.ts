@@ -1,7 +1,9 @@
+import { ForbiddenError } from "../../../shared/errors/ForbiddenError";
 import { ConflictError } from "../../../shared/errors/ConflictError";
 import { NotFoundError } from "../../../shared/errors/NotFoundError";
 import { UnprocessableError } from "../../../shared/errors/UnprocessableError";
 import { TransactionRunner } from "../../rewards";
+import { EmailVerifications, isVerifiedAccount } from "../../user";
 import { DeckLegalityChecker } from "../domain/DeckLegalityChecker";
 import { LightningDeck, LightningEntry, newLightningEntry } from "../domain/LightningEntry";
 import { LightningEntryRepository } from "../domain/LightningEntryRepository";
@@ -9,6 +11,9 @@ import { acceptsEntries } from "../domain/LightningTournament";
 import { LightningTournamentRepository } from "../domain/LightningTournamentRepository";
 import { LightningEntryView, toEntryView } from "./LightningViews";
 import { UUID } from "./lockOpenTournament";
+
+/** Whether entry requires a verified account, and the creation date that exempts older accounts. */
+export type VerifiedAccountPolicy = { required: boolean; cutoff: Date | null };
 
 export type EnterLightningTournamentInput = {
 	tournamentId: string;
@@ -29,6 +34,8 @@ export class EnterLightningTournament {
 		private readonly entries: LightningEntryRepository,
 		private readonly legality: DeckLegalityChecker,
 		private readonly transactions: TransactionRunner,
+		private readonly accounts: Pick<EmailVerifications, "verificationFacts">,
+		private readonly verifiedAccount: VerifiedAccountPolicy,
 	) {}
 
 	async run(input: EnterLightningTournamentInput): Promise<LightningEntryView> {
@@ -40,6 +47,7 @@ export class EnterLightningTournament {
 		if (!acceptsEntries(tournament.status, tournament.system)) {
 			throw new UnprocessableError("Registration is not open for this tournament");
 		}
+		await this.requireVerifiedAccount(input.userId);
 		const validation = await this.legality.check(tournament.format, input.deck);
 		if (!validation.legal) throw new UnprocessableError(`Illegal deck: ${validation.reason}`);
 
@@ -77,6 +85,15 @@ export class EnterLightningTournament {
 			await this.entries.insert(entry, manager);
 			return toEntryView(entry);
 		});
+	}
+
+	// An account nobody can trace back to its owner could farm tournament rewards with
+	// throwaway sign-ups. An unknown user counts as unverified.
+	private async requireVerifiedAccount(userId: string): Promise<void> {
+		if (!this.verifiedAccount.required) return;
+		const facts = await this.accounts.verificationFacts(userId);
+		if (facts && isVerifiedAccount(facts, this.verifiedAccount.cutoff)) return;
+		throw new ForbiddenError("Verify your email to join tournaments");
 	}
 }
 

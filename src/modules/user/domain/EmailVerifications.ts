@@ -1,8 +1,12 @@
+import { VerificationFacts } from "./VerifiedAccount";
+
 /** Records that an email address was proven to belong to its user. */
 export interface EmailVerifications {
 	/** Marks the user's email as verified at `at`; an earlier verification is kept. */
 	markVerified(userId: string, at: Date): Promise<void>;
 	isVerified(userId: string): Promise<boolean>;
+	/** What decides whether the account counts as verified; null for an unknown user. */
+	verificationFacts(userId: string): Promise<VerificationFacts | null>;
 }
 
 /** Limits how often a user can ask for the verification email again. */
@@ -10,6 +14,13 @@ export interface VerificationResendThrottle {
 	/** True when the user may be sent another email now; counts the attempt. */
 	allow(userId: string): Promise<boolean>;
 }
+
+/**
+ * Opening line of every email that carries a confirmation link. It names what the
+ * confirmation unlocks, since that is what makes a player bother to click.
+ */
+export const CONFIRM_EMAIL_PARAGRAPH =
+	"Confirm your email with the button below. You need a confirmed email or a linked Discord account to chat in rooms, play ranked and join tournaments. The link works for 24 hours.";
 
 /** One email a minute is plenty for someone waiting on an inbox. */
 export const VERIFICATION_RESEND_WINDOW_SECONDS = 60;
