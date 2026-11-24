@@ -31,6 +31,7 @@ import { VerifyEmail } from "../../modules/user/application/VerifyEmail";
 import { ResetPasswordLinkBuilder } from "../../modules/user/domain/ResetPasswordLinkBuilder";
 import { BunRedisVerificationResendThrottle } from "../../modules/user/infrastructure/BunRedisVerificationResendThrottle";
 import { UserPostgresRepository } from "../../modules/user/infrastructure/UserPostgresRepository";
+import { UsernameChangePostgresRepository } from "../../modules/user/infrastructure/UsernameChangePostgresRepository";
 import {
 	AccountPasswordResetSchema,
 	EmailChangeConfirmBodySchema,
@@ -72,6 +73,7 @@ import { refreshTokenRepository, sessionTokens } from "../composition/sessionTok
 const logger = new Pino();
 const emailSender = new ResendEmailSender();
 const userRepository = new UserPostgresRepository();
+const usernameChangeRepository = new UsernameChangePostgresRepository();
 const userStatsRepository = new UserStatsPostgresRepository();
 const tierResolver = new TierResolver(new TiersPostgresRepository());
 const matchRepository = new MatchPostgresRepository();
@@ -253,7 +255,7 @@ export const userRouter = new Elysia({ prefix: "/users" })
 				tags: ["User Management"],
 				summary: "Check username availability",
 				description:
-					"Checks whether a username is available so the frontend can validate it before submitting a change or registration",
+					"Checks whether a username is available so the frontend can validate it before submitting a change or registration. Names are compared ignoring letter case.",
 				responses: {
 					200: jsonOk(UsernameAvailabilitySchema, "Availability resolved successfully", {
 						available: true,
@@ -557,20 +559,22 @@ export const userRouter = new Elysia({ prefix: "/users" })
 			.post(
 				"/change-username",
 				async ({ body, userId: id }) => {
-					return new UserUsernameUpdater(userRepository).updateUsername({
+					return new UserUsernameUpdater(userRepository, usernameChangeRepository).updateUsername({
 						...(body as { username: string }),
 						id,
+						now: new Date(),
 					});
 				},
 				{
 					detail: {
 						tags: ["User Management"],
 						summary: "Change username",
-						description: "Changes the username for the authenticated user",
+						description:
+							"Changes the username for the authenticated user. Names are compared ignoring letter case, so 409 also covers a name that differs from another account only in case. A name can be changed once every 30 days; 429 says the date of the next allowed change.",
 						security: [{ bearerAuth: [] }],
 						responses: {
 							200: emptyOk("Username changed successfully"),
-							...errorResponses(401, 403, 404, 409, 422),
+							...errorResponses(401, 403, 404, 409, 422, 429),
 						},
 					},
 					body: t.Object({

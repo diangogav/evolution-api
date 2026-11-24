@@ -4,8 +4,8 @@ export class UserUsernameAvailabilityChecker {
 	constructor(private readonly repository: UserRepository) {}
 
 	async check({ username }: { username: string }): Promise<{ available: boolean }> {
-		const user = await this.repository.findByUsername(username);
+		const taken = await this.repository.isUsernameTaken(username);
 
-		return { available: user === null };
+		return { available: !taken };
 	}
 }

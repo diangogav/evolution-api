@@ -44,6 +44,7 @@ const repositoryWith = (user: User | null): UserRepository => ({
 	findByEmailOrUsername: async () => null,
 	findByEmail: async () => user,
 	findByUsername: async () => user,
+	isUsernameTaken: async () => false,
 	findById: async () => user,
 	update: async () => undefined,
 });

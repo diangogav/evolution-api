@@ -126,6 +126,7 @@ function buildApp({ configured = true, secureCookie = true, users = [] }: World 
 			rows.find((row) => row.user.email === email || row.user.username === username)?.user ?? null,
 		findByEmail: async () => null,
 		findByUsername: async () => null,
+		isUsernameTaken: async () => false,
 		findById: async (id: string) => rows.find((row) => row.user.id === id)?.user ?? null,
 		update: async () => undefined,
 	};
