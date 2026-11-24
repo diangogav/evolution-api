@@ -51,6 +51,7 @@ import { RedisLightningChatPublisher } from "../../modules/lightning/infrastruct
 import { BunRedisReservationStore } from "../../modules/reserved-duel/infrastructure/BunRedisReservationStore";
 import { ReservedDuelPostgresReader } from "../../modules/reserved-duel/infrastructure/ReservedDuelPostgresReader";
 import { CosmeticsTransactionRunner } from "../../modules/rewards/infrastructure/CosmeticsTransactionRunner";
+import { UserPostgresRepository } from "../../modules/user/infrastructure/UserPostgresRepository";
 import { Pino } from "../../shared/logger/infrastructure/Pino";
 import { redisClient } from "../../shared/redis/redisClient";
 import {
@@ -537,7 +538,7 @@ export function createLightningRouter(deps: LightningRouterDependencies) {
 							tags: ["Lightning"],
 							summary: "Enter a lightning tournament",
 							description:
-								"Registers the player with a deck, checked against the format's list (sizes, copies, legality). The server requires exactly these lists at every duel of the tournament. Accepted during registration and, for an arena, late while the tournament runs; Swiss entries close at the start. A player who withdrew may enter again with a new deck and keeps their score.",
+								"Registers the player with a deck, checked against the format's list (sizes, copies, legality). The server requires exactly these lists at every duel of the tournament. Accepted during registration and, for an arena, late while the tournament runs; Swiss entries close at the start. A player who withdrew may enter again with a new deck and keeps their score. When tournaments require a verified account, an account that has not confirmed its email, linked Discord, or registered before the verification cutoff is refused with 403 `Verify your email to join tournaments`.",
 							security: [{ bearerAuth: [] }],
 							responses: {
 								200: jsonOk(LightningEntrySchema, "The entry", {
@@ -694,6 +695,11 @@ export const lightningRouter = createLightningRouter({
 			LIST_CACHE_MS,
 		),
 		transactions,
+		new UserPostgresRepository(),
+		{
+			required: config.verifiedAccount.tournamentsRequired,
+			cutoff: config.verifiedAccount.cutoff,
+		},
 	),
 	withdraw: new WithdrawLightningEntry(tournaments, entries, transactions),
 	pause: new PauseLightningEntry(tournaments, entries, transactions),

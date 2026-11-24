@@ -1,20 +1,43 @@
 import { describe, expect, it } from "bun:test";
 
 import { EnterLightningTournament } from "../../../../../src/modules/lightning/application/EnterLightningTournament";
+import type { VerificationFacts } from "../../../../../src/modules/user";
 import { ConflictError } from "../../../../../src/shared/errors/ConflictError";
+import { ForbiddenError } from "../../../../../src/shared/errors/ForbiddenError";
 import { NotFoundError } from "../../../../../src/shared/errors/NotFoundError";
 import { UnprocessableError } from "../../../../../src/shared/errors/UnprocessableError";
 import { ALICE, BOB, DECK, REGISTRATION_AT, RUNNING_AT, TOURNAMENT_ID, World } from "./fakes";
 
-function setup() {
+const CUTOFF = new Date("2026-11-24T00:00:00Z");
+
+const UNVERIFIED: VerificationFacts = {
+	emailVerifiedAt: null,
+	discordId: null,
+	createdAt: new Date("2026-12-01T00:00:00Z"),
+};
+
+class FakeAccounts {
+	readonly facts = new Map<string, VerificationFacts>();
+	readonly lookups: string[] = [];
+
+	async verificationFacts(userId: string): Promise<VerificationFacts | null> {
+		this.lookups.push(userId);
+		return this.facts.get(userId) ?? null;
+	}
+}
+
+function setup({ verifiedRequired = false } = {}) {
 	const world = new World();
+	const accounts = new FakeAccounts();
 	const enter = new EnterLightningTournament(
 		world.tournamentRepository,
 		world.entryRepository,
 		world.legality,
 		world.transactions,
+		accounts,
+		{ required: verifiedRequired, cutoff: CUTOFF },
 	);
-	return { world, enter };
+	return { world, enter, accounts };
 }
 
 const at = (now: Date, userId = ALICE) => ({
@@ -106,5 +129,59 @@ describe("EnterLightningTournament", () => {
 			deck: newDeck,
 		});
 		await expect(enter.run(at(RUNNING_AT, BOB))).rejects.toThrow(UnprocessableError);
+	});
+
+	describe("when tournaments require a verified account", () => {
+		it("lets a verified account enter", async () => {
+			const { world, enter, accounts } = setup({ verifiedRequired: true });
+			world.seedTournament({ status: "registration" });
+			accounts.facts.set(ALICE, { ...UNVERIFIED, discordId: "1234" });
+
+			await enter.run(at(REGISTRATION_AT));
+
+			expect(world.entry(ALICE)).toMatchObject({ status: "active" });
+		});
+
+		it("counts an account created before the cutoff as verified", async () => {
+			const { world, enter, accounts } = setup({ verifiedRequired: true });
+			world.seedTournament({ status: "registration" });
+			accounts.facts.set(ALICE, { ...UNVERIFIED, createdAt: new Date("2026-01-01T00:00:00Z") });
+
+			await enter.run(at(REGISTRATION_AT));
+
+			expect(world.entry(ALICE)).toMatchObject({ status: "active" });
+		});
+
+		it("refuses an unverified account before storing anything", async () => {
+			const { world, enter, accounts } = setup({ verifiedRequired: true });
+			world.seedTournament({ status: "registration" });
+			accounts.facts.set(ALICE, UNVERIFIED);
+
+			const attempt = enter.run(at(REGISTRATION_AT));
+
+			await expect(attempt).rejects.toThrow(ForbiddenError);
+			await expect(attempt).rejects.toThrow("Verify your email to join tournaments");
+			expect(world.events).toEqual([]);
+			expect(world.entry(ALICE)).toBeUndefined();
+		});
+
+		it("refuses an account it knows nothing about", async () => {
+			const { world, enter } = setup({ verifiedRequired: true });
+			world.seedTournament({ status: "registration" });
+
+			await expect(enter.run(at(REGISTRATION_AT))).rejects.toThrow(ForbiddenError);
+			expect(world.events).toEqual([]);
+		});
+	});
+
+	it("does not look the account up while the switch is off", async () => {
+		const { world, enter, accounts } = setup();
+		world.seedTournament({ status: "registration" });
+		accounts.facts.set(ALICE, UNVERIFIED);
+
+		await enter.run(at(REGISTRATION_AT));
+
+		expect(world.entry(ALICE)).toMatchObject({ status: "active" });
+		expect(accounts.lookups).toEqual([]);
 	});
 });

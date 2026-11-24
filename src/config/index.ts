@@ -76,6 +76,16 @@ export function parseVerifiedAccountCutoff(value: string | undefined): Date | nu
 	return Number.isNaN(date.getTime()) ? null : date;
 }
 
+/**
+ * Whether lightning tournament entry requires a verified account. Off unless the value is
+ * exactly "true" or "1": the gate ships dark until the clients tell players how to verify,
+ * so a typo must leave it off rather than lock players out without an explanation.
+ */
+export function parseVerifiedTournamentsRequired(value: string | undefined): boolean {
+	const normalized = value?.trim().toLowerCase();
+	return normalized === "true" || normalized === "1";
+}
+
 export type DiscordAuthConfig = {
 	clientId: string;
 	clientSecret: string;
@@ -170,7 +180,12 @@ export const config = {
 	annulment: { enabled: process.env.ANNULMENT_ENABLED === "true" },
 	// Must match the duel server's VERIFIED_ACCOUNT_CUTOFF, or the API and the game
 	// would disagree on which accounts are verified.
-	verifiedAccount: { cutoff: parseVerifiedAccountCutoff(process.env.VERIFIED_ACCOUNT_CUTOFF) },
+	verifiedAccount: {
+		cutoff: parseVerifiedAccountCutoff(process.env.VERIFIED_ACCOUNT_CUTOFF),
+		tournamentsRequired: parseVerifiedTournamentsRequired(
+			process.env.VERIFIED_TOURNAMENTS_REQUIRED,
+		),
+	},
 	// Frontend page that confirms an email address; the first entry is also the default.
 	emailVerification: {
 		defaultUrl: "https://evoduel.com/#/verify-email?token={token}",

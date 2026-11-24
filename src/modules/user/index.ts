@@ -3,3 +3,5 @@
 
 export type { UserRepository } from "./domain/UserRepository";
 export type { UserDirectory } from "./domain/UserDirectory";
+export type { EmailVerifications } from "./domain/EmailVerifications";
+export { isVerifiedAccount, type VerificationFacts } from "./domain/VerifiedAccount";
