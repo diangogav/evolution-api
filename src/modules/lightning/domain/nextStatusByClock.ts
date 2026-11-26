@@ -1,3 +1,4 @@
+import { MIN_HUMAN_ENTRIES } from "./LightningBotAccount";
 import { LightningSystem, LightningTournamentStatus } from "./LightningTournament";
 
 export type ClockTransitionInput = {
@@ -8,6 +9,10 @@ export type ClockTransitionInput = {
 	endsAt: Date;
 	minPlayers: number;
 	activeEntries: number;
+	/** Active entries a person holds; bots are the rest. Defaults to every active entry. */
+	humanEntries?: number;
+	/** Whether bots may fill the field: then two humans are enough to start. */
+	botFill?: boolean;
 	liveGames: number;
 	now: Date;
 };
@@ -33,7 +38,7 @@ function step(
 			return now >= input.registrationOpensAt.getTime() ? "registration" : status;
 		case "registration":
 			if (now < input.startsAt.getTime()) return status;
-			return input.activeEntries >= input.minPlayers ? "running" : "cancelled";
+			return startsWith(input) ? "running" : "cancelled";
 		case "running":
 			// A Swiss end is only an estimate: the last round closing ends it, not the clock.
 			if (input.system === "swiss") return status;
@@ -44,4 +49,10 @@ function step(
 		case "cancelled":
 			return status;
 	}
+}
+
+function startsWith(input: ClockTransitionInput): boolean {
+	if (input.activeEntries >= input.minPlayers) return true;
+	const humans = input.humanEntries ?? input.activeEntries;
+	return input.botFill === true && humans >= MIN_HUMAN_ENTRIES;
 }

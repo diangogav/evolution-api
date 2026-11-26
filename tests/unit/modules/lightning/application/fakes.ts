@@ -20,6 +20,10 @@ import {
 	LightningAchievementGrant,
 	LightningAchievementGrants,
 } from "../../../../../src/modules/lightning/domain/LightningAchievementGrants";
+import {
+	LightningBotAccount,
+	LightningBotAccountRepository,
+} from "../../../../../src/modules/lightning/domain/LightningBotAccount";
 import { LightningEntryRepository } from "../../../../../src/modules/lightning/domain/LightningEntryRepository";
 import { LightningGame } from "../../../../../src/modules/lightning/domain/LightningGame";
 import { LightningGameRepository } from "../../../../../src/modules/lightning/domain/LightningGameRepository";
@@ -96,8 +100,17 @@ export function decided(winnerSeat: number, at = RUNNING_AT): Partial<ReservedDu
 
 // One in-memory database for every port, so use cases are exercised together the way they
 // share tables in production. Every write is logged in order in `events`.
+// The tcg bots of the roster, as lightning_bot_accounts lists them.
+export const BOTS = [
+	{ userId: "bot-salamangreat", format: "tcg", botName: "Salamangreat" },
+	{ userId: "bot-sky-striker", format: "tcg", botName: "Sky Striker" },
+	{ userId: "bot-labrynth", format: "tcg", botName: "Labrynth" },
+];
+export const [SALAMANGREAT, SKY_STRIKER, LABRYNTH] = BOTS.map((bot) => bot.userId);
+
 export class World {
 	tournaments = new Map<string, LightningTournament>();
+	botAccounts: LightningBotAccount[] = BOTS.map((bot) => ({ ...bot }));
 	entries = new Map<string, LightningEntry>();
 	games = new Map<string, LightningGame>();
 	results: LightningResult[] = [];
@@ -177,9 +190,12 @@ export class World {
 			this.events.push(`update-entry:${entry.userId}:${entry.status}:${entry.presence}`);
 			this.entries.set(this.entryKey(entry.tournamentId, entry.userId), { ...entry });
 		},
-		findOne: async (tournamentId, userId) =>
-			this.copy(this.entries.get(this.entryKey(tournamentId, userId))),
-		listByTournament: async (tournamentId) => this.entriesOf(tournamentId).map((e) => ({ ...e })),
+		findOne: async (tournamentId, userId) => {
+			const entry = this.entries.get(this.entryKey(tournamentId, userId));
+			return entry ? this.withBot(entry) : null;
+		},
+		listByTournament: async (tournamentId) =>
+			this.entriesOf(tournamentId).map((e) => this.withBot(e)),
 		startWaiting: async (tournamentId, now) => {
 			this.events.push(`start-waiting:${tournamentId}`);
 			for (const entry of this.entriesOf(tournamentId)) {
@@ -334,6 +350,11 @@ export class World {
 				})),
 	};
 
+	readonly botAccountRepository: LightningBotAccountRepository = {
+		listByFormat: async (format) =>
+			this.botAccounts.filter((bot) => bot.format === format).map((bot) => ({ ...bot })),
+	};
+
 	readonly recordReader: ReservedDuelRecordReader = {
 		findRecords: async (ids) =>
 			ids.flatMap((id) => {
@@ -346,6 +367,9 @@ export class World {
 		issue: async (reservation) => {
 			this.events.push(`issue:${reservation.reservationId}`);
 			this.redis.set(reservation.reservationId, { ...reservation });
+		},
+		announce: async (id) => {
+			this.events.push(`announce:${id}`);
 		},
 		revoke: async (id): Promise<RevokeResult> => {
 			const key = this.redis.get(id);
@@ -541,6 +565,11 @@ export class World {
 		return entry;
 	}
 
+	/** A roster bot registered like a player; reads tag it with its WindBot name. */
+	seedBot(userId: string, overrides: Partial<LightningEntry> = {}): LightningEntry {
+		return this.seedEntry(userId, { deck: { main: [], extra: [], side: [] }, ...overrides });
+	}
+
 	seedGame(seat0UserId: string, seat1UserId: string, overrides: Partial<LightningGame> = {}) {
 		const game: LightningGame = {
 			reservationId: this.nextReservationId(),
@@ -597,6 +626,12 @@ export class World {
 
 	entry(userId: string, tournamentId = TOURNAMENT_ID): LightningEntry | undefined {
 		return this.entries.get(this.entryKey(tournamentId, userId));
+	}
+
+	// The repository's join: an entry whose user is a roster bot carries the bot's name.
+	private withBot(entry: LightningEntry): LightningEntry {
+		const bot = this.botAccounts.find((account) => account.userId === entry.userId);
+		return { ...entry, botName: bot?.botName ?? null };
 	}
 
 	private entriesOf(tournamentId: string): LightningEntry[] {

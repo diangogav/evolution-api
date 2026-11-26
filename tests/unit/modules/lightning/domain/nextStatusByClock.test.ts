@@ -32,6 +32,24 @@ describe("nextStatusByClock", () => {
 		expect(next("scheduled", registrationOpensAt)).toBe("registration");
 	});
 
+	it("starts with two humans short of the minimum when bots fill the field", () => {
+		expect(
+			next("registration", startsAt, { activeEntries: 2, humanEntries: 2, botFill: true }),
+		).toBe("running");
+	});
+
+	it("cancels with a single human even when bots fill the field", () => {
+		expect(
+			next("registration", startsAt, { activeEntries: 1, humanEntries: 1, botFill: true }),
+		).toBe("cancelled");
+	});
+
+	it("cancels short of the minimum when bots do not fill the field", () => {
+		expect(
+			next("registration", startsAt, { activeEntries: 2, humanEntries: 2, botFill: false }),
+		).toBe("cancelled");
+	});
+
 	it("starts at starts_at with enough players and cancels otherwise", () => {
 		expect(next("registration", at("2026-11-10T19:59:59Z"))).toBe("registration");
 		expect(next("registration", startsAt)).toBe("running");

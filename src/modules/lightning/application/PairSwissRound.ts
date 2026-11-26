@@ -146,7 +146,9 @@ export class PairSwissRound {
 					turnTimeSeconds: tournament.turnTimeSeconds,
 				}),
 			);
-			summons.push(lightningSummons(tournament, reservationId, seat0, seat1));
+			// Only humans are called; a duel between two bots calls nobody.
+			const called = lightningSummons(tournament, reservationId, [first, second]);
+			if (called.userIds.length > 0) summons.push(called);
 		}
 		for (const reservation of issued) {
 			await this.reservations.issue(reservation, RESERVATION_TTL_SECONDS);

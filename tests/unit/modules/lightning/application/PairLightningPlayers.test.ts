@@ -1,6 +1,19 @@
 import { describe, expect, it } from "bun:test";
 
-import { ALICE, BOB, CAROL, DAVE, DECK, ERIN, RUNNING_AT, TOURNAMENT_ID, World } from "./fakes";
+import {
+	ALICE,
+	BOB,
+	CAROL,
+	DAVE,
+	DECK,
+	ERIN,
+	RUNNING_AT,
+	TOURNAMENT_ID,
+	World,
+	SALAMANGREAT,
+	SKY_STRIKER,
+	STARTS_AT,
+} from "./fakes";
 
 describe("PairLightningPlayers", () => {
 	it("pairs idle players, records each game, marks the entries paired and issues one reservation per pair", async () => {
@@ -115,5 +128,54 @@ describe("PairLightningPlayers", () => {
 		await expect(world.pairPlayers.pair(tournament, world.manager, RUNNING_AT)).rejects.toThrow(
 			"redis down",
 		);
+	});
+});
+
+describe("PairLightningPlayers with bots", () => {
+	it("seats a bot paired with a human as its WindBot and calls only the human", async () => {
+		const world = new World();
+		const tournament = world.seedRunning([ALICE]);
+		world.seedBot(SALAMANGREAT, { idleSince: STARTS_AT });
+
+		const paired = await world.pairPlayers.pair(tournament, world.manager, RUNNING_AT);
+
+		const [game] = [...world.games.values()];
+		const humanSeat = game.seat0UserId === ALICE ? 0 : 1;
+		expect(world.redis.get(game.reservationId)?.participants).toEqual(
+			humanSeat === 0
+				? [
+						{ seat: 0, kind: "user", userId: ALICE, requiredDeck: DECK },
+						{ seat: 1, kind: "windbot", botName: "Salamangreat" },
+					]
+				: [
+						{ seat: 0, kind: "windbot", botName: "Salamangreat" },
+						{ seat: 1, kind: "user", userId: ALICE, requiredDeck: DECK },
+					],
+		);
+		expect(world.events).not.toContain(`announce:${game.reservationId}`);
+		expect(paired.map((summons) => summons.userIds)).toEqual([[ALICE]]);
+		expect(world.entry(SALAMANGREAT)).toMatchObject({ presence: "paired", lastOpponentId: ALICE });
+	});
+
+	it("issues two bots a reservation of two WindBot seats, announces it and calls nobody", async () => {
+		const world = new World();
+		const tournament = world.seedRunning([]);
+		world.seedBot(SALAMANGREAT, { idleSince: STARTS_AT });
+		world.seedBot(SKY_STRIKER, { idleSince: STARTS_AT });
+
+		const paired = await world.pairPlayers.pair(tournament, world.manager, RUNNING_AT);
+
+		const [game] = [...world.games.values()];
+		expect(world.redis.get(game.reservationId)?.participants).toEqual([
+			{ seat: 0, kind: "windbot", botName: "Salamangreat" },
+			{ seat: 1, kind: "windbot", botName: "Sky Striker" },
+		]);
+		// Announced only once the key exists, so the server never looks for a missing key.
+		expect(world.events.indexOf(`announce:${game.reservationId}`)).toBeGreaterThan(
+			world.events.indexOf(`issue:${game.reservationId}`),
+		);
+		expect(paired).toEqual([]);
+		expect(world.entry(SALAMANGREAT)?.presence).toBe("paired");
+		expect(world.entry(SKY_STRIKER)?.presence).toBe("paired");
 	});
 });

@@ -1,7 +1,17 @@
 import { describe, expect, it } from "bun:test";
 
 import { UNCLAIMED_RESERVATION_MS } from "../../../../../src/modules/lightning/domain/resolveLightningGame";
-import { ALICE, BOB, CAROL, decided, RUNNING_AT, STALE_MS, World } from "./fakes";
+import {
+	ALICE,
+	BOB,
+	CAROL,
+	decided,
+	RUNNING_AT,
+	STALE_MS,
+	World,
+	SALAMANGREAT,
+	SKY_STRIKER,
+} from "./fakes";
 
 const later = (ms: number) => new Date(RUNNING_AT.getTime() + ms);
 
@@ -224,5 +234,92 @@ describe("ApplyLightningGame — Swiss games", () => {
 
 		expect(await world.applyGame.applyGame(game, world.manager, later(STALE_MS + 1))).toBe("live");
 		expect(world.games.get(game.reservationId)?.status).toBe("pending");
+	});
+});
+
+describe("ApplyLightningGame with bots", () => {
+	it("scores a duel between two bots like any other", async () => {
+		const world = new World();
+		world.seedRunning([]);
+		world.seedBot(SALAMANGREAT);
+		world.seedBot(SKY_STRIKER);
+		const game = world.seedGame(SALAMANGREAT, SKY_STRIKER);
+		world.record(game.reservationId, decided(1));
+
+		expect(await world.applyGame.applyGame(game, world.manager, later(60_000))).toBe("applied");
+
+		expect(world.entry(SKY_STRIKER)).toMatchObject({ score: 3, wins: 1, presence: "idle" });
+		expect(world.entry(SALAMANGREAT)).toMatchObject({ losses: 1, presence: "idle" });
+	});
+
+	it("frees two bots without strikes when the server never opened their duel", async () => {
+		const world = new World();
+		world.seedRunning([]);
+		world.seedBot(SALAMANGREAT);
+		world.seedBot(SKY_STRIKER);
+		const game = world.seedGame(SALAMANGREAT, SKY_STRIKER);
+
+		expect(
+			await world.applyGame.applyGame(game, world.manager, later(UNCLAIMED_RESERVATION_MS + 1)),
+		).toBe("applied");
+
+		expect(world.redis.has(game.reservationId)).toBe(false);
+		for (const bot of [SALAMANGREAT, SKY_STRIKER]) {
+			expect(world.entry(bot)).toMatchObject({ noShows: 0, presence: "idle", status: "active" });
+		}
+	});
+
+	it("voids a duel whose bot never came, with no strike for anyone", async () => {
+		const world = new World();
+		world.seedRunning([ALICE]);
+		world.seedBot(SALAMANGREAT);
+		const game = world.seedGame(ALICE, SALAMANGREAT);
+		world.record(game.reservationId, {
+			endedAt: later(30_000),
+			outcome: "abandoned",
+			reason: "bot_unavailable",
+		});
+
+		expect(await world.applyGame.applyGame(game, world.manager, later(60_000))).toBe("applied");
+
+		expect(world.games.get(game.reservationId)?.resolution).toBe("void");
+		expect(world.entry(ALICE)).toMatchObject({ noShows: 0, presence: "idle", gamesPlayed: 0 });
+		expect(world.entry(SALAMANGREAT)).toMatchObject({ noShows: 0, presence: "idle" });
+	});
+
+	it("strikes the human who missed a duel against a bot, and frees the bot", async () => {
+		const world = new World();
+		world.seedRunning([ALICE]);
+		world.seedBot(SALAMANGREAT);
+		const game = world.seedGame(ALICE, SALAMANGREAT);
+		world.record(game.reservationId, {
+			endedAt: later(30_000),
+			outcome: "abandoned",
+			abandonedBySeat: 0,
+			reason: "no_show",
+		});
+
+		await world.applyGame.applyGame(game, world.manager, later(60_000));
+
+		expect(world.entry(ALICE)).toMatchObject({ noShows: 1, presence: "away" });
+		expect(world.entry(SALAMANGREAT)).toMatchObject({ noShows: 0, presence: "idle" });
+	});
+
+	it("never strikes a bot that left its lobby", async () => {
+		const world = new World();
+		world.seedRunning([ALICE]);
+		world.seedBot(SALAMANGREAT);
+		const game = world.seedGame(ALICE, SALAMANGREAT);
+		world.record(game.reservationId, {
+			endedAt: later(30_000),
+			outcome: "abandoned",
+			abandonedBySeat: 1,
+			reason: "lobby_left",
+		});
+
+		await world.applyGame.applyGame(game, world.manager, later(60_000));
+
+		expect(world.entry(SALAMANGREAT)).toMatchObject({ noShows: 0, presence: "idle" });
+		expect(world.entry(ALICE)).toMatchObject({ noShows: 0, presence: "idle" });
 	});
 });

@@ -11,7 +11,7 @@ import {
 	lightningAchievements,
 	UnlockedLightningAchievement,
 } from "../domain/lightningAchievements";
-import { LightningEntry, qualifiesForStandings } from "../domain/LightningEntry";
+import { isBotEntry, LightningEntry, qualifiesForStandings } from "../domain/LightningEntry";
 import { LightningEntryRepository } from "../domain/LightningEntryRepository";
 import { LightningGameRepository } from "../domain/LightningGameRepository";
 import { LightningResult, LightningResultRepository } from "../domain/LightningResultRepository";
@@ -74,8 +74,15 @@ export class CompleteLightningTournament {
 			standings.length > 0
 				? await this.catalogFor(tournament, manager)
 				: new Map<string, CatalogLightningAchievement>();
+		// A bot keeps the place it earned, and the prize of that place goes to nobody: the
+		// humans below it are not moved up.
+		const bots = new Set(entries.filter(isBotEntry).map((entry) => entry.userId));
 		const results: LightningResult[] = [];
 		for (const standing of standings) {
+			if (bots.has(standing.userId)) {
+				results.push(unpaidResult(tournament.id, standing));
+				continue;
+			}
 			results.push({
 				tournamentId: tournament.id,
 				userId: standing.userId,
@@ -92,6 +99,7 @@ export class CompleteLightningTournament {
 		}
 		await this.results.insertResults(results, manager);
 		for (const result of results) {
+			if (bots.has(result.userId)) continue;
 			await this.results.addToRanking(
 				result.userId,
 				tournament.season,
@@ -181,6 +189,22 @@ export class CompleteLightningTournament {
 		}
 		return unlocked;
 	}
+}
+
+function unpaidResult(tournamentId: string, standing: Standing): LightningResult {
+	return {
+		tournamentId,
+		userId: standing.userId,
+		position: standing.position,
+		score: standing.score,
+		wins: standing.wins,
+		draws: standing.draws,
+		losses: standing.losses,
+		tiebreak: standing.tiebreak,
+		pointsAwarded: 0,
+		essenceAwarded: 0,
+		achievements: [],
+	};
 }
 
 function scoresOf(entries: LightningEntry[]): Map<string, number> {

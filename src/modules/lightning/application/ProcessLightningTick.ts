@@ -1,5 +1,7 @@
 import { Logger } from "../../../shared/logger/domain/Logger";
 import type { QueryableManager } from "../../../shared/persistence/QueryableManager";
+import { botsToFill, LightningBotAccountRepository } from "../domain/LightningBotAccount";
+import { isBotEntry, LightningEntry, newLightningEntry } from "../domain/LightningEntry";
 import { LightningEntryRepository } from "../domain/LightningEntryRepository";
 import { LightningGameRepository } from "../domain/LightningGameRepository";
 import { LightningSummons } from "../domain/LightningSummons";
@@ -60,6 +62,10 @@ export class ProcessLightningTick {
 		private readonly pairSwissRound: Pick<PairSwissRound, "pair">,
 		private readonly completeTournament: Pick<CompleteLightningTournament, "complete">,
 		private readonly logger: Logger,
+		private readonly botFill: {
+			enabled: boolean;
+			bots: LightningBotAccountRepository;
+		} | null = null,
 	) {}
 
 	async run(now: Date): Promise<ProcessLightningTickResult> {
@@ -178,7 +184,10 @@ export class ProcessLightningTick {
 	): Promise<LightningTournament> {
 		const entries = await this.entries.listByTournament(tournament.id, manager);
 		const pending = await this.games.listPending(tournament.id, manager);
-		const active = entries.filter((entry) => entry.status === "active").length;
+		const activeEntries = entries.filter((entry) => entry.status === "active");
+		const active = activeEntries.length;
+		const humans = activeEntries.filter((entry) => !isBotEntry(entry)).length;
+		const botFill = this.fillsWithBots(tournament);
 		const next = nextStatusByClock({
 			status: tournament.status,
 			system: tournament.system,
@@ -187,6 +196,8 @@ export class ProcessLightningTick {
 			endsAt: tournament.endsAt,
 			minPlayers: tournament.minPlayers,
 			activeEntries: active,
+			humanEntries: humans,
+			botFill,
 			liveGames: pending.length,
 			now,
 		});
@@ -207,12 +218,59 @@ export class ProcessLightningTick {
 			cancelledReason: next === "cancelled" ? NOT_ENOUGH_PLAYERS : tournament.cancelledReason,
 			updatedAt: now,
 		};
+		const starting = next === "running" && tournament.status !== "running";
+		const joined =
+			starting && botFill
+				? await this.registerBots(tournament, entries, humans, active, manager, now)
+				: 0;
 		if (next === "running" && tournament.system === "swiss") {
-			moved = startSwissTournament(moved, active);
+			moved = startSwissTournament(moved, active + joined);
 		}
 		await this.tournaments.update(moved, manager);
 		if (next === "running") await this.entries.startWaiting(tournament.id, now, manager);
 		return moved;
+	}
+
+	// Swiss tables do not seat bots yet: only the arena fills.
+	private fillsWithBots(tournament: LightningTournament): boolean {
+		return this.botFill?.enabled === true && tournament.system !== "swiss";
+	}
+
+	// Bots enter as the field starts, idle like everyone else; startWaiting sets their clock.
+	private async registerBots(
+		tournament: LightningTournament,
+		entries: LightningEntry[],
+		humans: number,
+		active: number,
+		manager: QueryableManager,
+		now: Date,
+	): Promise<number> {
+		if (!this.botFill) return 0;
+		const bots = botsToFill({
+			humanEntries: humans,
+			activeEntries: active,
+			minPlayers: tournament.minPlayers,
+			registeredUserIds: new Set(entries.map((entry) => entry.userId)),
+			roster: await this.botFill.bots.listByFormat(tournament.format, manager),
+		});
+		for (const bot of bots) {
+			await this.entries.insert(
+				newLightningEntry({
+					tournamentId: tournament.id,
+					userId: bot.userId,
+					deck: { main: [], extra: [], side: [] },
+					now,
+					running: false,
+				}),
+				manager,
+			);
+		}
+		if (bots.length > 0) {
+			this.logger.info(
+				`Lightning tournament ${tournament.id} starts with ${humans} players and ${bots.length} bots`,
+			);
+		}
+		return bots.length;
 	}
 }
 

@@ -6,6 +6,7 @@ import { PairLightningPlayers } from "../../modules/lightning/application/PairLi
 import { PairSwissRound } from "../../modules/lightning/application/PairSwissRound";
 import { ProcessLightningTick } from "../../modules/lightning/application/ProcessLightningTick";
 import { LightningAchievementGrantsPostgresRepository } from "../../modules/lightning/infrastructure/LightningAchievementGrantsPostgresRepository";
+import { LightningBotAccountPostgresRepository } from "../../modules/lightning/infrastructure/LightningBotAccountPostgresRepository";
 import { LightningByePostgresRepository } from "../../modules/lightning/infrastructure/LightningByePostgresRepository";
 import { LightningEntryPostgresRepository } from "../../modules/lightning/infrastructure/LightningEntryPostgresRepository";
 import { LightningGamePostgresRepository } from "../../modules/lightning/infrastructure/LightningGamePostgresRepository";
@@ -68,6 +69,10 @@ export function buildLightningWorker(logger: Logger): LightningWorker {
 			logger,
 		),
 		logger,
+		{
+			enabled: config.lightningWorker.botFillEnabled,
+			bots: new LightningBotAccountPostgresRepository(),
+		},
 	);
 	return new LightningWorker(
 		tick,

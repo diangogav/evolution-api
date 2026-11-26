@@ -25,7 +25,13 @@ export type LightningEntry = {
 	lastOpponentId: string | null;
 	/** Since when the player waits for a pairing; null until the arena runs. */
 	idleSince: Date | null;
+	/** The WindBot that plays this entry; absent or null for a human. */
+	botName?: string | null;
 };
+
+export function isBotEntry(entry: Pick<LightningEntry, "botName">): boolean {
+	return typeof entry.botName === "string";
+}
 
 export const WIN_POINTS = 3;
 export const DRAW_POINTS = 1;

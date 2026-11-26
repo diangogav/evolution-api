@@ -165,6 +165,16 @@ Two writers share `user_achievements`: the duel server writes the match codes (`
 
 Default `points_by_position`: 1st 10, 2nd 7, 3rd 5, 4th 3, every other participant with at least one game 1. Default `essence_by_position`: 1st 300, 2nd 200, 3rd 100, every other participant with at least one game 25. Defaults are stored on the tournament row at creation, so changing them later never rewrites history.
 
+## Bot fill (`LIGHTNING_BOT_FILL_ENABLED`)
+
+It needs the duel server that opens bot-only reserved duels; deploy that first. With the switch on, an arena tournament that reaches `starts_at` with at least 2 human entries but fewer than `min_players` starts instead of being cancelled: the tick registers WindBot entrants of its format, in roster order and one per bot, until `min_players` is reached (fewer when the roster runs out). One human still cancels. Swiss tournaments are not filled yet.
+
+- **Identity.** Each bot is a real `users` row (`<Name> Bot`, an address on `bots.evolution.invalid`, passwords that hash a discarded secret), so entries, results and the profile links work unchanged. `lightning_bot_accounts` (`user_id`, `format`, `bot_name`, `sort_order`) names the WindBot the server requests; entry reads join it and tag the entry with `botName`.
+- **Human against bot.** A normal reservation whose bot seat is `{ kind: "windbot", botName }`; the server seats the WindBot by name with its own deck, which it does not validate. Only the human is summoned.
+- **Bot against bot.** A real duel too: the reservation has two `windbot` seats, and since no user will claim it the API announces it after the `SET` (`PUBLISH duel:reservation:open <id>`). The duel server, subscribed, claims it itself, opens the room and requests both bots (server `docs/reserved-duels.md`, "Bot-only duels"). Its record is applied like any other. An announcement nobody heard leaves the reservation unclaimed: after 3 minutes the API revokes it and the bots take no strike, so they are paired again.
+- **No strikes for bots.** A `bot_unavailable` room is already `void`; a bot seat's no-show (an unclaimed bot-only reservation included) is recorded as `void`, so a bot is never set away or removed. A human who misses a duel against a bot takes the usual strike.
+- **Closing.** A bot keeps the position it earned in `lightning_results`, with 0 points, 0 essence and no achievements, and is never added to `lightning_rankings`. Humans below it are not moved up: the prize of a bot's place goes to nobody.
+
 ## Endpoints (bearer, `banGuard`, OpenAPI ratchet)
 
 | Method | Path | Notes |
@@ -206,7 +216,7 @@ Follows the Svelte 5 skill and the `leaderboard` feature layout (`domain/{dtos, 
 | Player never joins the room | `no_show` → away, third strike removes the entry; the opponent is re-paired at once |
 | Both never join | both away, no points, no penalty beyond the strike |
 | Slow duel at `ends_at` | finishes under `finishing`; the turn limit keeps it short, the stale rule voids a hung one |
-| Field smaller than `min_players` at start | cancelled, nothing awarded |
+| Field smaller than `min_players` at start | cancelled, nothing awarded; with bot fill on and at least 2 humans, bots fill it instead |
 | Record applied twice (worker + `/me`) | `lightning_games.status` guard |
 | Two pairing ticks at once | tournament row lock plus the worker lock |
 | Leaked `rv#` password | the server's claim rejects non-participants; room unlisted |

@@ -29,11 +29,20 @@ const UPDATE_QUERY = `UPDATE lightning_entries SET status = $3, presence = $4, d
 	last_opponent_id = $12, idle_since = $13
 	WHERE tournament_id = $1 AND user_id = $2`;
 
-const FIND_ONE_QUERY = `SELECT ${COLUMNS} FROM lightning_entries
-	WHERE tournament_id = $1 AND user_id = $2`;
+// Reads carry the bot that plays the entry, if any: pairing, applying and closing treat a
+// bot entry differently, and the roster is the only place that knows it.
+const READ_COLUMNS = `${COLUMNS.split(",")
+	.map((column) => `e.${column.trim()}`)
+	.join(", ")}, b.bot_name`;
 
-const LIST_QUERY = `SELECT ${COLUMNS} FROM lightning_entries
-	WHERE tournament_id = $1 ORDER BY registered_at, user_id`;
+const READ_FROM = `lightning_entries AS e
+	LEFT JOIN lightning_bot_accounts AS b ON b.user_id = e.user_id`;
+
+const FIND_ONE_QUERY = `SELECT ${READ_COLUMNS} FROM ${READ_FROM}
+	WHERE e.tournament_id = $1 AND e.user_id = $2`;
+
+const LIST_QUERY = `SELECT ${READ_COLUMNS} FROM ${READ_FROM}
+	WHERE e.tournament_id = $1 ORDER BY e.registered_at, e.user_id`;
 
 // A player who paused during registration stays away: only the ones waiting start the clock.
 const START_WAITING_QUERY = `UPDATE lightning_entries SET idle_since = $2
@@ -94,6 +103,7 @@ type Row = {
 	no_shows: number | string;
 	last_opponent_id: string | null;
 	idle_since: Date | null;
+	bot_name?: string | null;
 };
 
 function toEntry(row: Row): LightningEntry {
@@ -112,6 +122,7 @@ function toEntry(row: Row): LightningEntry {
 		noShows: Number(row.no_shows),
 		lastOpponentId: row.last_opponent_id,
 		idleSince: toDate(row.idle_since),
+		botName: row.bot_name ?? null,
 	};
 }
 

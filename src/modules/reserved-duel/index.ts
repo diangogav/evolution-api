@@ -4,6 +4,7 @@
 
 export {
 	generateReservationId,
+	isBotOnlyReservation,
 	RESERVATION_ID_LENGTH,
 	RESERVATION_PASSWORD_PREFIX,
 	RESERVATION_TTL_SECONDS,
