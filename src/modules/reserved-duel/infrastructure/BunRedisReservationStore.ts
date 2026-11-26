@@ -5,6 +5,9 @@ import { ReservationStore, RevokeResult } from "../domain/ReservationStore";
 
 export const RESERVATION_KEY_PREFIX = "duel:reservation:";
 
+/** Where the duel server listens for reservations with no user seat (contract shared with it). */
+export const RESERVATION_OPEN_CHANNEL = "duel:reservation:open";
+
 // Mirrors the server's claim script: both run atomically on the key, so a reservation is
 // either claimed (claim set) or revoked (deleted), never both. An unreadable payload is
 // treated as in use rather than deleted; it expires on its own TTL.
@@ -38,6 +41,10 @@ export class BunRedisReservationStore implements ReservationStore {
 			"NX",
 		]);
 		if (reply !== "OK") throw new ReservationIdCollisionError(reservation.reservationId);
+	}
+
+	async announce(reservationId: string): Promise<void> {
+		await this.client.send("PUBLISH", [RESERVATION_OPEN_CHANNEL, reservationId]);
 	}
 
 	async revoke(reservationId: string): Promise<RevokeResult> {

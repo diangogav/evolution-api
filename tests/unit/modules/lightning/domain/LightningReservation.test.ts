@@ -1,6 +1,9 @@
 import { describe, expect, it } from "bun:test";
 
-import { lightningDuelReservation } from "../../../../../src/modules/lightning/domain/LightningReservation";
+import {
+	lightningDuelReservation,
+	reservationSeat,
+} from "../../../../../src/modules/lightning/domain/LightningReservation";
 
 describe("lightningDuelReservation", () => {
 	it("builds a single hidden reconnectable duel between two users with their registered decks and the arena's clocks", () => {
@@ -42,5 +45,25 @@ describe("lightningDuelReservation", () => {
 			},
 			claim: null,
 		});
+	});
+
+	it("seats a bot by its WindBot name with no deck and keeps the user's registered deck", () => {
+		const reservation = lightningDuelReservation({
+			reservationId: "AbCdEfGh12345678",
+			format: "edison",
+			seat0: reservationSeat({ userId: "user-0", deck: { main: [1], extra: [], side: [] } }),
+			seat1: reservationSeat({
+				userId: "bot-blackwing",
+				deck: { main: [], extra: [], side: [] },
+				botName: "Blackwing",
+			}),
+			lobbyTimeoutSeconds: 90,
+			turnTimeSeconds: 120,
+		});
+
+		expect(reservation.participants).toEqual([
+			{ seat: 0, kind: "user", userId: "user-0", requiredDeck: { main: [1], extra: [], side: [] } },
+			{ seat: 1, kind: "windbot", botName: "Blackwing" },
+		]);
 	});
 });

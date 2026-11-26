@@ -153,6 +153,8 @@ export const config = {
 		enabled: process.env.LIGHTNING_WORKER_ENABLED === "true",
 		intervalMs: Number(process.env.LIGHTNING_WORKER_INTERVAL_MS ?? 5000),
 		staleGameMinutes: Number(process.env.LIGHTNING_STALE_GAME_MINUTES ?? 45),
+		/** Tournaments short of players start with 2 humans and WindBot entrants fill the rest. */
+		botFillEnabled: process.env.LIGHTNING_BOT_FILL_ENABLED === "true",
 	},
 	communityDecksWorker: {
 		enabled: process.env.COMMUNITY_DECKS_WORKER_ENABLED === "true",

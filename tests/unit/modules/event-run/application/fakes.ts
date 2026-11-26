@@ -195,6 +195,9 @@ export class World {
 			this.events.push(`issue:${reservation.reservationId}`);
 			this.redis.set(reservation.reservationId, { ...reservation });
 		},
+		announce: async (id) => {
+			this.events.push(`announce:${id}`);
+		},
 		revoke: async (id): Promise<RevokeResult> => {
 			const key = this.redis.get(id);
 			if (!key) return "gone";

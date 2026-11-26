@@ -33,6 +33,14 @@ const reservation: DuelReservation = {
 };
 
 describe("BunRedisReservationStore", () => {
+	it("announces a bot-only reservation on the channel the duel server listens to", async () => {
+		const { send, store } = client(1);
+
+		await store.announce("AbCdEfGh12345678");
+
+		expect(send).toHaveBeenCalledWith("PUBLISH", ["duel:reservation:open", "AbCdEfGh12345678"]);
+	});
+
 	it("issues with one SET … EX … NX on duel:reservation:<id>", async () => {
 		const { send, store } = client("OK");
 

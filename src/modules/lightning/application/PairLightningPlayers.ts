@@ -2,13 +2,14 @@ import type { QueryableManager } from "../../../shared/persistence/QueryableMana
 import {
 	DuelReservation,
 	generateReservationId,
+	isBotOnlyReservation,
 	RESERVATION_TTL_SECONDS,
 	ReservationStore,
 } from "../../reserved-duel";
 import { LightningEntry } from "../domain/LightningEntry";
 import { LightningEntryRepository } from "../domain/LightningEntryRepository";
 import { LightningGameRepository } from "../domain/LightningGameRepository";
-import { lightningDuelReservation } from "../domain/LightningReservation";
+import { lightningDuelReservation, reservationSeat } from "../domain/LightningReservation";
 import { LightningSummons, lightningSummons } from "../domain/LightningSummons";
 import { LightningTournament } from "../domain/LightningTournament";
 import { pairIdlePlayers } from "../domain/pairIdlePlayers";
@@ -70,16 +71,21 @@ export class PairLightningPlayers {
 				lightningDuelReservation({
 					reservationId,
 					format: tournament.format,
-					seat0: { userId: seat0, deck: first.deck },
-					seat1: { userId: seat1, deck: second.deck },
+					seat0: reservationSeat(first),
+					seat1: reservationSeat(second),
 					lobbyTimeoutSeconds: tournament.lobbyTimeoutSeconds,
 					turnTimeSeconds: tournament.turnTimeSeconds,
 				}),
 			);
-			summons.push(lightningSummons(tournament, reservationId, seat0, seat1));
+			// Only humans are called; a duel between two bots calls nobody.
+			const called = lightningSummons(tournament, reservationId, [first, second]);
+			if (called.userIds.length > 0) summons.push(called);
 		}
 		for (const reservation of issued) {
 			await this.reservations.issue(reservation, RESERVATION_TTL_SECONDS);
+			// Two bots: no one will claim it, so the server is told to open it.
+			if (isBotOnlyReservation(reservation))
+				await this.reservations.announce(reservation.reservationId);
 		}
 		return summons;
 	}

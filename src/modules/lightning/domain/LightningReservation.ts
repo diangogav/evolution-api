@@ -1,7 +1,18 @@
 import { DuelReservation } from "../../reserved-duel";
-import { LightningDeck } from "./LightningEntry";
+import { LightningDeck, LightningEntry } from "./LightningEntry";
 
-export type ReservationSeat = { userId: string; deck: LightningDeck };
+export type ReservationSeat =
+	| { kind?: "user"; userId: string; deck: LightningDeck }
+	| { kind: "windbot"; botName: string };
+
+/** The seat an entry takes: its registered deck, or the WindBot that plays it. */
+export function reservationSeat(
+	entry: Pick<LightningEntry, "userId" | "deck" | "botName">,
+): ReservationSeat {
+	return typeof entry.botName === "string"
+		? { kind: "windbot", botName: entry.botName }
+		: { userId: entry.userId, deck: entry.deck };
+}
 
 // One arena duel: two users with their registered decks, one game (a draw ends it),
 // reconnectable so a dropped connection is not an instant loss, watchable from the
@@ -14,16 +25,20 @@ export function lightningDuelReservation(input: {
 	lobbyTimeoutSeconds: number;
 	turnTimeSeconds: number;
 }): DuelReservation {
-	const participant = (seat: number, player: ReservationSeat) => ({
-		seat,
-		kind: "user" as const,
-		userId: player.userId,
-		requiredDeck: {
-			main: [...player.deck.main],
-			extra: [...player.deck.extra],
-			side: [...player.deck.side],
-		},
-	});
+	// A WindBot plays its own list: the server requests it by name and never locks its deck.
+	const participant = (seat: number, player: ReservationSeat) =>
+		player.kind === "windbot"
+			? { seat, kind: "windbot" as const, botName: player.botName }
+			: {
+					seat,
+					kind: "user" as const,
+					userId: player.userId,
+					requiredDeck: {
+						main: [...player.deck.main],
+						extra: [...player.deck.extra],
+						side: [...player.deck.side],
+					},
+				};
 	return {
 		v: 1,
 		reservationId: input.reservationId,

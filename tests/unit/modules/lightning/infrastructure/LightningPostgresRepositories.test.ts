@@ -1,6 +1,7 @@
 import { describe, expect, it, mock } from "bun:test";
 
 import { LightningByePostgresRepository } from "../../../../../src/modules/lightning/infrastructure/LightningByePostgresRepository";
+import { LightningBotAccountPostgresRepository } from "../../../../../src/modules/lightning/infrastructure/LightningBotAccountPostgresRepository";
 import { LightningEntryPostgresRepository } from "../../../../../src/modules/lightning/infrastructure/LightningEntryPostgresRepository";
 import { LightningGamePostgresRepository } from "../../../../../src/modules/lightning/infrastructure/LightningGamePostgresRepository";
 import { LightningResultPostgresRepository } from "../../../../../src/modules/lightning/infrastructure/LightningResultPostgresRepository";
@@ -241,6 +242,7 @@ const entry = {
 	noShows: 0,
 	lastOpponentId: "u-2",
 	idleSince: at("2026-11-10T20:20:00Z"),
+	botName: null,
 };
 
 describe("LightningEntryPostgresRepository", () => {
@@ -253,7 +255,7 @@ describe("LightningEntryPostgresRepository", () => {
 		await repository.update(entry, manager);
 
 		expect(compact(manager.query.mock.calls[0][0])).toContain(
-			"FROM lightning_entries WHERE tournament_id = $1 ORDER BY registered_at, user_id",
+			"FROM lightning_entries AS e LEFT JOIN lightning_bot_accounts AS b ON b.user_id = e.user_id WHERE e.tournament_id = $1 ORDER BY e.registered_at, e.user_id",
 		);
 		const [insertSql, insertParams] = manager.query.mock.calls[1];
 		expect(compact(insertSql)).toContain("$6::jsonb");
@@ -657,5 +659,28 @@ describe("PlayerDirectoryPostgresRepository", () => {
 		const [sql, params] = manager.query.mock.calls[0];
 		expect(compact(sql)).toContain("role = $2 AS admin");
 		expect(params).toEqual([["u-1", "u-9"], "admin"]);
+	});
+});
+
+describe("Lightning bot reads", () => {
+	it("tags an entry played by a roster bot with its WindBot name", async () => {
+		const manager = managerReturning([{ ...entryRow, user_id: "bot-1", bot_name: "Blackwing" }]);
+
+		const [read] = await new LightningEntryPostgresRepository().listByTournament("t-1", manager);
+
+		expect(read).toMatchObject({ userId: "bot-1", botName: "Blackwing" });
+	});
+
+	it("lists a format's bots in roster order", async () => {
+		const manager = managerReturning([
+			{ user_id: "bot-1", format: "edison", bot_name: "Blackwing" },
+		]);
+
+		const bots = await new LightningBotAccountPostgresRepository().listByFormat("edison", manager);
+
+		const [sql, params] = manager.query.mock.calls[0];
+		expect(compact(sql)).toContain("WHERE format = $1 ORDER BY sort_order, user_id");
+		expect(params).toEqual(["edison"]);
+		expect(bots).toEqual([{ userId: "bot-1", format: "edison", botName: "Blackwing" }]);
 	});
 });

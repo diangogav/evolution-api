@@ -14,9 +14,12 @@ import {
 	STARTS_AT,
 	TOURNAMENT_ID,
 	World,
+	LABRYNTH,
+	SALAMANGREAT,
+	SKY_STRIKER,
 } from "./fakes";
 
-function setup() {
+function setup(botFill: boolean | null = null) {
 	const world = new World();
 	const tick = new ProcessLightningTick(
 		world.unitOfWork,
@@ -29,6 +32,7 @@ function setup() {
 		world.pairSwissRound,
 		world.completeTournament,
 		world.log,
+		botFill === null ? null : { enabled: botFill, bots: world.botAccountRepository },
 	);
 	return { world, tick };
 }
@@ -326,5 +330,74 @@ describe("ProcessLightningTick — Swiss", () => {
 		world.store.issue = issue;
 		expect(await tick.run(minutes(0.1))).toMatchObject({ paired: 2 });
 		expect(world.tournaments.get(TOURNAMENT_ID)?.currentRound).toBe(1);
+	});
+});
+
+describe("ProcessLightningTick with bot fill", () => {
+	it("starts an arena with two players, registers bots up to the minimum and pairs everyone", async () => {
+		const { world, tick } = setup(true);
+		world.seedTournament({ status: "registration", minPlayers: 4 });
+		world.seedEntry(ALICE);
+		world.seedEntry(BOB);
+
+		const result = await tick.run(STARTS_AT);
+
+		expect(world.tournaments.get(TOURNAMENT_ID)?.status).toBe("running");
+		expect(world.entry(SALAMANGREAT)).toMatchObject({ status: "active", presence: "paired" });
+		expect(world.entry(SKY_STRIKER)).toMatchObject({ status: "active", presence: "paired" });
+		expect(world.entry(LABRYNTH)).toBeUndefined();
+		// Same score and wait: the two humans meet, and so do the two bots, on the server.
+		const games = [...world.games.values()];
+		expect(games.map((g) => [g.seat0UserId, g.seat1UserId])).toEqual([
+			[ALICE, BOB],
+			[SALAMANGREAT, SKY_STRIKER],
+		]);
+		expect(world.events).toContain(`announce:${games[1].reservationId}`);
+		expect(result.summons.map((summons) => summons.userIds)).toEqual([[ALICE, BOB]]);
+	});
+
+	it("registers no bot when the field already reaches its minimum", async () => {
+		const { world, tick } = setup(true);
+		world.seedTournament({ status: "registration", minPlayers: 4 });
+		for (const user of [ALICE, BOB, CAROL, DAVE]) world.seedEntry(user);
+
+		await tick.run(STARTS_AT);
+
+		expect(world.entry(SALAMANGREAT)).toBeUndefined();
+	});
+
+	it("still cancels a tournament with a single player", async () => {
+		const { world, tick } = setup(true);
+		world.seedTournament({ status: "registration", minPlayers: 4 });
+		world.seedEntry(ALICE);
+
+		await tick.run(STARTS_AT);
+
+		expect(world.tournaments.get(TOURNAMENT_ID)?.status).toBe("cancelled");
+		expect(world.entry(SALAMANGREAT)).toBeUndefined();
+	});
+
+	it("cancels a tournament short of players when bot fill is off", async () => {
+		const { world, tick } = setup(false);
+		world.seedTournament({ status: "registration", minPlayers: 4 });
+		world.seedEntry(ALICE);
+		world.seedEntry(BOB);
+
+		await tick.run(STARTS_AT);
+
+		expect(world.tournaments.get(TOURNAMENT_ID)?.status).toBe("cancelled");
+		expect(world.entry(SALAMANGREAT)).toBeUndefined();
+	});
+
+	it("does not fill a Swiss tournament", async () => {
+		const { world, tick } = setup(true);
+		world.seedTournament({ status: "registration", system: "swiss", minPlayers: 4 });
+		world.seedEntry(ALICE);
+		world.seedEntry(BOB);
+
+		await tick.run(STARTS_AT);
+
+		expect(world.tournaments.get(TOURNAMENT_ID)?.status).toBe("cancelled");
+		expect(world.entry(SALAMANGREAT)).toBeUndefined();
 	});
 });

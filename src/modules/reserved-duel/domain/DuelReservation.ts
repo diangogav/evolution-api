@@ -25,6 +25,11 @@ export function generateReservationId(randomBytes: RandomBytes = cryptoRandomByt
 	return id;
 }
 
+/** No user seat: nobody claims it, so the issuer announces it and the server opens it. */
+export function isBotOnlyReservation(reservation: Pick<DuelReservation, "participants">): boolean {
+	return reservation.participants.every((participant) => participant.kind === "windbot");
+}
+
 export function reservationPassword(reservationId: string): string {
 	return `${RESERVATION_PASSWORD_PREFIX}${reservationId}`;
 }

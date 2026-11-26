@@ -17,7 +17,7 @@ implemented_by:
     version: "5.5"
     reasoning_effort: "low"
 
-last_implementation_at: "2026-11-26T14:30:00Z"
+last_implementation_at: "2026-11-26T18:00:00Z"
 has_completed_all_phases: "false"
 ---
 
@@ -134,17 +134,17 @@ When a lightning tournament reaches `starts_at` with at least 2 human entries bu
 
 The server opens a reserved duel whose two seats are WindBots when the API announces it, and records its result like any other duel. Verifiable with a reservation written to Redis by hand plus a `PUBLISH`.
 
-- [ ] Branch `feat/bot-only-reserved-duels` from `main` in `EDOpro-server-ts`.
-- [ ] `parseReservation`: accept two distinct `windbot` seats in `single`; tests.
-- [ ] `ReservationStore.claimForServer` and its Lua script in `RedisReservationStore`; tests.
-- [ ] Carry the seat in the WindBot token (`WindbotTokenPayload`, `RequestWindBotJoin`, `WindbotModule.requestBot`, `AIJoinTokenStrategy`) and seat each bot on it in `YGOProRoom.reservedSeatFor`; remove `ReservedDuelSession.botSeat()`; tests.
-- [ ] `WindbotModule.requestBot` failure clears only its own token; test.
-- [ ] Keep the reservation gates and the disconnect policy closed for a reserved room with no user seat; tests.
-- [ ] `OpenBotReservedDuel` use case, sharing the room-opening code with `ReservedDuelJoinStrategy`; tests.
-- [ ] `ReservedDuelOpenSubscriber` on a duplicated Redis connection, wired in `src/index.ts` and closed on shutdown; tests.
-- [ ] Update `docs/reserved-duels.md` (seat rules, server claim, the open channel).
-- [ ] Verify the changes in terms of typechecking, linting and tests using the project's verification command (`pnpm lint`, `pnpm test`, `pnpm build`). Fix issues if any.
-- [ ] STOP. Present the changes to the user for review and suggest commit messages (or pull request titles, when the phases are implemented through pull requests). Do NOT proceed to the next phase until the user explicitly asks.
+- [x] Branch `feat/bot-only-reserved-duels` from `main` in `EDOpro-server-ts`.
+- [x] `parseReservation`: accept two distinct `windbot` seats in `single`; tests.
+- [x] `ReservationStore.claimForServer` and its Lua script in `RedisReservationStore`; tests.
+- [x] Carry the seat in the WindBot token (`WindbotTokenPayload`, `RequestWindBotJoin`, `WindbotModule.requestBot`, `AIJoinTokenStrategy`) and seat each bot on it in `YGOProRoom.reservedSeatFor`; remove `ReservedDuelSession.botSeat()`; tests.
+- [x] `WindbotModule.requestBot` failure clears only its own token; test.
+- [x] Keep the reservation gates and the disconnect policy closed for a reserved room with no user seat; tests.
+- [x] `OpenBotReservedDuel` use case (its own room opening: the join strategy's is bound to the human's socket); tests.
+- [x] `RedisReservationOpenSubscriber` on a duplicated Redis connection, started by `bootstrapBotReservedDuels` from `src/index.ts`; tests. (The server has no shutdown hook to close it on.)
+- [x] Update `docs/reserved-duels.md` (seat rules, server claim, the open channel).
+- [x] Verify the changes in terms of typechecking, linting and tests using the project's verification command (`pnpm lint`, `pnpm test`, `pnpm build`). Fix issues if any.
+- [x] STOP. Present the changes to the user for review and suggest commit messages (or pull request titles, when the phases are implemented through pull requests). Do NOT proceed to the next phase until the user explicitly asks.
 
 ### Phase 2: Arena tournaments filled with bots (`evolution-api`)
 
@@ -158,12 +158,12 @@ Bots join an arena tournament at the start, play humans and each other through r
 - [x] Register bot entries in `ProcessLightningTick.advanceClock` on start, with tests.
 - [x] Support a `windbot` seat in `lightningDuelReservation`, with tests.
 - [x] Skip prizes, ranking, essence and achievements for bots in `CompleteLightningTournament`, with tests.
-- [ ] Remove the simulation: `simulateBotGame`, `resolveSimulatedGame`, `LightningGame.simulatedEndsAt`, the `simulated_ends_at` column from the migration, and their tests.
-- [ ] Add `ReservationStore.announce` (port + Bun Redis adapter); `PairLightningPlayers` issues two-windbot reservations for bot pairs and announces them; tests.
-- [ ] `ApplyLightningGame`: bot seats never take a strike (including an unclaimed bot-only reservation); tests.
-- [ ] Update `docs/design/lightning-tournaments.md` (bot fill section) to real bot-vs-bot duels.
-- [ ] Verify the changes in terms of typechecking, linting and tests using the project's verification command (`bun run build`, `bun run lint`, `bun test`). Fix issues if any.
-- [ ] STOP. Present the changes to the user for review and suggest commit messages (or pull request titles, when the phases are implemented through pull requests). Do NOT proceed to the next phase until the user explicitly asks.
+- [x] Remove the simulation: `simulateBotGame`, `resolveSimulatedGame`, `LightningGame.simulatedEndsAt`, the `simulated_ends_at` column from the migration, and their tests.
+- [x] Add `ReservationStore.announce` (port + Bun Redis adapter); `PairLightningPlayers` issues two-windbot reservations for bot pairs and announces them; tests.
+- [x] `ApplyLightningGame`: bot seats never take a strike (including an unclaimed bot-only reservation); tests.
+- [x] Update `docs/design/lightning-tournaments.md` (bot fill section) to real bot-vs-bot duels.
+- [x] Verify the changes in terms of typechecking, linting and tests using the project's verification command (`bun run build`, `bun run lint`, `bun test`). Fix issues if any.
+- [x] STOP. Present the changes to the user for review and suggest commit messages (or pull request titles, when the phases are implemented through pull requests). Do NOT proceed to the next phase until the user explicitly asks.
 
 ### Phase 3: Swiss tournaments filled with bots (`evolution-api`)
 
@@ -188,6 +188,6 @@ The waiting room tells players the tournament fills with bots instead of saying 
 
 ## Next step
 
-Implement Phase 1: bot-only reserved duels on the duel server.
+Implement Phase 3: Swiss tournaments filled with bots.
 
-Arena seats filled by 🤖 next to 🐢 💨 (Turbotuga™, [Codely](https://codely.com)'s mascot), and now 🤖 ⚔️ 🤖 for real.
+Arena seats filled by 🤖 next to 🐢 💨 (Turbotuga™, [Codely](https://codely.com)'s mascot), and now 🤖 ⚔️ 🤖 for real on the server 🖥️, called by the API 📣.

@@ -1,7 +1,18 @@
 import { describe, expect, it } from "bun:test";
 
 import { achievementCredit } from "../../../../../src/modules/rewards";
-import { ALICE, BOB, CAROL, DAVE, ENDS_AT, ERIN, TOURNAMENT_ID, unlockRowId, World } from "./fakes";
+import {
+	ALICE,
+	BOB,
+	CAROL,
+	DAVE,
+	ENDS_AT,
+	ERIN,
+	TOURNAMENT_ID,
+	unlockRowId,
+	World,
+	SALAMANGREAT,
+} from "./fakes";
 
 function finishedArena() {
 	const world = new World();
@@ -264,5 +275,42 @@ describe("CompleteLightningTournament", () => {
 			[CAROL, 0],
 			[DAVE, 3],
 		]);
+	});
+});
+
+describe("CompleteLightningTournament with bots", () => {
+	it("keeps a winning bot in first place and pays its prize to nobody", async () => {
+		const world = new World();
+		const tournament = world.seedTournament({
+			status: "finishing",
+			pointsByPosition: { positions: [10, 7], others: 1 },
+			essenceByPosition: { positions: [100, 50], others: 0 },
+		});
+		world.seedBot(SALAMANGREAT, { score: 6, wins: 2, gamesPlayed: 2 });
+		world.seedEntry(ALICE, { score: 3, wins: 1, losses: 1, gamesPlayed: 2 });
+		world.seedEntry(BOB, { score: 0, losses: 2, gamesPlayed: 2 });
+		const game = (seat0: string, seat1: string) =>
+			world.seedGame(seat0, seat1, {
+				status: "applied",
+				resolution: "seat0_win",
+				appliedAt: ENDS_AT,
+			});
+		game(SALAMANGREAT, ALICE);
+		game(SALAMANGREAT, BOB);
+		game(ALICE, BOB);
+
+		await world.completeTournament.complete(tournament, world.manager, ENDS_AT);
+
+		expect(
+			world.results.map((r) => [r.position, r.userId, r.pointsAwarded, r.essenceAwarded]),
+		).toEqual([
+			[1, SALAMANGREAT, 0, 0],
+			[2, ALICE, 7, 50],
+			[3, BOB, 1, 0],
+		]);
+		expect(world.results[0].achievements).toEqual([]);
+		expect([...world.rankings.values()].map((r) => r.userId)).toEqual([ALICE, BOB]);
+		expect(world.ledger.some((entry) => entry.userId === SALAMANGREAT)).toBe(false);
+		expect(world.unlocks.some((unlock) => unlock.userId === SALAMANGREAT)).toBe(false);
 	});
 });

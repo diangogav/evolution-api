@@ -4,6 +4,11 @@ import type { QueryRunner } from "typeorm";
 import { AddLightningEssenceKind1782800100000 } from "../../../src/migrations/1782800100000-add-lightning-essence-kind";
 import { CreateLightningTournaments1782800000000 } from "../../../src/migrations/1782800000000-create-lightning-tournaments";
 import { AddLightningSwiss1782900000000 } from "../../../src/migrations/1782900000000-add-lightning-swiss";
+import {
+	botUsername,
+	LIGHTNING_BOTS,
+	LightningBotFill1783500000000,
+} from "../../../src/migrations/1783500000000-lightning-bot-fill";
 import { AddLightningResultAchievements1783000000000 } from "../../../src/migrations/1783000000000-add-lightning-result-achievements";
 
 function recordingRunner() {
@@ -125,5 +130,57 @@ describe("AddLightningResultAchievements migration", () => {
 			`ALTER TABLE "lightning_results" ADD "achievements" jsonb NOT NULL DEFAULT '[]'::jsonb`,
 		]);
 		expect(down.statements).toEqual([`ALTER TABLE "lightning_results" DROP COLUMN "achievements"`]);
+	});
+});
+
+describe("LightningBotFill migration", () => {
+	function runner(taken: Array<{ username: string; email: string }> = []) {
+		const calls: Array<{ sql: string; params?: unknown[] }> = [];
+		const queryRunner = {
+			query: async (sql: string, params?: unknown[]) => {
+				calls.push({ sql, params });
+				return sql.startsWith("SELECT") ? taken : [];
+			},
+		} as unknown as QueryRunner;
+		return { queryRunner, calls };
+	}
+
+	it("seeds one unusable user and one roster row per bot", async () => {
+		const { queryRunner, calls } = runner();
+
+		await new LightningBotFill1783500000000().up(queryRunner);
+
+		const users = calls.filter((call) => call.sql.startsWith(`INSERT INTO "users"`));
+		const accounts = calls.filter((call) =>
+			call.sql.startsWith(`INSERT INTO "lightning_bot_accounts"`),
+		);
+		expect(users).toHaveLength(LIGHTNING_BOTS.length);
+		expect(accounts.map((call) => call.params?.slice(1, 3))).toEqual(
+			LIGHTNING_BOTS.map((bot) => [bot.format, bot.botName]),
+		);
+		const blackwing = users.find((call) => call.params?.[1] === botUsername("Blackwing"));
+		expect(blackwing?.params?.[1]).toBe("Blackwing Bot");
+		expect(blackwing?.params?.[3]).toBe("blackwing@bots.evolution.invalid");
+		expect(String(blackwing?.params?.[2])).toStartWith("$2");
+		expect(calls.some((call) => call.sql.includes("lightning_games"))).toBe(false);
+	});
+
+	it("refuses to seed over a username or address already taken", async () => {
+		const { queryRunner, calls } = runner([{ username: "Yugi Bot", email: "x@y.z" }]);
+
+		await expect(new LightningBotFill1783500000000().up(queryRunner)).rejects.toThrow("Yugi Bot");
+		expect(calls.some((call) => call.sql.startsWith("INSERT"))).toBe(false);
+	});
+
+	it("drops the roster and deletes exactly the bot users on revert", async () => {
+		const { queryRunner, calls } = runner();
+
+		await new LightningBotFill1783500000000().down(queryRunner);
+
+		expect(calls.map((call) => call.sql)).toEqual([
+			`DROP TABLE "lightning_bot_accounts"`,
+			`DELETE FROM "users" WHERE "id" = ANY($1)`,
+		]);
+		expect(calls[1].params).toEqual([LIGHTNING_BOTS.map((bot) => bot.id)]);
 	});
 });

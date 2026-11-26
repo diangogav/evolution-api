@@ -1,7 +1,13 @@
 import { Logger } from "../../../shared/logger/domain/Logger";
 import type { QueryableManager } from "../../../shared/persistence/QueryableManager";
 import { ReservationStore, ReservedDuelRecordReader } from "../../reserved-duel";
-import { recordGameOutcome, recordSwissGameOutcome } from "../domain/LightningEntry";
+import {
+	EntryGameOutcome,
+	isBotEntry,
+	LightningEntry,
+	recordGameOutcome,
+	recordSwissGameOutcome,
+} from "../domain/LightningEntry";
 import { LightningEntryRepository } from "../domain/LightningEntryRepository";
 import { LightningGame } from "../domain/LightningGame";
 import { LightningGameRepository } from "../domain/LightningGameRepository";
@@ -62,18 +68,7 @@ export class ApplyLightningGame {
 		);
 		if (marked === "skipped") return "skipped";
 
-		const swiss = game.round !== null;
-		for (const seat of [0, 1] as const) {
-			const userId = seat === 0 ? game.seat0UserId : game.seat1UserId;
-			const entry = await this.entries.findOne(game.tournamentId, userId, manager);
-			if (!entry) continue;
-			await this.entries.update(
-				swiss
-					? recordSwissGameOutcome(entry, outcomeForSeat(resolution, seat, "swiss"), now)
-					: recordGameOutcome(entry, outcomeForSeat(resolution, seat), now),
-				manager,
-			);
-		}
+		await this.recordSeats(game, resolution, manager, now);
 
 		// A duel the tournament forgot must not start late: an unclaimed key is dropped. A key
 		// already claimed (`in_use`) belongs to the room that produced this very record.
@@ -81,6 +76,27 @@ export class ApplyLightningGame {
 			await this.revokeQuietly(game.reservationId);
 		}
 		return resolution.stale ? "stale" : "applied";
+	}
+
+	private async recordSeats(
+		game: LightningGame,
+		resolution: GameResolution,
+		manager: QueryableManager,
+		now: Date,
+	): Promise<void> {
+		const swiss = game.round !== null;
+		for (const seat of [0, 1] as const) {
+			const userId = seat === 0 ? game.seat0UserId : game.seat1UserId;
+			const entry = await this.entries.findOne(game.tournamentId, userId, manager);
+			if (!entry) continue;
+			const outcome = botSafe(entry, outcomeForSeat(resolution, seat, swiss ? "swiss" : "arena"));
+			await this.entries.update(
+				swiss
+					? recordSwissGameOutcome(entry, outcome, now)
+					: recordGameOutcome(entry, outcome, now),
+				manager,
+			);
+		}
 	}
 
 	// Presence follows the server: once the duel started, both seats are playing, which is
@@ -106,6 +122,12 @@ export class ApplyLightningGame {
 			);
 		}
 	}
+}
+
+// A bot that missed its room failed on the server's side, not by absence: it takes no strike
+// and stays free for the next pairing.
+function botSafe(entry: LightningEntry, outcome: EntryGameOutcome): EntryGameOutcome {
+	return isBotEntry(entry) && outcome === "no_show" ? "void" : outcome;
 }
 
 function errorMessage(error: unknown): string {
