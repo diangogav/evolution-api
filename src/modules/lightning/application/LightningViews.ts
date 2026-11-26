@@ -34,6 +34,8 @@ export type LightningTournamentView = {
 	roundEndsAt: string | null;
 	/** When the next Swiss round is paired, during a break; null otherwise. */
 	nextRoundAt: string | null;
+	/** Bots fill the field at the start when it is short of `minPlayers` (2 players needed). */
+	botFill: boolean;
 };
 
 export type LightningEntryView = {
@@ -49,7 +51,10 @@ export type LightningEntryView = {
 	registeredAt: string;
 };
 
-export function toTournamentView(tournament: LightningTournament): LightningTournamentView {
+export function toTournamentView(
+	tournament: LightningTournament,
+	botFill = false,
+): LightningTournamentView {
 	return {
 		id: tournament.id,
 		name: tournament.name,
@@ -78,6 +83,7 @@ export function toTournamentView(tournament: LightningTournament): LightningTour
 		currentRound: tournament.system === "swiss" ? tournament.currentRound : 0,
 		roundEndsAt: swissRoundEndsAt(tournament)?.toISOString() ?? null,
 		nextRoundAt: swissNextRoundAt(tournament)?.toISOString() ?? null,
+		botFill,
 	};
 }
 

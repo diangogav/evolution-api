@@ -77,6 +77,10 @@ const tournamentFields = {
 	nextRoundAt: t.Nullable(
 		DateTime("When the next Swiss round is paired, during the break. Null otherwise"),
 	),
+	botFill: t.Boolean({
+		description:
+			"Whether WindBot entrants fill the field at startsAt when it is short of minPlayers; then 2 players are enough to start",
+	}),
 };
 
 export const LightningTournamentSchema = t.Object(tournamentFields);

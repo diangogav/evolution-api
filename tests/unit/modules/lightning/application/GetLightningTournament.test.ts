@@ -4,7 +4,7 @@ import { GetLightningTournament } from "../../../../../src/modules/lightning/app
 import { NotFoundError } from "../../../../../src/shared/errors/NotFoundError";
 import { ALICE, BOB, CAROL, DAVE, ENDS_AT, ERIN, RUNNING_AT, TOURNAMENT_ID, World } from "./fakes";
 
-function setup() {
+function setup(botFill = false) {
 	const world = new World();
 	const getTournament = new GetLightningTournament(
 		world.tournamentRepository,
@@ -14,11 +14,21 @@ function setup() {
 		world.recordReader,
 		world.players,
 		world.byeRepository,
+		botFill,
 	);
 	return { world, getTournament };
 }
 
 describe("GetLightningTournament", () => {
+	it("tells players when a short field fills with bots", async () => {
+		const { world, getTournament } = setup(true);
+		world.seedRunning([ALICE, BOB]);
+
+		expect(
+			(await getTournament.run({ tournamentId: TOURNAMENT_ID, now: RUNNING_AT })).botFill,
+		).toBe(true);
+	});
+
 	it("answers the detail with live standings and the rooms spectators can watch", async () => {
 		const { world, getTournament } = setup();
 		world.seedRunning([ALICE, BOB, CAROL, DAVE]);

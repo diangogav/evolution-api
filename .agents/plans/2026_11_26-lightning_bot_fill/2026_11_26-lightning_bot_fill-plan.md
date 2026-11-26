@@ -181,14 +181,14 @@ The same fill for Swiss: bots count for the round number and sit at Swiss tables
 
 The waiting room tells players the tournament fills with bots instead of saying it will be cancelled.
 
-- [ ] API: expose `botFill: boolean` in the tournament view and its TypeBox schema (OpenAPI ratchet), with tests.
-- [ ] Client: add `botFill` to `src/features/lightning/domain/dtos.ts` and pass it to `WaitingRoom.svelte` (load the `svelte-5` skill first).
-- [ ] Client: update `lightning_room_quorum` and `lightning_room_quorum_rule` in `messages/es-419.json` and `messages/en.json`; add the waiting room test for both cases.
-- [ ] Verify the changes in terms of typechecking, linting and tests using the project's verification commands (API: `bun run build`, `bun run lint`, `bun test`; client: `npm run lint`, `npm run typecheck`, `npm run check:svelte`, the touched tests, `npm run build`). Fix issues if any.
-- [ ] STOP. Present the changes to the user for review and suggest commit messages (or pull request titles, when the phases are implemented through pull requests). Do NOT proceed to the next phase until the user explicitly asks.
+- [x] API: expose `botFill: boolean` in the tournament view and its TypeBox schema (OpenAPI ratchet), with tests.
+- [x] Client: add `botFill` to `src/features/lightning/domain/dtos.ts` and pass it to `WaitingRoom.svelte` (load the `svelte-5` skill first).
+- [x] Client: update `lightning_room_quorum` and `lightning_room_quorum_rule` in `messages/es-419.json` and `messages/en.json`; add the waiting room test for both cases.
+- [x] Verify the changes in terms of typechecking, linting and tests using the project's verification commands (API: `bun run build`, `bun run lint`, `bun test`; client: `npm run lint`, `npm run typecheck`, `npm run check:svelte`, the touched tests, `npm run build`). Fix issues if any.
+- [x] STOP. Present the changes to the user for review and suggest commit messages (or pull request titles, when the phases are implemented through pull requests). Do NOT proceed to the next phase until the user explicitly asks.
 
 ## Next step
 
-Implement Phase 4: client copy for the bot fill rule.
+Deploy: the duel server first, then the API migration, then `LIGHTNING_BOT_FILL_ENABLED=true`; the client copy reads `botFill` from the views.
 
 Arena seats filled by 🤖 next to 🐢 💨 (Turbotuga™, [Codely](https://codely.com)'s mascot), and now 🤖 ⚔️ 🤖 for real on the server 🖥️, called by the API 📣, round after round 🔁.

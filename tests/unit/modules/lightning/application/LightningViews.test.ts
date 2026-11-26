@@ -6,6 +6,13 @@ import { STARTS_AT, World } from "./fakes";
 const minutes = (n: number) => new Date(STARTS_AT.getTime() + n * 60_000);
 
 describe("toTournamentView", () => {
+	it("says whether bots fill a short field, and that they do not by default", () => {
+		const tournament = new World().seedRunning();
+
+		expect(toTournamentView(tournament).botFill).toBe(false);
+		expect(toTournamentView(tournament, true).botFill).toBe(true);
+	});
+
 	it("gives an arena no rounds and no round clocks", () => {
 		const view = toTournamentView(new World().seedRunning());
 

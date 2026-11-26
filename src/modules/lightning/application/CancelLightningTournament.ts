@@ -25,6 +25,7 @@ export class CancelLightningTournament {
 		private readonly reservations: ReservationStore,
 		private readonly transactions: TransactionRunner,
 		private readonly logger: Logger,
+		private readonly botFill = false,
 	) {}
 
 	async run(input: CancelLightningTournamentInput): Promise<LightningTournamentView> {
@@ -73,6 +74,6 @@ export class CancelLightningTournament {
 				);
 			}
 		}
-		return toTournamentView(tournament);
+		return toTournamentView(tournament, this.botFill);
 	}
 }
