@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { importClassesFromDirectories } from "typeorm/util/DirectoryExportedClassesLoader";
 
 // Static checks on src/migrations, the API-owned migrations the cosmetics DataSource
 // runs. TypeORM orders them by timestamp and records each one by its `name`, so a
@@ -56,5 +57,31 @@ describe("API-owned migration files", () => {
 		expect(repeated(migrations.map(({ fileTimestamp }) => fileTimestamp ?? ""))).toEqual(
 			APPLIED_SHARED_TIMESTAMPS,
 		);
+	});
+});
+
+// The cosmetics DataSource loads these files with TypeORM's loader, which takes every
+// function a migration file exports for a migration class and calls `new` on it. Any other
+// exported function (a helper, an arrow function) makes `migration:cosmetics:run` fail at start.
+describe("API-owned migration exports", () => {
+	it("export no function but their migration classes", async () => {
+		const logger = { log: () => undefined } as unknown as Parameters<
+			typeof importClassesFromDirectories
+		>[0];
+		const exported = await importClassesFromDirectories(logger, [join(MIGRATIONS_DIR, "*.ts")]);
+
+		const notMigrations = exported
+			.filter((value) => {
+				try {
+					const instance = new (value as new () => { up?: unknown })();
+					return typeof instance.up !== "function";
+				} catch {
+					return true;
+				}
+			})
+			.map((value) => (value as { name?: string }).name);
+
+		expect(exported.length).toBeGreaterThan(0);
+		expect(notMigrations).toEqual([]);
 	});
 });

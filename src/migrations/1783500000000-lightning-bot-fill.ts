@@ -28,9 +28,10 @@ export const LIGHTNING_BOTS: ReadonlyArray<{
 	{ id: "00000000-0000-4000-8000-00000000b202", format: "jtp", botName: "Yugi" },
 ];
 
-export const botUsername = (botName: string) => `${botName} Bot`;
+// Not exported: TypeORM loads every function a migration file exports as a migration class.
+const botUsername = (botName: string) => `${botName} Bot`;
 
-export const botEmail = (botName: string) =>
+const botEmail = (botName: string) =>
 	`${botName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}@bots.evolution.invalid`;
 
 export class LightningBotFill1783500000000 implements MigrationInterface {
