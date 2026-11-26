@@ -5,7 +5,6 @@ import { AddLightningEssenceKind1782800100000 } from "../../../src/migrations/17
 import { CreateLightningTournaments1782800000000 } from "../../../src/migrations/1782800000000-create-lightning-tournaments";
 import { AddLightningSwiss1782900000000 } from "../../../src/migrations/1782900000000-add-lightning-swiss";
 import {
-	botUsername,
 	LIGHTNING_BOTS,
 	LightningBotFill1783500000000,
 } from "../../../src/migrations/1783500000000-lightning-bot-fill";
@@ -158,7 +157,7 @@ describe("LightningBotFill migration", () => {
 		expect(accounts.map((call) => call.params?.slice(1, 3))).toEqual(
 			LIGHTNING_BOTS.map((bot) => [bot.format, bot.botName]),
 		);
-		const blackwing = users.find((call) => call.params?.[1] === botUsername("Blackwing"));
+		const blackwing = users.find((call) => call.params?.[1] === "Blackwing Bot");
 		expect(blackwing?.params?.[1]).toBe("Blackwing Bot");
 		expect(blackwing?.params?.[3]).toBe("blackwing@bots.evolution.invalid");
 		expect(String(blackwing?.params?.[2])).toStartWith("$2");
