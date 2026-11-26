@@ -389,7 +389,7 @@ describe("ProcessLightningTick with bot fill", () => {
 		expect(world.entry(SALAMANGREAT)).toBeUndefined();
 	});
 
-	it("does not fill a Swiss tournament", async () => {
+	it("fills a Swiss tournament and counts its bots for the number of rounds", async () => {
 		const { world, tick } = setup(true);
 		world.seedTournament({ status: "registration", system: "swiss", minPlayers: 4 });
 		world.seedEntry(ALICE);
@@ -397,7 +397,13 @@ describe("ProcessLightningTick with bot fill", () => {
 
 		await tick.run(STARTS_AT);
 
-		expect(world.tournaments.get(TOURNAMENT_ID)?.status).toBe("cancelled");
-		expect(world.entry(SALAMANGREAT)).toBeUndefined();
+		expect(world.tournaments.get(TOURNAMENT_ID)).toMatchObject({
+			status: "running",
+			rounds: 3,
+			currentRound: 1,
+		});
+		expect(world.entry(SALAMANGREAT)?.status).toBe("active");
+		expect(world.entry(SKY_STRIKER)?.status).toBe("active");
+		expect([...world.games.values()].filter((game) => game.round === 1)).toHaveLength(2);
 	});
 });

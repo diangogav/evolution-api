@@ -187,7 +187,7 @@ export class ProcessLightningTick {
 		const activeEntries = entries.filter((entry) => entry.status === "active");
 		const active = activeEntries.length;
 		const humans = activeEntries.filter((entry) => !isBotEntry(entry)).length;
-		const botFill = this.fillsWithBots(tournament);
+		const botFill = this.fillsWithBots();
 		const next = nextStatusByClock({
 			status: tournament.status,
 			system: tournament.system,
@@ -231,9 +231,8 @@ export class ProcessLightningTick {
 		return moved;
 	}
 
-	// Swiss tables do not seat bots yet: only the arena fills.
-	private fillsWithBots(tournament: LightningTournament): boolean {
-		return this.botFill?.enabled === true && tournament.system !== "swiss";
+	private fillsWithBots(): boolean {
+		return this.botFill?.enabled === true;
 	}
 
 	// Bots enter as the field starts, idle like everyone else; startWaiting sets their clock.

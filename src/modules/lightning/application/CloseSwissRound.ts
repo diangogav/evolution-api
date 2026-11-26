@@ -1,7 +1,7 @@
 import { Logger } from "../../../shared/logger/domain/Logger";
 import type { QueryableManager } from "../../../shared/persistence/QueryableManager";
 import { generateReservationId, ReservationStore } from "../../reserved-duel";
-import { recordSwissGameOutcome } from "../domain/LightningEntry";
+import { isBotEntry, recordSwissGameOutcome } from "../domain/LightningEntry";
 import { LightningEntryRepository } from "../domain/LightningEntryRepository";
 import { LightningGameRepository } from "../domain/LightningGameRepository";
 import { LightningTournament } from "../domain/LightningTournament";
@@ -64,10 +64,13 @@ export class CloseSwissRound {
 		}
 
 		const entries = await this.entries.listByTournament(current.id, manager);
-		const active = entries.filter((entry) => entry.status === "active").length;
+		const activeEntries = entries.filter((entry) => entry.status === "active");
+		const active = activeEntries.length;
+		// Bots only fill a field for its players: once none is left, the rounds stop.
+		const humans = activeEntries.filter((entry) => !isBotEntry(entry)).length;
 		const lastRoundClosed =
 			current.currentRound > 0 && current.currentRound >= (current.rounds ?? 0);
-		if (lastRoundClosed || active <= 1) {
+		if (lastRoundClosed || active <= 1 || humans === 0) {
 			current = { ...current, status: "finishing", updatedAt: now };
 			await this.tournaments.update(current, manager);
 		}

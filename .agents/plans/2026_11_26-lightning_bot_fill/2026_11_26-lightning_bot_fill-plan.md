@@ -17,7 +17,7 @@ implemented_by:
     version: "5.5"
     reasoning_effort: "low"
 
-last_implementation_at: "2026-11-26T18:00:00Z"
+last_implementation_at: "2026-11-26T19:00:00Z"
 has_completed_all_phases: "false"
 ---
 
@@ -169,12 +169,13 @@ Bots join an arena tournament at the start, play humans and each other through r
 
 The same fill for Swiss: bots count for the round number and sit at Swiss tables, bot-only tables included.
 
-- [ ] Fill Swiss tournaments too in `ProcessLightningTick` (drop the arena-only guard) and count bot entries in `startSwissTournament`.
-- [ ] Issue windbot seats and announced bot-only reservations in `PairSwissRound`, with tests.
-- [ ] Check `CloseSwissRound` closes a round whose last table is bot-only, with tests; a bot may take the bye.
-- [ ] Update `docs/design/lightning-swiss.md`.
-- [ ] Verify the changes in terms of typechecking, linting and tests using the project's verification command (`bun run build`, `bun run lint`, `bun test`). Fix issues if any.
-- [ ] STOP. Present the changes to the user for review and suggest commit messages (or pull request titles, when the phases are implemented through pull requests). Do NOT proceed to the next phase until the user explicitly asks.
+- [x] Fill Swiss tournaments too in `ProcessLightningTick` (drop the arena-only guard) and count bot entries in `startSwissTournament`.
+- [x] Issue windbot seats and announced bot-only reservations in `PairSwissRound`, with tests.
+- [x] Check `CloseSwissRound` closes a round whose last table is bot-only, with tests; a bot may take the bye.
+- [x] A no-show that only bots caused voids the game (the table is issued again); with no human left in, the arena pairs nobody and Swiss finishes; tests.
+- [x] Update `docs/design/lightning-swiss.md`.
+- [x] Verify the changes in terms of typechecking, linting and tests using the project's verification command (`bun run build`, `bun run lint`, `bun test`). Fix issues if any.
+- [x] STOP. Present the changes to the user for review and suggest commit messages (or pull request titles, when the phases are implemented through pull requests). Do NOT proceed to the next phase until the user explicitly asks.
 
 ### Phase 4: Client copy for the bot fill rule (`evolution-card-game`)
 
@@ -188,6 +189,6 @@ The waiting room tells players the tournament fills with bots instead of saying 
 
 ## Next step
 
-Implement Phase 3: Swiss tournaments filled with bots.
+Implement Phase 4: client copy for the bot fill rule.
 
-Arena seats filled by 🤖 next to 🐢 💨 (Turbotuga™, [Codely](https://codely.com)'s mascot), and now 🤖 ⚔️ 🤖 for real on the server 🖥️, called by the API 📣.
+Arena seats filled by 🤖 next to 🐢 💨 (Turbotuga™, [Codely](https://codely.com)'s mascot), and now 🤖 ⚔️ 🤖 for real on the server 🖥️, called by the API 📣, round after round 🔁.

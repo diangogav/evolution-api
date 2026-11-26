@@ -10,6 +10,9 @@ import {
 	STARTS_AT,
 	TOURNAMENT_ID,
 	World,
+	SALAMANGREAT,
+	SKY_STRIKER,
+	DECK,
 } from "./fakes";
 
 const later = (ms: number) => new Date(RUNNING_AT.getTime() + ms);
@@ -150,5 +153,68 @@ describe("PairSwissRound", () => {
 			await arena.pairSwissRound.pair(arena.seedRunning(), arena.manager, RUNNING_AT),
 		).toHaveLength(0);
 		expect(arena.games.size).toBe(0);
+	});
+});
+
+describe("PairSwissRound with bots", () => {
+	it("seats bots as WindBots, announces a table of two bots and calls only humans", async () => {
+		const world = new World();
+		const tournament = world.seedSwiss([ALICE, BOB]);
+		world.seedBot(SALAMANGREAT, { idleSince: STARTS_AT });
+		world.seedBot(SKY_STRIKER, { idleSince: STARTS_AT });
+
+		const summons = await world.pairSwissRound.pair(tournament, world.manager, STARTS_AT);
+
+		const reservations = [...world.games.values()].map((game) =>
+			world.redis.get(game.reservationId),
+		);
+		const kinds = reservations.map((reservation) =>
+			reservation?.participants.map((participant) => participant.kind).join("+"),
+		);
+		expect(kinds).toHaveLength(2);
+		for (const reservation of reservations) {
+			for (const participant of reservation?.participants ?? []) {
+				if (participant.kind === "user") expect(participant.requiredDeck).toEqual(DECK);
+			}
+			const botOnly = reservation?.participants.every((p) => p.kind === "windbot");
+			expect(world.events.includes(`announce:${reservation?.reservationId}`)).toBe(
+				botOnly === true,
+			);
+		}
+		const called = summons.flatMap((s) => s.userIds);
+		expect(called.length).toBeGreaterThan(0);
+		expect(called.every((user) => user === ALICE || user === BOB)).toBe(true);
+	});
+
+	it("issues a table again when the server never opened its duel between bots", async () => {
+		const world = new World();
+		const tournament = world.seedSwiss([ALICE, BOB], {
+			currentRound: 1,
+			roundStartedAt: STARTS_AT,
+		});
+		world.seedBot(SALAMANGREAT);
+		world.seedBot(SKY_STRIKER);
+		const game = world.seedGame(SALAMANGREAT, SKY_STRIKER, { round: 1, issuedAt: STARTS_AT });
+
+		await world.applyGame.applyGame(game, world.manager, later(10 * 60_000));
+		const summons = await world.pairSwissRound.pair(
+			world.tournaments.get(TOURNAMENT_ID) as typeof tournament,
+			world.manager,
+			later(10 * 60_000),
+		);
+
+		expect(world.games.get(game.reservationId)).toMatchObject({
+			status: "voided",
+			resolution: "void",
+		});
+		expect(world.entry(SALAMANGREAT)).toMatchObject({ noShows: 0, losses: 0, status: "active" });
+		const reissued = [...world.games.values()].filter(
+			(candidate) => candidate.round === 1 && candidate.status === "pending",
+		);
+		expect(reissued.map((g) => [g.seat0UserId, g.seat1UserId])).toEqual([
+			[SALAMANGREAT, SKY_STRIKER],
+		]);
+		expect(world.events).toContain(`announce:${reissued[0].reservationId}`);
+		expect(summons).toEqual([]);
 	});
 });

@@ -160,6 +160,7 @@ describe("PairLightningPlayers with bots", () => {
 	it("issues two bots a reservation of two WindBot seats, announces it and calls nobody", async () => {
 		const world = new World();
 		const tournament = world.seedRunning([]);
+		world.seedEntry(ALICE, { presence: "playing", idleSince: null });
 		world.seedBot(SALAMANGREAT, { idleSince: STARTS_AT });
 		world.seedBot(SKY_STRIKER, { idleSince: STARTS_AT });
 
@@ -177,5 +178,16 @@ describe("PairLightningPlayers with bots", () => {
 		expect(paired).toEqual([]);
 		expect(world.entry(SALAMANGREAT)?.presence).toBe("paired");
 		expect(world.entry(SKY_STRIKER)?.presence).toBe("paired");
+	});
+
+	it("pairs nobody once no player is left, only bots", async () => {
+		const world = new World();
+		const tournament = world.seedRunning([]);
+		world.seedEntry(ALICE, { status: "withdrawn" });
+		world.seedBot(SALAMANGREAT, { idleSince: STARTS_AT });
+		world.seedBot(SKY_STRIKER, { idleSince: STARTS_AT });
+
+		expect(await world.pairPlayers.pair(tournament, world.manager, RUNNING_AT)).toEqual([]);
+		expect(world.games.size).toBe(0);
 	});
 });
