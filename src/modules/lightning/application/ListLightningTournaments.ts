@@ -21,7 +21,10 @@ export const LIST_LIMIT = 50;
 // Without a status: everything not over yet, soonest first. A finished status lists the
 // most recent ones first.
 export class ListLightningTournaments {
-	constructor(private readonly tournaments: LightningTournamentRepository) {}
+	constructor(
+		private readonly tournaments: LightningTournamentRepository,
+		private readonly botFill = false,
+	) {}
 
 	async run(input: ListLightningTournamentsInput): Promise<LightningTournamentListItem[]> {
 		const finished = input.status === "completed" || input.status === "cancelled";
@@ -31,7 +34,7 @@ export class ListLightningTournaments {
 			limit: LIST_LIMIT,
 		});
 		return listings.map(({ tournament, entryCount }) => ({
-			...toTournamentView(tournament),
+			...toTournamentView(tournament, this.botFill),
 			players: entryCount,
 		}));
 	}

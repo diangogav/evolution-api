@@ -82,6 +82,7 @@ export class GetLightningTournament {
 		private readonly records: ReservedDuelRecordReader,
 		private readonly players: PlayerDirectory,
 		private readonly byes: LightningByeRepository,
+		private readonly botFill = false,
 	) {}
 
 	async run(input: GetLightningTournamentInput): Promise<LightningTournamentDetail> {
@@ -141,7 +142,7 @@ export class GetLightningTournament {
 		const ref = (userId: string): PlayerRef => ({ userId, username: names.get(userId) ?? "" });
 
 		return {
-			...toTournamentView(tournament),
+			...toTournamentView(tournament, this.botFill),
 			players: entries.filter((entry) => entry.status === "active").length,
 			standings: standings.map((standing) => ({
 				...standing,

@@ -118,6 +118,7 @@ export class GetMyLightningState {
 		private readonly transactions: TransactionRunner,
 		private readonly byes: LightningByeRepository,
 		private readonly results: Pick<LightningResultRepository, "listResults">,
+		private readonly botFill = false,
 	) {}
 
 	async run(input: GetMyLightningStateInput): Promise<MyLightningState> {
@@ -149,7 +150,7 @@ export class GetMyLightningState {
 			const entries = await this.entries.listByTournament(tournament.id, manager);
 			const entry = entries.find((candidate) => candidate.userId === input.userId) ?? null;
 			const players = entries.filter((candidate) => candidate.status === "active").length;
-			const base = { tournament: toTournamentView(tournament), players };
+			const base = { tournament: toTournamentView(tournament, this.botFill), players };
 			const ceremony =
 				entry && tournament.status === "completed"
 					? await this.ceremonyOf(tournament.id, input.userId, manager)

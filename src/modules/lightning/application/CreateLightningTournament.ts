@@ -13,6 +13,7 @@ export class CreateLightningTournament {
 	constructor(
 		private readonly tournaments: LightningTournamentRepository,
 		private readonly newId: () => string = () => crypto.randomUUID(),
+		private readonly botFill = false,
 	) {}
 
 	async run(input: CreateLightningTournamentInput): Promise<LightningTournamentView> {
@@ -26,6 +27,6 @@ export class CreateLightningTournament {
 			throw error;
 		}
 		await this.tournaments.insert(tournament);
-		return toTournamentView(tournament);
+		return toTournamentView(tournament, this.botFill);
 	}
 }

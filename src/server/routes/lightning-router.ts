@@ -111,6 +111,7 @@ const tournamentExample = {
 	currentRound: 0,
 	roundEndsAt: null,
 	nextRoundAt: null,
+	botFill: false,
 };
 
 const swissExample = {
@@ -678,13 +679,25 @@ export const lightningChatHub = new LightningChatHub(logger);
 // Lists change a few times a year; an hour keeps registrations off the network.
 const LIST_CACHE_MS = 60 * 60 * 1000;
 
+// The views tell players whether a short field fills with bots, as the worker does.
+const botFill = config.lightningWorker.botFillEnabled;
+
 export const lightningRouter = createLightningRouter({
 	authorizer: adminAuthorizer,
 	requireUser: defaultRequireUser,
 	clock: () => new Date(),
 	defaultSeason: config.season,
-	list: new ListLightningTournaments(tournaments),
-	get: new GetLightningTournament(tournaments, entries, games, results, records, players, byes),
+	list: new ListLightningTournaments(tournaments, botFill),
+	get: new GetLightningTournament(
+		tournaments,
+		entries,
+		games,
+		results,
+		records,
+		players,
+		byes,
+		botFill,
+	),
 	rankings: new GetLightningRankings(results),
 	enter: new EnterLightningTournament(
 		tournaments,
@@ -714,15 +727,17 @@ export const lightningRouter = createLightningRouter({
 		transactions,
 		byes,
 		results,
+		botFill,
 	),
 	myActive: new GetMyActiveLightningEntries(entries, records, players),
-	create: new CreateLightningTournament(tournaments),
+	create: new CreateLightningTournament(tournaments, undefined, botFill),
 	cancel: new CancelLightningTournament(
 		tournaments,
 		games,
 		new BunRedisReservationStore(redisClient),
 		transactions,
 		logger,
+		botFill,
 	),
 	chatHistory: new GetLightningChatHistory(tournaments, chatMessages, players),
 	chatPost: new PostLightningChatMessage(
