@@ -45,18 +45,19 @@ export class ApplyLightningGame {
 		// A Swiss round has its own deadline, which closes a hung game as a draw; voiding it as
 		// stale would only re-issue the same table.
 		const staleAfterMs = game.round === null ? this.staleAfterMs : Number.POSITIVE_INFINITY;
-		const resolution = resolveLightningGame(game, record ?? null, now, staleAfterMs);
-		if (!resolution) {
+		const resolved = resolveLightningGame(game, record ?? null, now, staleAfterMs);
+		if (!resolved) {
 			if (record?.startedAt) await this.markPlaying(game, manager);
 			return "live";
 		}
 
 		// No row after the grace period means nobody joined, unless the server claimed the key
 		// in the meantime: then the record is on its way and the game stays pending.
-		if (resolution.unclaimed) {
+		if (resolved.unclaimed) {
 			const revoked = await this.reservations.revoke(game.reservationId);
 			if (revoked === "in_use") return "live";
 		}
+		const resolution = await this.withoutBotNoShows(game, resolved, manager);
 
 		const marked = await this.games.resolve(
 			game.reservationId,
@@ -76,6 +77,23 @@ export class ApplyLightningGame {
 			await this.revokeQuietly(game.reservationId);
 		}
 		return resolution.stale ? "stale" : "applied";
+	}
+
+	// Only bots missed the room (a bot that never came, a bot-only duel the server never
+	// opened): nobody was absent by choice, so the game is void like any infrastructure
+	// failure. The arena frees both seats; Swiss issues the table again.
+	private async withoutBotNoShows(
+		game: LightningGame,
+		resolution: GameResolution,
+		manager: QueryableManager,
+	): Promise<GameResolution> {
+		if (resolution.resolution !== "no_show") return resolution;
+		for (const seat of resolution.noShowSeats) {
+			const userId = seat === 0 ? game.seat0UserId : game.seat1UserId;
+			const entry = await this.entries.findOne(game.tournamentId, userId, manager);
+			if (!entry || !isBotEntry(entry)) return resolution;
+		}
+		return { ...resolution, resolution: "void", noShowSeats: [] };
 	}
 
 	private async recordSeats(

@@ -6,7 +6,7 @@ import {
 	RESERVATION_TTL_SECONDS,
 	ReservationStore,
 } from "../../reserved-duel";
-import { LightningEntry } from "../domain/LightningEntry";
+import { isBotEntry, LightningEntry } from "../domain/LightningEntry";
 import { LightningEntryRepository } from "../domain/LightningEntryRepository";
 import { LightningGameRepository } from "../domain/LightningGameRepository";
 import { lightningDuelReservation, reservationSeat } from "../domain/LightningReservation";
@@ -42,6 +42,8 @@ export class PairLightningPlayers {
 		const playable = entries.filter(
 			(entry) => entry.status === "active" && entry.presence !== "away",
 		);
+		// Bots only fill a field for its players: with none left in, nobody is paired.
+		if (!playable.some((entry) => !isBotEntry(entry))) return [];
 		const pairs = pairIdlePlayers(idle, { allowRematch: playable.length <= 2 });
 
 		const issued: DuelReservation[] = [];

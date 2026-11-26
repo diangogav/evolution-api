@@ -116,6 +116,10 @@ No new routes.
 | A player drops mid-round | the game resolves normally; the player is not paired again |
 | Field shrinks to one active player | the remaining rounds are skipped and the tournament completes |
 
+## Bot fill
+
+With `LIGHTNING_BOT_FILL_ENABLED`, a Swiss tournament short of `min_players` with at least 2 humans starts with WindBot entrants, as the arena does (`lightning-tournaments.md`, "Bot fill"). The bots count for the round number fixed at the start. They sit at Swiss tables like players: a table with a human is a reservation with a `windbot` seat, a table of two bots is announced to the duel server. A bot can take the bye. A table that only bots missed (a bot that never came, a bot-only duel the server never opened) is void and issued again; the round deadline still closes it as a draw. Once no human is left in, the rounds stop and the tournament finishes. A bot keeps its final position and its prize is paid to nobody.
+
 ## Not in scope
 
 Top cut by brackets, best-of-3 rounds (the reservation supports `match`; it would need longer round deadlines), seeding round 1 by season ranking, a judge override of a result.

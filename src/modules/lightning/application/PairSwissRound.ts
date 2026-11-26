@@ -2,6 +2,7 @@ import type { QueryableManager } from "../../../shared/persistence/QueryableMana
 import {
 	DuelReservation,
 	generateReservationId,
+	isBotOnlyReservation,
 	RESERVATION_TTL_SECONDS,
 	ReservationStore,
 } from "../../reserved-duel";
@@ -10,7 +11,7 @@ import { LightningByeRepository } from "../domain/LightningByeRepository";
 import { LightningEntry, recordBye } from "../domain/LightningEntry";
 import { LightningEntryRepository } from "../domain/LightningEntryRepository";
 import { LightningGameRepository } from "../domain/LightningGameRepository";
-import { lightningDuelReservation } from "../domain/LightningReservation";
+import { lightningDuelReservation, reservationSeat } from "../domain/LightningReservation";
 import { LightningSummons, lightningSummons } from "../domain/LightningSummons";
 import { LightningTournament } from "../domain/LightningTournament";
 import { LightningTournamentRepository } from "../domain/LightningTournamentRepository";
@@ -140,8 +141,8 @@ export class PairSwissRound {
 				lightningDuelReservation({
 					reservationId,
 					format: tournament.format,
-					seat0: { userId: seat0, deck: first.deck },
-					seat1: { userId: seat1, deck: second.deck },
+					seat0: reservationSeat(first),
+					seat1: reservationSeat(second),
 					lobbyTimeoutSeconds: tournament.lobbyTimeoutSeconds,
 					turnTimeSeconds: tournament.turnTimeSeconds,
 				}),
@@ -152,6 +153,10 @@ export class PairSwissRound {
 		}
 		for (const reservation of issued) {
 			await this.reservations.issue(reservation, RESERVATION_TTL_SECONDS);
+			// Two bots: no one will claim it, so the server is told to open it.
+			if (isBotOnlyReservation(reservation)) {
+				await this.reservations.announce(reservation.reservationId);
+			}
 		}
 		return summons;
 	}

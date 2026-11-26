@@ -1,6 +1,17 @@
 import { describe, expect, it } from "bun:test";
 
-import { ALICE, BOB, CAROL, DAVE, decided, STARTS_AT, TOURNAMENT_ID, World } from "./fakes";
+import {
+	ALICE,
+	BOB,
+	CAROL,
+	DAVE,
+	decided,
+	STARTS_AT,
+	TOURNAMENT_ID,
+	World,
+	SALAMANGREAT,
+	SKY_STRIKER,
+} from "./fakes";
 
 const minutes = (n: number) => new Date(STARTS_AT.getTime() + n * 60_000);
 
@@ -143,5 +154,27 @@ describe("CloseSwissRound", () => {
 			tournament: running,
 			deadlineDraws: 0,
 		});
+	});
+});
+
+describe("CloseSwissRound with bots", () => {
+	it("stops the rounds once only bots are left in", async () => {
+		const world = new World();
+		const tournament = world.seedSwiss([], {
+			currentRound: 1,
+			roundStartedAt: STARTS_AT,
+			roundClosedAt: minutes(20),
+		});
+		world.seedEntry(ALICE, { status: "withdrawn" });
+		world.seedBot(SALAMANGREAT);
+		world.seedBot(SKY_STRIKER);
+
+		const { tournament: closed } = await world.closeSwissRound.close(
+			tournament,
+			world.manager,
+			minutes(20.5),
+		);
+
+		expect(closed.status).toBe("finishing");
 	});
 });
