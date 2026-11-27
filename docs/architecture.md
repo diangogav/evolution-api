@@ -61,6 +61,7 @@ Modules that exist today (`src/modules/*`):
 | `ticket` | Ranked game tickets, backed by Redis. |
 | `tiers` | Ranked tier resolution and the tier catalog (see `ranked-tiers.md`). |
 | `user` | Registration, profile, password management, username, bans. |
+| `user-decks` | A signed-in player's decks synced across devices (`user_decks`): `GET /me/decks?since=` answers every write after a cursor (a bigint sequence, deletions included as tombstones with empty contents), `PUT /me/decks/:id` and `DELETE /me/decks/:id` keep the copy changed last by the client's times. At most 300 live decks per account. Contents are stored in plain form. |
 
 ## Module boundaries
 
@@ -120,11 +121,11 @@ Both `DataSource`s point at the same Postgres instance but track migrations inde
 | DataSource | File | Scope | Migrations table |
 | --- | --- | --- | --- |
 | Shared (evolution-types) | `src/evolution-types/src/data-source.ts` | Users, matches, tournaments, stats, bans, achievements, ratings, points ledger, reserved duel records | `migrations` (run from the `evolution-types` package) |
-| Cosmetics | `src/cosmetics-data-source.ts` | Cosmetics, entitlements, user and bot loadouts, user emote bars, rewards (essence ledger, missions, claims, projections), event runs, lightning tournaments (entries, games, results, season rankings) | `cosmetics_migrations`, migrations in `src/migrations/` |
+| Cosmetics | `src/cosmetics-data-source.ts` | Cosmetics, entitlements, user and bot loadouts, user emote bars, rewards (essence ledger, missions, claims, projections), event runs, lightning tournaments (entries, games, results, season rankings), user decks | `cosmetics_migrations`, migrations in `src/migrations/` |
 
 `src/evolution-types/` is the schema package shared by this API and EDOpro-server-ts, vendored by both as a git submodule. Its entities and migrations change in the evolution-types repository and reach this API by bumping the submodule; they are never edited inside this checkout. Its migrations run with the package's own `migration:run`. The cosmetics `DataSource` declares its foreign key to `users(id)` in raw SQL inside its own migration, so it never manages the shared `users` table.
 
-Module-to-DataSource mapping: `catalog`, `loadout`, `emote-bar`, `entitlements`, `community-decks`, `event-run`, `event-stats`, `lightning`, `player-reports`, `reserved-duel`, and `rewards` use the cosmetics `DataSource` (`account-formats` reads and writes `formats` on the shared `users` table; `rewards` also reads matches and achievements from the shared schema through its `*Source` adapters; `user`'s `UserDirectoryPostgresRepository` reads usernames from the shared `users` table; `account-formats`, `event-run`, `event-stats`, `lightning` and `reserved-duel` query through `src/shared/persistence/runQuery.ts`, and `lightning` reads usernames and bans from the shared tables in place). Every other module that touches Postgres (`activity-stats`, `user`, `achievements`, `match`, `match-annulment`, `points-ledger`, `rating`, `stats`, `tiers`, `ban-list`) uses the shared `evolution-types` `DataSource`. `ticket` uses Redis, not Postgres. Both `DataSource`s are initialized at startup in `src/index.ts`.
+Module-to-DataSource mapping: `catalog`, `loadout`, `emote-bar`, `entitlements`, `community-decks`, `event-run`, `event-stats`, `lightning`, `player-reports`, `reserved-duel`, `rewards` and `user-decks` use the cosmetics `DataSource` (`account-formats` reads and writes `formats` on the shared `users` table; `rewards` also reads matches and achievements from the shared schema through its `*Source` adapters; `user`'s `UserDirectoryPostgresRepository` reads usernames from the shared `users` table; `account-formats`, `event-run`, `event-stats`, `lightning`, `reserved-duel` and `user-decks` query through `src/shared/persistence/runQuery.ts`, and `lightning` reads usernames and bans from the shared tables in place). Every other module that touches Postgres (`activity-stats`, `user`, `achievements`, `match`, `match-annulment`, `points-ledger`, `rating`, `stats`, `tiers`, `ban-list`) uses the shared `evolution-types` `DataSource`. `ticket` uses Redis, not Postgres. Both `DataSource`s are initialized at startup in `src/index.ts`.
 
 ## Errors
 

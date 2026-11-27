@@ -36,6 +36,7 @@ const TAGS = [
 	{ name: "Statistics", description: "Global and historical duel statistics" },
 	{ name: "Ban Lists", description: "Ban lists played during each season" },
 	{ name: "Community Decks", description: "Legal community decklists synced from YGOPRODeck" },
+	{ name: "My Decks", description: "The caller's decks, synced across their devices" },
 	{
 		name: "Lightning",
 		description:
@@ -79,7 +80,7 @@ const TAG_GROUPS = [
 		tags: ["Authentication", "User Management", "Player Reports", "Push Notifications"],
 	},
 	{ name: "Ranked", tags: ["Leaderboard", "Ranked", "Statistics", "Ban Lists", "Achievements"] },
-	{ name: "Decks", tags: ["Community Decks"] },
+	{ name: "Decks", tags: ["Community Decks", "My Decks"] },
 	{ name: "Play", tags: ["Lightning"] },
 	{ name: "Cosmetics", tags: ["Cosmetics"] },
 	{ name: "Rewards", tags: ["Rewards"] },
