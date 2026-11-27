@@ -15,4 +15,9 @@ export type ReservedDuelRecord = {
 	winnerSeat: number | null;
 	abandonedBySeat: number | null;
 	reason: string | null;
+	/**
+	 * Player seats that never entered the room. Bots never record their entry, so a bot
+	 * seat is never listed. Absent when the reader does not know.
+	 */
+	absentUserSeats?: number[];
 };

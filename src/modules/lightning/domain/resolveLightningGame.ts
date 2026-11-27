@@ -69,7 +69,19 @@ export function resolveLightningGame(
 	if (record.startedAt) {
 		return resolved(record.abandonedBySeat === 0 ? "seat1_win" : "seat0_win", reason);
 	}
-	return resolved("no_show", reason, { noShowSeats: [record.abandonedBySeat] });
+	return resolved("no_show", reason, {
+		noShowSeats: preStartNoShowSeats(record, record.abandonedBySeat),
+	});
+}
+
+/**
+ * Who missed a duel that never started. A player who entered the room and left while the
+ * rival never came waited for nothing: the seat that never entered is the no-show. Only when
+ * both players entered does the one who left take it.
+ */
+function preStartNoShowSeats(record: ReservedDuelRecord, leaver: number): number[] {
+	const absent = record.absentUserSeats ?? [];
+	return absent.length > 0 ? [...absent] : [leaver];
 }
 
 // In the arena the present seat of a no-show simply plays someone else; a Swiss round has no
@@ -105,8 +117,9 @@ export function noShowSeatsOf(
 ): number[] {
 	if (game.resolution !== "no_show") return [];
 	if (game.reason === "unclaimed") return [0, 1];
-	const absent = record?.abandonedBySeat ?? null;
-	return absent === null ? [0, 1] : [absent];
+	const leaver = record?.abandonedBySeat ?? null;
+	if (record === null || leaver === null) return [0, 1];
+	return preStartNoShowSeats(record, leaver);
 }
 
 /** What a seat recorded from a game already resolved. */
