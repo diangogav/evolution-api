@@ -29,8 +29,8 @@ describe("refresh tokens", () => {
 
 	beforeEach(() => {
 		tokens = new InMemoryRefreshTokens();
-		sessionTokens = new SessionTokens(tokens);
 		jwt = new JWT({ issuer: "issuer", secret: "secret" });
+		sessionTokens = new SessionTokens(tokens, jwt);
 		user = UserMother.create({ id: "user-1", username: "duelist" });
 		users = new Map([[user.id, user]]);
 		banned = new Set();
@@ -45,8 +45,8 @@ describe("refresh tokens", () => {
 		end = new EndSession(tokens);
 	});
 
-	const signIn = (mustUpgrade = false) =>
-		sessionTokens.issue({ userId: "user-1", mustUpgrade, now: NOW });
+	const signInInput = (mustUpgrade = false) => ({ userId: "user-1", mustUpgrade, now: NOW });
+	const signIn = (mustUpgrade = false) => sessionTokens.issue(signInInput(mustUpgrade));
 
 	describe("SessionTokens", () => {
 		it("stores only the hash of the token it hands out, valid for 30 days", async () => {
@@ -77,16 +77,54 @@ describe("refresh tokens", () => {
 		});
 
 		it("adds the refresh token to a session, carrying its must-upgrade flag", async () => {
+			const token = jwt.generate({ id: "user-1", role: user.role, mustUpgrade: true });
+
 			const session = await sessionTokens.attach(
-				{ id: "user-1", token: "jwt", mustUpgrade: true },
-				NOW,
+				{ id: "user-1", token, mustUpgrade: true },
+				{ now: NOW, userAgent: null },
 			);
 
-			expect(session).toMatchObject({ id: "user-1", token: "jwt", mustUpgrade: true });
+			expect(session).toMatchObject({ id: "user-1", mustUpgrade: true });
 			expect(tokens.rows[0]).toMatchObject({
 				tokenHash: hashRefreshToken(session.refreshToken),
 				mustUpgrade: true,
 			});
+		});
+
+		it("signs the session JWT again with the sign-in id as sid, keeping its claims", async () => {
+			const token = jwt.generate({ id: "user-1", role: user.role, mustUpgrade: true });
+
+			const session = await sessionTokens.attach(
+				{ id: "user-1", token },
+				{ now: NOW, userAgent: null },
+			);
+
+			expect(jwt.decode(session.token)).toMatchObject({
+				id: "user-1",
+				role: user.role,
+				mustUpgrade: true,
+				sid: tokens.rows[0].familyId,
+			});
+		});
+
+		it("stores the sign-in's user agent and time", async () => {
+			await sessionTokens.attach(
+				{ id: "user-1", token: jwt.generate({ id: "user-1" }) },
+				{ now: NOW, userAgent: "Mozilla/5.0 (Linux; Android 14)" },
+			);
+
+			expect(tokens.rows[0]).toMatchObject({
+				userAgent: "Mozilla/5.0 (Linux; Android 14)",
+				signedInAt: NOW,
+			});
+		});
+
+		it("bounds the stored user agent and stores an empty one as null", async () => {
+			await sessionTokens.issue({ ...signInInput(), userAgent: "x".repeat(2000) });
+			await sessionTokens.issue({ ...signInInput(), userAgent: "" });
+
+			expect(tokens.rows[0].userAgent).toHaveLength(512);
+			expect(tokens.rows[1].userAgent).toBeNull();
 		});
 	});
 
@@ -102,6 +140,34 @@ describe("refresh tokens", () => {
 			expect(tokens.rows).toHaveLength(2);
 			expect(tokens.rows[1].familyId).toBe(tokens.rows[0].familyId);
 			expect(tokens.rows[1].expiresAt).toEqual(later(31 * DAY));
+		});
+
+		it("signs the renewed JWT with the sign-in id as sid", async () => {
+			const token = await signIn();
+
+			const session = await refresh.run({ refreshToken: token, now: later(DAY) });
+
+			expect(jwt.decode(session.token)).toMatchObject({ sid: tokens.rows[0].familyId });
+		});
+
+		it("keeps the sign-in time and takes the renewing request's user agent", async () => {
+			const token = await sessionTokens.issue({ ...signInInput(), userAgent: "old agent" });
+
+			await refresh.run({ refreshToken: token, now: later(DAY), userAgent: "new agent" });
+
+			expect(tokens.rows[1]).toMatchObject({
+				signedInAt: NOW,
+				createdAt: later(DAY),
+				userAgent: "new agent",
+			});
+		});
+
+		it("keeps the stored user agent when the renewing request sends none", async () => {
+			const token = await sessionTokens.issue({ ...signInInput(), userAgent: "old agent" });
+
+			await refresh.run({ refreshToken: token, now: later(DAY), userAgent: null });
+
+			expect(tokens.rows[1].userAgent).toBe("old agent");
 		});
 
 		it("lets the session be renewed again and again with each successor", async () => {

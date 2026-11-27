@@ -29,7 +29,12 @@ const loginAs = async (user: User, password: string): Promise<unknown> => {
 
 	// The route answers with the sign-in plus the refresh token it attaches.
 	const session = await new UserAuth(repository, hash, jwt).login({ email: user.email, password });
-	return wire(await new SessionTokens(new InMemoryRefreshTokens()).attach(session, new Date()));
+	return wire(
+		await new SessionTokens(new InMemoryRefreshTokens(), jwt).attach(session, {
+			now: new Date(),
+			userAgent: null,
+		}),
+	);
 };
 
 describe("LoginSchema", () => {

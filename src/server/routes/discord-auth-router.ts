@@ -39,6 +39,7 @@ import { Hash } from "../../shared/Hash";
 import { Pino } from "../../shared/logger/infrastructure/Pino";
 import { redisClient } from "../../shared/redis/redisClient";
 import { apiJwt } from "../auth/apiJwt";
+import type { AttachSessionInput } from "../../modules/auth/application/SessionTokens";
 import { sessionTokens } from "../composition/sessionTokens";
 import { requireUser as defaultRequireUser } from "../auth/requireUser";
 import { emptyOk, errorResponses, jsonOk } from "../openapi/responses";
@@ -53,7 +54,10 @@ export interface DiscordAuthUseCases {
 	start: Pick<StartDiscordLogin, "run">;
 	complete: Pick<CompleteDiscordLogin, "run">;
 	exchange: {
-		run(input: { code: string }): Promise<ExchangeLoginCodeResult & { refreshToken: string }>;
+		run(input: {
+			code: string;
+			userAgent: string | null;
+		}): Promise<ExchangeLoginCodeResult & { refreshToken: string }>;
 	};
 	register: Pick<RegisterWithDiscord, "run">;
 	link: Pick<ManageDiscordLink, "status" | "begin" | "unlink">;
@@ -66,9 +70,9 @@ export interface DiscordAuthRouterDependencies {
 	secureCookie: boolean;
 	requireUser: typeof defaultRequireUser;
 	/** Adds a refresh token to the session of an account that was just created. */
-	attachRefreshToken: <T extends { id: string }>(
+	attachRefreshToken: <T extends { id: string; token: string }>(
 		session: T,
-		now: Date,
+		input: AttachSessionInput,
 	) => Promise<T & { refreshToken: string }>;
 }
 
@@ -98,11 +102,11 @@ function buildUseCases(): DiscordAuthUseCases | null {
 			new LinkDiscordToUser(accounts),
 		),
 		exchange: {
-			run: async (input) =>
-				sessionTokens.attach(
-					await new ExchangeLoginCode(loginCodes, users, apiJwt).run(input),
-					new Date(),
-				),
+			run: async ({ code, userAgent }) =>
+				sessionTokens.attach(await new ExchangeLoginCode(loginCodes, users, apiJwt).run({ code }), {
+					now: new Date(),
+					userAgent,
+				}),
 		},
 		register: new RegisterWithDiscord(
 			registrations,
@@ -208,9 +212,8 @@ export function createDiscordAuthRouter({
 		)
 		.post(
 			"/session",
-			async ({ body }) => {
-				return enabled().exchange.run(body);
-			},
+			async ({ body, request }) =>
+				enabled().exchange.run({ ...body, userAgent: request.headers.get("user-agent") }),
 			{
 				detail: {
 					tags: ["Authentication"],
@@ -233,10 +236,13 @@ export function createDiscordAuthRouter({
 		)
 		.post(
 			"/register",
-			async ({ body }) => {
+			async ({ body, request }) => {
 				const now = new Date();
 				const registered = await enabled().register.run({ ...body, id: randomUUID(), now });
-				return attachRefreshToken(registered, now);
+				return attachRefreshToken(registered, {
+					now,
+					userAgent: request.headers.get("user-agent"),
+				});
 			},
 			{
 				detail: {
@@ -321,5 +327,5 @@ export const discordAuthRouter = createDiscordAuthRouter({
 	useCases: buildUseCases(),
 	secureCookie: config.discordLogin.secureCookie,
 	requireUser: defaultRequireUser,
-	attachRefreshToken: (session, now) => sessionTokens.attach(session, now),
+	attachRefreshToken: (session, input) => sessionTokens.attach(session, input),
 });

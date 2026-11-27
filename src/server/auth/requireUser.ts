@@ -14,21 +14,24 @@ export type RequireUserDependencies = {
 };
 
 // Authenticates a player: verifies the bearer token once, rejects banned users, and
-// hands the token's user id to the handler as `userId`. It runs after request
+// hands the token's user id to the handler as `userId` and its sign-in id as `sid`. It runs after request
 // validation and applies only to the routes of the instance that uses it, so mount it
 // inside the router (or a `.guard({}, ...)` block) that needs it.
 export function createRequireUser({ jwt, activeBans }: RequireUserDependencies) {
 	return new Elysia().use(bearer()).resolve({ as: "scoped" }, async ({ bearer: token }) => {
 		if (!token) throw new AuthenticationError("No token provided");
-		let userId: string | undefined;
+		let claims: { id?: unknown; sid?: unknown };
 		try {
-			userId = (jwt.decode(token) as { id?: string }).id;
+			claims = jwt.decode(token) as { id?: unknown; sid?: unknown };
 		} catch {
 			throw new AuthenticationError("Invalid token");
 		}
+		const userId = typeof claims.id === "string" ? claims.id : undefined;
 		if (!userId) throw new AuthenticationError("Token has no user id");
 		if (await activeBans.execute(userId)) throw new ForbiddenError("User is banned");
-		return { userId };
+		// The sign-in the token belongs to; tokens issued before sessions carried it have none.
+		const sid = typeof claims.sid === "string" ? claims.sid : null;
+		return { userId, sid };
 	});
 }
 

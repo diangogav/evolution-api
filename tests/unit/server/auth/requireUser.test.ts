@@ -129,4 +129,20 @@ describe("requireUser", () => {
 		expect((await get(app, "/after")).status).toBe(200);
 		expect(decoded).toEqual([]);
 	});
+
+	it("hands the token's sign-in id to the handler as sid, and null for a token without one", async () => {
+		const app = new Elysia()
+			.onError(mapDomainErrorStatus)
+			.guard({}, (guarded) =>
+				guarded
+					.use(createRequireUser({ jwt, activeBans: { execute: async () => null } }))
+					.get("/sid", ({ sid }) => ({ sid })),
+			);
+
+		const withSid = await get(app, "/sid", jwt.generate({ id: "user-1", sid: "family-1" }));
+		const withoutSid = await get(app, "/sid", jwt.generate({ id: "user-1" }));
+
+		expect(await withSid.json()).toEqual({ sid: "family-1" });
+		expect(await withoutSid.json()).toEqual({ sid: null });
+	});
 });

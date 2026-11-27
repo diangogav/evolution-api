@@ -21,6 +21,18 @@ export class JWT {
 		return jwt.sign(payload, this.config.secret, jwtOptions);
 	}
 
+	/**
+	 * Signs a fresh token with the claims of a valid one plus `claims`. The registered
+	 * claims (iat, exp, iss) are issued again, so the new token lives a full lifetime.
+	 */
+	reissue(token: string, claims: { [key: string]: unknown }): string {
+		const decoded = this.decode(token);
+		const payload = typeof decoded === "string" ? {} : decoded;
+		const { iat: _iat, exp: _exp, iss: _iss, nbf: _nbf, ...custom } = payload;
+
+		return this.generate({ ...custom, ...claims });
+	}
+
 	decode(token: string): string | JwtPayload {
 		try {
 			return jwt.verify(token, this.config.secret, {
