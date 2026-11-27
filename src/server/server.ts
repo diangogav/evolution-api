@@ -28,6 +28,7 @@ import { eventRunsRouter, eventsRouter } from "./routes/event-run-router";
 import { lightningRouter } from "./routes/lightning-router";
 import { loadoutRouter } from "./routes/loadout-router";
 import { meCosmeticsRouter } from "./routes/me-cosmetics-router";
+import { meDecksRouter } from "./routes/me-decks-router";
 import { meFormatsRouter } from "./routes/me-formats-router";
 import { meSessionsRouter } from "./routes/me-sessions-router";
 import { missionsRouter } from "./routes/missions-router";
@@ -126,6 +127,7 @@ export function mountApiV1Routes(app: Elysia) {
 			.use(meCosmeticsRouter)
 			.use(meFormatsRouter)
 			.use(meSessionsRouter)
+			.use(meDecksRouter)
 			.use(emoteBarRouter)
 			.use(playerAvatarRouter)
 			.use(loadoutRouter)
