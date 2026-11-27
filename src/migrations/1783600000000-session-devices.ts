@@ -7,7 +7,8 @@ import type { MigrationInterface, QueryRunner } from "typeorm";
  * list can name the browser and OS. signed_in_at is the time of the sign-in a token
  * descends from, copied to every successor: expired tokens are deleted, so the oldest row
  * left in a family is not a reliable sign-in time. Existing families take the creation
- * time of their oldest remaining token.
+ * time of their oldest remaining token. The default lets the previous release keep
+ * inserting tokens between this migration and the deploy of the code that sets it.
  */
 export class SessionDevices1783600000000 implements MigrationInterface {
 	name = "SessionDevices1783600000000";
@@ -20,7 +21,7 @@ export class SessionDevices1783600000000 implements MigrationInterface {
 			`UPDATE "refresh_tokens" AS "token" SET "signed_in_at" = "family"."first" FROM (SELECT "family_id", MIN("created_at") AS "first" FROM "refresh_tokens" GROUP BY "family_id") AS "family" WHERE "token"."family_id" = "family"."family_id"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE "refresh_tokens" ALTER COLUMN "signed_in_at" SET NOT NULL`,
+			`ALTER TABLE "refresh_tokens" ALTER COLUMN "signed_in_at" SET DEFAULT now(), ALTER COLUMN "signed_in_at" SET NOT NULL`,
 		);
 	}
 
