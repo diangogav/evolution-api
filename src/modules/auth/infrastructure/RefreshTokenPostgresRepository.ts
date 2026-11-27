@@ -1,15 +1,16 @@
 import { runQuery } from "../../../shared/persistence/runQuery";
 import {
+	ActiveSession,
 	RefreshTokenRecord,
 	RefreshTokenRepository,
 	StoredRefreshToken,
 } from "../domain/RefreshToken";
 
 const INSERT = `INSERT INTO "refresh_tokens"
-("id", "user_id", "family_id", "token_hash", "must_upgrade", "created_at", "expires_at")
-VALUES ($1, $2, $3, $4, $5, $6, $7)`;
+("id", "user_id", "family_id", "token_hash", "must_upgrade", "created_at", "expires_at", "user_agent", "signed_in_at")
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`;
 
-const RECORD_COLUMNS = `"user_id", "family_id", "must_upgrade", "used_at", "revoked_at", "expires_at"`;
+const RECORD_COLUMNS = `"user_id", "family_id", "must_upgrade", "used_at", "revoked_at", "expires_at", "user_agent", "signed_in_at"`;
 
 // One statement decides the winner: a second request with the same token finds used_at set.
 const CONSUME = `UPDATE "refresh_tokens" SET "used_at" = $2
@@ -24,6 +25,12 @@ WHERE "family_id" = $1 AND "revoked_at" IS NULL`;
 const REVOKE_ALL_FOR_USER = `UPDATE "refresh_tokens" SET "revoked_at" = $2
 WHERE "user_id" = $1 AND "revoked_at" IS NULL`;
 
+// The newest token of a live sign-in is the unused one renewal handed out last.
+const LIST_ACTIVE_FOR_USER = `SELECT DISTINCT ON ("family_id") "family_id", "user_agent", "signed_in_at", "created_at"
+FROM "refresh_tokens"
+WHERE "user_id" = $1 AND "used_at" IS NULL AND "revoked_at" IS NULL AND "expires_at" > $2
+ORDER BY "family_id", "created_at" DESC`;
+
 const DELETE_EXPIRED = `DELETE FROM "refresh_tokens" WHERE "user_id" = $1 AND "expires_at" <= $2`;
 
 type Row = {
@@ -33,6 +40,15 @@ type Row = {
 	used_at: Date | null;
 	revoked_at: Date | null;
 	expires_at: Date;
+	user_agent: string | null;
+	signed_in_at: Date;
+};
+
+type ActiveRow = {
+	family_id: string;
+	user_agent: string | null;
+	signed_in_at: Date;
+	created_at: Date;
 };
 
 function toRecord(row: Row): RefreshTokenRecord {
@@ -43,6 +59,8 @@ function toRecord(row: Row): RefreshTokenRecord {
 		usedAt: row.used_at,
 		revokedAt: row.revoked_at,
 		expiresAt: row.expires_at,
+		userAgent: row.user_agent,
+		signedInAt: row.signed_in_at,
 	};
 }
 
@@ -56,6 +74,8 @@ export class RefreshTokenPostgresRepository implements RefreshTokenRepository {
 			token.mustUpgrade,
 			token.createdAt,
 			token.expiresAt,
+			token.userAgent,
+			token.signedInAt,
 		]);
 	}
 
@@ -79,6 +99,17 @@ export class RefreshTokenPostgresRepository implements RefreshTokenRepository {
 
 	async revokeAllForUser(userId: string, now: Date): Promise<void> {
 		await runQuery(REVOKE_ALL_FOR_USER, [userId, now]);
+	}
+
+	async listActiveForUser(userId: string, now: Date): Promise<ActiveSession[]> {
+		const rows = await runQuery<ActiveRow>(LIST_ACTIVE_FOR_USER, [userId, now]);
+
+		return rows.map((row) => ({
+			familyId: row.family_id,
+			userAgent: row.user_agent,
+			signedInAt: row.signed_in_at,
+			lastUsedAt: row.created_at,
+		}));
 	}
 
 	async deleteExpired(userId: string, now: Date): Promise<void> {

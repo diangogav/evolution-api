@@ -30,8 +30,13 @@ import { UserMother } from "../mothers/UserMother";
 const wire = (value: unknown): unknown => JSON.parse(JSON.stringify(value));
 
 /** What the route sends: the use case result plus the refresh token the route attaches. */
-const asSent = async <T extends { id: string }>(session: T): Promise<unknown> =>
-	wire(await new SessionTokens(new InMemoryRefreshTokens()).attach(session, new Date()));
+const asSent = async <T extends { id: string; token: string }>(session: T): Promise<unknown> =>
+	wire(
+		await new SessionTokens(new InMemoryRefreshTokens(), jwt).attach(session, {
+			now: new Date(),
+			userAgent: null,
+		}),
+	);
 
 const hash = new Hash();
 const jwt = new JWT({ issuer: "issuer", secret: "secret" });

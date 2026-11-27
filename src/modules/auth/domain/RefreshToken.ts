@@ -18,6 +18,10 @@ export type StoredRefreshToken = {
 	mustUpgrade: boolean;
 	createdAt: Date;
 	expiresAt: Date;
+	/** The User-Agent header of the request that signed in or renewed; null when absent. */
+	userAgent: string | null;
+	/** When the sign-in this token descends from happened; copied on every renewal. */
+	signedInAt: Date;
 };
 
 /** What the store knows about a token that was presented. */
@@ -28,6 +32,17 @@ export type RefreshTokenRecord = {
 	usedAt: Date | null;
 	revokedAt: Date | null;
 	expiresAt: Date;
+	userAgent: string | null;
+	signedInAt: Date;
+};
+
+/** One sign-in that can still be renewed, described by its newest token. */
+export type ActiveSession = {
+	familyId: string;
+	userAgent: string | null;
+	signedInAt: Date;
+	/** When the newest token was issued: the last renewal, or the sign-in itself. */
+	lastUsedAt: Date;
 };
 
 export interface RefreshTokenRepository {
@@ -46,6 +61,9 @@ export interface RefreshTokenRepository {
 
 	/** Ends every sign-in of the user, on every device. */
 	revokeAllForUser(userId: string, now: Date): Promise<void>;
+
+	/** The user's sign-ins whose newest token is neither revoked nor expired. */
+	listActiveForUser(userId: string, now: Date): Promise<ActiveSession[]>;
 
 	/** Removes the user's tokens that expired; they can never be used again. */
 	deleteExpired(userId: string, now: Date): Promise<void>;

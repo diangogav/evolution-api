@@ -12,8 +12,8 @@ import { UserMother } from "../../modules/users/mothers/UserMother";
 
 function buildApp({ banned = false } = {}) {
 	const tokens = new InMemoryRefreshTokens();
-	const sessionTokens = new SessionTokens(tokens);
 	const jwt = new JWT({ issuer: "issuer", secret: "secret" });
+	const sessionTokens = new SessionTokens(tokens, jwt);
 	const user = UserMother.create({ id: "user-1", username: "duelist" });
 	const router = createSessionRouter({
 		refresh: new RefreshSession(

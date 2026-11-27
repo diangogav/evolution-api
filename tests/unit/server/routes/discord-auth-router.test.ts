@@ -116,7 +116,7 @@ function buildApp({ configured = true, secureCookie = true, users = [] }: World 
 	};
 	const intents = new DiscordLinkIntent(jwt);
 	const refreshTokens = new InMemoryRefreshTokens();
-	const sessionTokens = new SessionTokens(refreshTokens);
+	const sessionTokens = new SessionTokens(refreshTokens, jwt);
 	const userRepository = {
 		create: async (user: User, discord?: VerifiedDiscordIdentity) => {
 			created.push({ user, discord });
@@ -141,7 +141,7 @@ function buildApp({ configured = true, secureCookie = true, users = [] }: World 
 
 	const router = createDiscordAuthRouter({
 		secureCookie,
-		attachRefreshToken: (session, now) => sessionTokens.attach(session, now),
+		attachRefreshToken: (session, input) => sessionTokens.attach(session, input),
 		// The bearer token is the user id, so a test signs in by naming the user.
 		requireUser: createRequireUser({
 			jwt: { decode: (token) => ({ id: token }) },
@@ -167,7 +167,8 @@ function buildApp({ configured = true, secureCookie = true, users = [] }: World 
 					),
 					link: new ManageDiscordLink(accounts, intents, `${BASE}/start`),
 					exchange: {
-						run: async (input) => sessionTokens.attach(await exchange.run(input), new Date()),
+						run: async ({ code, userAgent }) =>
+							sessionTokens.attach(await exchange.run({ code }), { now: new Date(), userAgent }),
 					},
 					register: new RegisterWithDiscord(
 						registrations,

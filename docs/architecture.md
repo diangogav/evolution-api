@@ -148,7 +148,7 @@ Throw one of these from a use case or controller instead of setting `set.status`
 | Mechanism | File | Behavior |
 | --- | --- | --- |
 | `apiJwt` | `src/server/auth/apiJwt.ts` | The single `JWT` instance (`src/shared/JWT.ts`) every router uses to sign and verify tokens. |
-| `requireUser` | `src/server/auth/requireUser.ts` | Elysia plugin with a scoped `resolve`: verifies the bearer token once, answers `401` when it is missing (`No token provided`), invalid or expired (`Invalid token`) or has no user id (`Token has no user id`), answers `403` (`User is banned`) when `UserGetActiveBan` finds an active ban, and otherwise hands the handler a typed `userId`. It runs after request validation, so invalid input still answers `422` first. |
+| `requireUser` | `src/server/auth/requireUser.ts` | Elysia plugin with a scoped `resolve`: verifies the bearer token once, answers `401` when it is missing (`No token provided`), invalid or expired (`Invalid token`) or has no user id (`Token has no user id`), answers `403` (`User is banned`) when `UserGetActiveBan` finds an active ban, and otherwise hands the handler a typed `userId` and `sid` (the sign-in id, or null). It runs after request validation, so invalid input still answers `422` first. |
 | `adminAuthorizer` | `src/server/auth/AdminAuthorizer.ts` | Shared `JwtAdminAuthorizer`. `requireAdmin(bearer)` answers `401` without a token or user id and `403` (`Administrator role is required`) unless the token's role is `admin`; it returns the admin's `userId`. Admin routers receive it as an injected `authorizer`, so tests replace it with a fake. |
 
 Player routers mount `requireUser` inside a guard and read `userId` from the handler context; no handler decodes the JWT itself:
@@ -169,6 +169,7 @@ A sign-in answers with a JWT (its lifetime is `JWT_EXPIRES_IN`) and a refresh to
 | --- | --- |
 | `POST /auth/refresh` | `{ refreshToken }`. Answers a new session: JWT plus a new refresh token. `401` for an unknown, expired, used or revoked token; `403` for a banned user. |
 | `POST /auth/logout` | `{ refreshToken }`. Revokes that sign-in. Always `204`. |
+| `GET /me/sessions` | The caller's sign-ins that can still be renewed, one per device: browser and OS read from the stored User-Agent, sign-in time, last renewal, and `current` for the calling device. |
 
 - **Additive.** Clients that ignore `refreshToken` behave as before: they sign in again when the JWT expires.
 - **Storage.** Table `refresh_tokens` (API-owned, `src/migrations/`). Only the SHA-256 of a token is stored.
@@ -176,6 +177,7 @@ A sign-in answers with a JWT (its lifetime is `JWT_EXPIRES_IN`) and a refresh to
 - **Reuse.** A used token that comes back means it exists in two places, and which holder is legitimate cannot be told, so the whole family is revoked. Two tabs renewing at once would look the same, so a repeat within ten seconds is refused without revoking.
 - **Lifetime.** 30 days from issue; every renewal restarts it.
 - **`mustUpgrade`** is stored with the family and carried across renewals.
+- **Devices.** Each token stores the User-Agent of the request that issued it (bounded to 512 characters) and `signed_in_at`, the family's sign-in time copied to every successor, since expired rows are deleted. A session JWT carries `sid`, its family id: `SessionTokens.attach` signs the JWT again with it, and `RefreshSession` adds it on renewal. `requireUser` hands it to handlers as `sid`, null for a JWT issued before sessions carried it.
 - **Where tokens are issued:** every route that answers a session, through `SessionTokens.attach` (`src/server/composition/sessionTokens.ts`): `POST /users/login`, `POST /users/register`, `POST /users/upgrade-password`, `POST /users/reset-account-password`, `POST /auth/discord/session` and `POST /auth/discord/register`.
 - **When every sign-in of a user ends:** changing the account password, resetting it, setting it for the first time, and confirming a change of email. Those use cases take a `SessionRevoker` and call it only after the change succeeded. The routes that answer a session then issue a fresh token for the caller; `POST /users/change-account-password` answers no body, so that device signs in again once its JWT expires.
 - **The JWT is not revoked.** It stays valid until it expires; revoking stops it from being renewed.

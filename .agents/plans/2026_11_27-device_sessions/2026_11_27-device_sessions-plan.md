@@ -9,6 +9,16 @@ created_by:
     name: "Claude Opus"
     version: "5.5"
     reasoning_effort: "low"
+
+implemented_by:
+  tool: "Claude Code"
+  model:
+    name: "Claude Opus"
+    version: "5.5"
+    reasoning_effort: "low"
+
+last_implementation_at: "2026-11-27T15:00:00Z"
+has_completed_all_phases: "false"
 ---
 
 # Device sessions
@@ -61,25 +71,25 @@ Spans two repositories: each phase ships one PR in `evolution-api` and one in `e
 **Public contracts**
 
 - Database schema: migration `1783600000000-session-devices` on `refresh_tokens` adds:
-  - `user_agent character varying NULL`
-  - `last_used_at TIMESTAMP WITH TIME ZONE NULL`
+  - `user_agent character varying(512) NULL`
+  - `signed_in_at TIMESTAMP WITH TIME ZONE NOT NULL`: the family's sign-in time, copied to every successor, backfilled from each family's oldest row. Expired rows are deleted, so the oldest remaining row is not a reliable sign-in time. Last use needs no column: it is the newest token's `created_at`.
 - Domain:
-  - `StoredRefreshToken` gains `userAgent: string | null` and `lastUsedAt: Date | null`.
-  - `RefreshTokenRecord` gains `userAgent: string | null`.
+  - `StoredRefreshToken` and `RefreshTokenRecord` gain `userAgent: string | null` and `signedInAt: Date`.
   - `RefreshTokenRepository.listActiveForUser(userId: string, now: Date): Promise<ActiveSession[]>` returns one entry per family that is not revoked or expired, taken from its newest token.
-  - `ActiveSession = { familyId, userAgent, createdAt, lastUsedAt }`, where `createdAt` is the family's first sign-in.
+  - `ActiveSession = { familyId, userAgent, signedInAt, lastUsedAt }`, where `lastUsedAt` is the newest token's creation.
   - `describeDevice(userAgent: string | null): { browser: string | null; os: string | null }` is a pure function.
 - Application:
-  - `SessionTokens.issue(input)`: input gains `userAgent: string | null`.
+  - `SessionTokens` takes the JWT signer; `issue(input)` gains `userAgent?: string | null` and replaces `familyId` with `renewing?: { familyId, signedInAt }`.
+  - `JWT.reissue(token, claims)`: signs a fresh token with the claims of a valid one plus `claims`.
   - `SessionTokens.attach(session, { now, userAgent })`:
     - picks the family id first;
     - signs the session JWT with the extra claim `sid: familyId`, keeping the other claims;
     - returns `session & { token, refreshToken }`.
   - `RefreshSession.run({ refreshToken, now, userAgent })`:
     - the renewed JWT carries `sid`;
-    - the successor token keeps the presented `userAgent` (or the stored one when absent) and sets `lastUsedAt = now`.
+    - the successor token takes the request's `userAgent` (or keeps the stored one when absent) and keeps `signedInAt`.
   - `ListMySessions.run({ userId, currentSid, now }): Promise<MySession[]>`:
-    - `MySession = { id, browser, os, createdAt, lastUsedAt, current }`;
+    - `MySession = { id, browser, os, signedInAt, lastUsedAt, current }`;
     - `id` is the family id;
     - sorted current first, then by last use.
 - Guard: `requireUser` also resolves `sid: string | null` from the token.
@@ -89,6 +99,9 @@ Spans two repositories: each phase ships one PR in `evolution-api` and one in `e
   - `ConnectedDevicesSection.svelte` in the profile account tools.
 - UI copies (es / en):
   - `profile_devices_title`: "Dispositivos conectados" / "Signed-in devices"
+  - `profile_devices_desc`: "Todos los dispositivos donde tu cuenta está abierta ahora." / "Every device where your account is open right now."
+  - `profile_devices_loading`: "Cargando tus dispositivos…" / "Loading your devices…"
+  - `profile_devices_retry`: "Reintentar" / "Retry"
   - `profile_devices_current`: "Este dispositivo" / "This device"
   - `profile_devices_last_used`: "Último uso: {date}" / "Last used: {date}"
   - `profile_devices_unknown`: "Dispositivo desconocido" / "Unknown device"
@@ -109,37 +122,41 @@ Spans two repositories: each phase ships one PR in `evolution-api` and one in `e
     - uses the newest token's last use of each family
   - `tests/unit/modules/auth/application/RefreshSession.test.ts`, new cases:
     - the renewed JWT carries `sid`
-    - the successor keeps the user agent
-    - the successor sets `lastUsedAt` to now
-  - `tests/unit/modules/auth/application/SessionTokens.test.ts`:
+    - the successor keeps the sign-in time and takes the new user agent
+    - the successor keeps the stored user agent when the request sends none
+  - `tests/unit/modules/auth/application/RefreshSession.test.ts` (its `SessionTokens` block):
     - `attach` signs a JWT whose `sid` equals the stored family id
-    - `attach` stores the user agent
+    - `attach` stores the user agent and sign-in time
+    - the stored user agent is bounded and an empty one is null
+  - `tests/unit/server/auth/requireUser.test.ts`: hands `sid`, and null for a token without one.
   - `tests/unit/server/routes/me-sessions-router.test.ts`:
     - 200 with the schema
+    - 200 with an empty list
     - 401 without a token
   - `tests/unit/server/swagger/openapi-document.test.ts` covers the new route.
   - Client `ConnectedDevicesSection` tests:
     - renders the list with the current device marked
     - shows the unknown device label
-    - shows the error state
+    - shows the error state and retries
+  - Client `HttpAuthApi` tests: GET with the bearer token, malformed entries dropped, a non-list body read as empty.
 
 **To-do actions**
 
-- [ ] `evolution-api`: add the migration and update the Postgres repository (`INSERT` with the new columns, `listActiveForUser`).
-- [ ] `evolution-api`: update `InMemoryRefreshTokens` to the new port.
-- [ ] `evolution-api`: add `describeDevice` with its tests.
-- [ ] `evolution-api`: make `SessionTokens.attach` own the final JWT with `sid` and the user agent.
-- [ ] `evolution-api`: pass the request `User-Agent` header from every `attach` call site and from `/auth/refresh`.
-- [ ] `evolution-api`: carry the user agent and `lastUsedAt` through `RefreshSession`.
-- [ ] `evolution-api`: resolve `sid` in `requireUser`.
-- [ ] `evolution-api`: add `ListMySessions`, the `me-sessions-router` with its TypeBox schema and OpenAPI detail, and mount it in `src/server/server.ts`.
-- [ ] `evolution-api`: write the tests listed above.
-- [ ] `evolution-card-game`: add `listSessions` to `IAuthApi`/`HttpAuthApi` and the route in `src/config/authApi.ts`.
-- [ ] `evolution-card-game`: add `ConnectedDevicesSection.svelte` to the profile account tools (signed-in only), the i18n copies and the component tests.
-- [ ] Verify the changes in terms of typechecking, linting and tests using the project's verification command (look it up in the AGENTS.md file or the project configuration). Fix issues if any.
+- [x] `evolution-api`: add the migration and update the Postgres repository (`INSERT` with the new columns, `listActiveForUser`).
+- [x] `evolution-api`: update `InMemoryRefreshTokens` to the new port.
+- [x] `evolution-api`: add `describeDevice` with its tests.
+- [x] `evolution-api`: make `SessionTokens.attach` own the final JWT with `sid` and the user agent.
+- [x] `evolution-api`: pass the request `User-Agent` header from every `attach` call site and from `/auth/refresh`.
+- [x] `evolution-api`: carry the user agent and `lastUsedAt` through `RefreshSession`.
+- [x] `evolution-api`: resolve `sid` in `requireUser`.
+- [x] `evolution-api`: add `ListMySessions`, the `me-sessions-router` with its TypeBox schema and OpenAPI detail, and mount it in `src/server/server.ts`.
+- [x] `evolution-api`: write the tests listed above.
+- [x] `evolution-card-game`: add `listSessions` to `IAuthApi`/`HttpAuthApi` and the route in `src/config/authApi.ts`.
+- [x] `evolution-card-game`: add `ConnectedDevicesSection.svelte` to the profile account tools (signed-in only), the i18n copies and the component tests.
+- [x] Verify the changes in terms of typechecking, linting and tests using the project's verification command (look it up in the AGENTS.md file or the project configuration). Fix issues if any.
   - `evolution-api`: `bun test`, `bun run lint`, `bun run build`.
   - `evolution-card-game`: touched-area tests (`npx vitest run <paths>`), `npm run lint`, `npm run build`.
-- [ ] STOP. Present the changes to the user for review and suggest commit messages (or pull request titles, when the phases are implemented through pull requests). Do NOT proceed to the next phase until the user explicitly asks.
+- [x] STOP. Present the changes to the user for review and suggest commit messages (or pull request titles, when the phases are implemented through pull requests). Do NOT proceed to the next phase until the user explicitly asks.
 
 ### Phase 2: Sign devices out, effective immediately
 
@@ -219,6 +236,6 @@ Spans two repositories: each phase ships one PR in `evolution-api` and one in `e
 
 ## ⏭️ Next step
 
-Implement Phase 1: list the signed-in devices in the API and the profile.
+Implement Phase 2: sign devices out, with the revoked JWT refused immediately.
 
-Sessions locked down by 🐢 💨 (Turbotuga™, [Codely](https://codely.com)’s mascot)
+Devices on the map, the turtle on guard by [Codely](https://codely.com) 📱 🐢 💨

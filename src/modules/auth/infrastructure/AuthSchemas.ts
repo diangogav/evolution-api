@@ -59,3 +59,24 @@ export const DiscordLinkStartBodySchema = t.Object({
 export const DiscordLinkStartSchema = t.Object({
 	url: t.String({ description: "URL the browser must navigate to; valid for five minutes" }),
 });
+
+/** One entry of GET /me/sessions. */
+export const MySessionSchema = t.Object({
+	id: t.String({ description: "Sign-in id; the JWT of that device carries it as `sid`" }),
+	browser: t.Union([t.String(), t.Null()], {
+		description:
+			"Browser named by the device's User-Agent, `Evolution app` for the mobile app, null when not recognised",
+	}),
+	os: t.Union([t.String(), t.Null()], {
+		description: "Operating system named by the User-Agent, null when not recognised",
+	}),
+	signedInAt: t.String({ format: "date-time", description: "When the device signed in" }),
+	lastUsedAt: t.String({
+		format: "date-time",
+		description: "When the device last renewed its session; the sign-in time if it never did",
+	}),
+	current: t.Boolean({ description: "True for the device that made this request" }),
+});
+
+/** Response of GET /me/sessions. */
+export const MySessionsSchema = t.Array(MySessionSchema);

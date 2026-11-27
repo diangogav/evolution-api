@@ -14,6 +14,13 @@ export type RefreshedSession = {
 	refreshToken: string;
 };
 
+export type RefreshSessionInput = {
+	refreshToken: string;
+	now: Date;
+	/** The renewing request's User-Agent; the stored one is kept when absent. */
+	userAgent?: string | null;
+};
+
 /**
  * Trades a refresh token for a new session. The token works once: the session it
  * returns carries its successor.
@@ -35,7 +42,7 @@ export class RefreshSession {
 		private readonly logger: Logger,
 	) {}
 
-	async run({ refreshToken, now }: { refreshToken: string; now: Date }): Promise<RefreshedSession> {
+	async run({ refreshToken, now, userAgent }: RefreshSessionInput): Promise<RefreshedSession> {
 		const tokenHash = hashRefreshToken(refreshToken);
 		const record = await this.tokens.consume(tokenHash, now);
 		if (!record) {
@@ -56,11 +63,11 @@ export class RefreshSession {
 			userId: user.id,
 			mustUpgrade: record.mustUpgrade,
 			now,
-			familyId: record.familyId,
+			userAgent: userAgent || record.userAgent,
+			renewing: { familyId: record.familyId, signedInAt: record.signedInAt },
 		});
-		const claims = record.mustUpgrade
-			? { id: user.id, role: user.role, mustUpgrade: true }
-			: { id: user.id, role: user.role };
+		const base = { id: user.id, role: user.role, sid: record.familyId };
+		const claims = record.mustUpgrade ? { ...base, mustUpgrade: true } : base;
 
 		return {
 			id: user.id,

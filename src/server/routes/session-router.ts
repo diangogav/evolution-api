@@ -18,25 +18,30 @@ export interface SessionRouterDependencies {
 
 export function createSessionRouter({ refresh, end }: SessionRouterDependencies) {
 	return new Elysia({ prefix: "/auth" })
-		.post("/refresh", async ({ body }) => refresh.run({ ...body, now: new Date() }), {
-			body: RefreshTokenBodySchema,
-			detail: {
-				tags: ["Authentication"],
-				summary: "Renew a session",
-				description:
-					"Trades a refresh token for a new JWT and a new refresh token. A refresh token works once and lasts 30 days from its issue. Presenting one that was already used revokes the whole sign-in, since it means the token exists in two places. Answers 401 for an unknown, expired, used or revoked token and 403 for a banned user.",
-				responses: {
-					200: jsonOk(LoginSchema, "The renewed session", {
-						id: "user-123",
-						token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-						username: "player1",
-						mustUpgrade: false,
-						refreshToken: "nB3x0vY8mTq2cLh5JrW7dKpZ1sFu4aEg6iOoXyVbN9M",
-					}),
-					...errorResponses(401, 403, 422),
+		.post(
+			"/refresh",
+			async ({ body, request }) =>
+				refresh.run({ ...body, now: new Date(), userAgent: request.headers.get("user-agent") }),
+			{
+				body: RefreshTokenBodySchema,
+				detail: {
+					tags: ["Authentication"],
+					summary: "Renew a session",
+					description:
+						"Trades a refresh token for a new JWT and a new refresh token. A refresh token works once and lasts 30 days from its issue. Presenting one that was already used revokes the whole sign-in, since it means the token exists in two places. Answers 401 for an unknown, expired, used or revoked token and 403 for a banned user.",
+					responses: {
+						200: jsonOk(LoginSchema, "The renewed session", {
+							id: "user-123",
+							token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+							username: "player1",
+							mustUpgrade: false,
+							refreshToken: "nB3x0vY8mTq2cLh5JrW7dKpZ1sFu4aEg6iOoXyVbN9M",
+						}),
+						...errorResponses(401, 403, 422),
+					},
 				},
 			},
-		})
+		)
 		.post(
 			"/logout",
 			async ({ body, set }) => {

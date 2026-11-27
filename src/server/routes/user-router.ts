@@ -133,7 +133,10 @@ export const userRouter = new Elysia({ prefix: "/users" })
 				origin: request.headers.get("origin"),
 				referer: request.headers.get("referer"),
 			});
-			return sessionTokens.attach(registered, new Date());
+			return sessionTokens.attach(registered, {
+				now: new Date(),
+				userAgent: request.headers.get("user-agent"),
+			});
 		},
 		{
 			detail: {
@@ -162,9 +165,12 @@ export const userRouter = new Elysia({ prefix: "/users" })
 	)
 	.post(
 		"/login",
-		async ({ body }) => {
+		async ({ body, request }) => {
 			const session = await new UserAuth(userRepository, hash, jwt).login(body);
-			return sessionTokens.attach(session, new Date());
+			return sessionTokens.attach(session, {
+				now: new Date(),
+				userAgent: request.headers.get("user-agent"),
+			});
 		},
 		{
 			detail: {
@@ -271,7 +277,7 @@ export const userRouter = new Elysia({ prefix: "/users" })
 	)
 	.post(
 		"/reset-account-password",
-		async ({ body, headers }) => {
+		async ({ body, headers, request }) => {
 			const token = headers.authorization?.replace("Bearer ", "");
 			if (!token) {
 				throw new AuthenticationError("No token provided");
@@ -288,7 +294,10 @@ export const userRouter = new Elysia({ prefix: "/users" })
 				token,
 				newPassword: body.password,
 			});
-			return sessionTokens.attach(session, new Date());
+			return sessionTokens.attach(session, {
+				now: new Date(),
+				userAgent: request.headers.get("user-agent"),
+			});
 		},
 		{
 			detail: {
@@ -608,7 +617,7 @@ export const userRouter = new Elysia({ prefix: "/users" })
 			)
 			.post(
 				"/upgrade-password",
-				async ({ body, userId: id }) => {
+				async ({ body, userId: id, request }) => {
 					const session = await new UserUpgradePassword(
 						userRepository,
 						hash,
@@ -618,7 +627,10 @@ export const userRouter = new Elysia({ prefix: "/users" })
 						...(body as { password: string }),
 						userId: id,
 					});
-					return sessionTokens.attach(session, new Date());
+					return sessionTokens.attach(session, {
+						now: new Date(),
+						userAgent: request.headers.get("user-agent"),
+					});
 				},
 				{
 					detail: {

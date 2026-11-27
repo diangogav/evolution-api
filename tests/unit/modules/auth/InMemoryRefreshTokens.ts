@@ -1,4 +1,5 @@
 import type {
+	ActiveSession,
 	RefreshTokenRecord,
 	RefreshTokenRepository,
 	StoredRefreshToken,
@@ -38,6 +39,21 @@ export class InMemoryRefreshTokens implements RefreshTokenRepository {
 		}
 	}
 
+	async listActiveForUser(userId: string, now: Date): Promise<ActiveSession[]> {
+		const newest = new Map<string, Row>();
+		for (const row of this.rows) {
+			if (row.userId !== userId || row.usedAt || row.revokedAt || row.expiresAt <= now) continue;
+			const seen = newest.get(row.familyId);
+			if (!seen || seen.createdAt < row.createdAt) newest.set(row.familyId, row);
+		}
+		return [...newest.values()].map((row) => ({
+			familyId: row.familyId,
+			userAgent: row.userAgent,
+			signedInAt: row.signedInAt,
+			lastUsedAt: row.createdAt,
+		}));
+	}
+
 	async deleteExpired(userId: string, now: Date): Promise<void> {
 		for (let index = this.rows.length - 1; index >= 0; index--) {
 			const row = this.rows[index];
@@ -53,6 +69,8 @@ export class InMemoryRefreshTokens implements RefreshTokenRepository {
 			usedAt: row.usedAt,
 			revokedAt: row.revokedAt,
 			expiresAt: row.expiresAt,
+			userAgent: row.userAgent,
+			signedInAt: row.signedInAt,
 		};
 	}
 }
