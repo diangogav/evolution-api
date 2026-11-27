@@ -1,8 +1,10 @@
+import { FailOpenRevokedSessions } from "../../modules/auth/application/FailOpenRevokedSessions";
 import { RevokeSessions } from "../../modules/auth/application/RevokeSessions";
 import { SessionTokens } from "../../modules/auth/application/SessionTokens";
 import { BunRedisRevokedSessions } from "../../modules/auth/infrastructure/BunRedisRevokedSessions";
 import { RefreshTokenPostgresRepository } from "../../modules/auth/infrastructure/RefreshTokenPostgresRepository";
 import { config } from "../../config";
+import { Pino } from "../../shared/logger/infrastructure/Pino";
 import { redisClient } from "../../shared/redis/redisClient";
 import { apiJwt } from "../auth/apiJwt";
 
@@ -18,8 +20,9 @@ function jwtLifetimeSeconds(expiresIn: unknown): number {
 // One store and one issuer for every router that starts, renews or ends a session.
 export const refreshTokenRepository = new RefreshTokenPostgresRepository();
 export const sessionTokens = new SessionTokens(refreshTokenRepository, apiJwt);
-export const revokedSessions = new BunRedisRevokedSessions(
-	redisClient,
-	jwtLifetimeSeconds(config.jwt.expiresIn),
+// Redis being down must not take every authenticated route with it; see FailOpenRevokedSessions.
+export const revokedSessions = new FailOpenRevokedSessions(
+	new BunRedisRevokedSessions(redisClient, jwtLifetimeSeconds(config.jwt.expiresIn)),
+	new Pino(),
 );
 export const revokeSessions = new RevokeSessions(refreshTokenRepository, revokedSessions);
