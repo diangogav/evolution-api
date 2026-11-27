@@ -80,6 +80,41 @@ describe("resolveLightningGame", () => {
 		});
 	});
 
+	it("a player who left a room the rival never entered is not the no-show: the absent rival is", () => {
+		const waitedAlone = record({
+			outcome: "abandoned",
+			winnerSeat: null,
+			startedAt: null,
+			abandonedBySeat: 0,
+			reason: "disconnect",
+			absentUserSeats: [1],
+		});
+
+		expect(resolve(waitedAlone)).toMatchObject({ resolution: "no_show", noShowSeats: [1] });
+		expect(outcomeForSeat(resolve(waitedAlone)!, 0, "swiss")).toBe("win");
+		expect(
+			outcomeOfResolvedGame(
+				{ resolution: "no_show", reason: "disconnect" },
+				waitedAlone,
+				1,
+				"swiss",
+			),
+		).toBe("no_show");
+	});
+
+	it("when both players entered, the one who left before the start is the no-show", () => {
+		const bothIn = record({
+			outcome: "abandoned",
+			winnerSeat: null,
+			startedAt: null,
+			abandonedBySeat: 0,
+			reason: "disconnect",
+			absentUserSeats: [],
+		});
+
+		expect(resolve(bothIn)).toMatchObject({ resolution: "no_show", noShowSeats: [0] });
+	});
+
 	it("a pre-start close nobody caused is a void, as is a restart mid-duel", () => {
 		for (const reason of ["room_closed", "server_restart"]) {
 			const closed = record({
