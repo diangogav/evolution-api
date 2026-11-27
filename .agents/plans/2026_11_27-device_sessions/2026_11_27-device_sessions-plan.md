@@ -17,8 +17,8 @@ implemented_by:
     version: "5.5"
     reasoning_effort: "low"
 
-last_implementation_at: "2026-11-27T15:00:00Z"
-has_completed_all_phases: "false"
+last_implementation_at: "2026-11-27T17:00:00Z"
+has_completed_all_phases: "true"
 ---
 
 # Device sessions
@@ -169,6 +169,7 @@ Spans two repositories: each phase ships one PR in `evolution-api` and one in `e
   - Port `RevokedSessions { markRevoked(familyIds: string[]): Promise<void>; isRevoked(familyId: string): Promise<boolean> }` in the `auth` module.
   - Adapter `BunRedisRevokedSessions`.
   - `RefreshTokenRepository.revokeAllForUser(userId, now)` now returns the revoked family ids, so callers can mark them in Redis.
+  - `RevokeSessions` (application) is the single way to end sign-ins: `revokeFamily`, `revokeAllForUser` and `revokeAllForUserExcept` revoke the refresh tokens and mark the families. It is the `SessionRevoker` the user use cases receive, and `RefreshSession` (reuse, ban) and `EndSession` use it too.
   - New `RefreshTokenRepository.revokeAllForUserExcept(userId, keepFamilyId, now): Promise<string[]>`.
 - Application:
   - `RevokeMySession.run({ userId, sessionId, now }): Promise<void>`:
@@ -177,7 +178,7 @@ Spans two repositories: each phase ships one PR in `evolution-api` and one in `e
   - `RevokeMyOtherSessions.run({ userId, currentSid, now }): Promise<void>`:
     - revokes every active family of the user except `currentSid`;
     - when `currentSid` is null, it revokes every family.
-  - `EndSession` and `SessionRevoker` (password reset, password change, upgrade, email change) also mark the families they revoke, so those changes cut the JWTs at once.
+  - `EndSession`, `RefreshSession` and `SessionRevoker` (password reset, password change, upgrade, email change) also mark the families they revoke, so those changes cut the JWTs at once.
 - Guard: `requireUser` throws `AuthenticationError("Session revoked")` when the token's `sid` is revoked. A token without `sid` passes.
 - Endpoints:
   - `DELETE /api/v1/me/sessions/:id`: 204, 404, 401.
@@ -194,18 +195,22 @@ Spans two repositories: each phase ships one PR in `evolution-api` and one in `e
   - `profile_devices_confirm_one`: "¿Cerrar la sesión en este dispositivo?" / "Sign out this device?"
   - `profile_devices_confirm_others`: "¿Cerrar la sesión en todos los demás dispositivos?" / "Sign out every other device?"
   - `profile_devices_signed_out`: "Sesión cerrada" / "Signed out"
+  - `profile_devices_confirm`: "Sí, cerrar sesión" / "Yes, sign out"
+  - `profile_devices_cancel`: "Cancelar" / "Cancel"
+  - `profile_devices_action_error`: "No funcionó. Inténtalo de nuevo en un momento." / "That did not work. Try again in a moment."
 - Test suites:
-  - `tests/unit/modules/auth/application/RevokeMySession.test.ts`:
+  - `tests/unit/modules/auth/application/RevokeSessions.test.ts` (one file for `RevokeSessions`, `RevokeMySession` and `RevokeMyOtherSessions`):
+    - `RevokeSessions` marks every ended sign-in once and leaves other users alone
+  - `RevokeMySession`:
     - revokes the user's own session and marks it revoked
     - another user's session throws `NotFoundError`
     - an unknown or already revoked session throws `NotFoundError`
-  - `tests/unit/modules/auth/application/RevokeMyOtherSessions.test.ts`:
+  - `RevokeMyOtherSessions`:
     - keeps the current session
     - revokes and marks all others
     - a null `currentSid` revokes everything
     - is idempotent with no other sessions
-  - `tests/unit/modules/auth/application/EndSession.test.ts`: logout marks the family revoked.
-  - `SessionRevoker` tests: password and email changes mark every revoked family.
+  - `tests/unit/modules/auth/application/RefreshSession.test.ts`: logout, reuse and ban mark the family revoked.
   - `tests/unit/server/auth/requireUser.test.ts`:
     - a revoked `sid` answers 401
     - an active `sid` passes
@@ -221,21 +226,21 @@ Spans two repositories: each phase ships one PR in `evolution-api` and one in `e
 
 **To-do actions**
 
-- [ ] `evolution-api`: add the `RevokedSessions` port and its Bun Redis adapter.
-- [ ] `evolution-api`: change `revokeAllForUser` to return family ids and add `revokeAllForUserExcept` (Postgres and in-memory).
-- [ ] `evolution-api`: add `RevokeMySession` and `RevokeMyOtherSessions`.
-- [ ] `evolution-api`: make `EndSession` and `SessionRevoker` mark revoked families.
-- [ ] `evolution-api`: check the revoked `sid` in `requireUser`.
-- [ ] `evolution-api`: add both `DELETE` routes with OpenAPI detail.
-- [ ] `evolution-api`: write the tests listed above.
-- [ ] `evolution-card-game`: add the two API methods, the buttons with confirmation, the i18n copies and the component tests.
-- [ ] Verify the changes in terms of typechecking, linting and tests using the project's verification command (look it up in the AGENTS.md file or the project configuration). Fix issues if any.
+- [x] `evolution-api`: add the `RevokedSessions` port and its Bun Redis adapter.
+- [x] `evolution-api`: change `revokeAllForUser` to return family ids and add `revokeAllForUserExcept` (Postgres and in-memory).
+- [x] `evolution-api`: add `RevokeMySession` and `RevokeMyOtherSessions`.
+- [x] `evolution-api`: make `EndSession` and `SessionRevoker` mark revoked families.
+- [x] `evolution-api`: check the revoked `sid` in `requireUser`.
+- [x] `evolution-api`: add both `DELETE` routes with OpenAPI detail.
+- [x] `evolution-api`: write the tests listed above.
+- [x] `evolution-card-game`: add the two API methods, the buttons with confirmation, the i18n copies and the component tests.
+- [x] Verify the changes in terms of typechecking, linting and tests using the project's verification command (look it up in the AGENTS.md file or the project configuration). Fix issues if any.
   - `evolution-api`: `bun test`, `bun run lint`, `bun run build`.
   - `evolution-card-game`: touched-area tests (`npx vitest run <paths>`), `npm run lint`, `npm run build`.
-- [ ] STOP. Present the changes to the user for review and suggest commit messages (or pull request titles, when the phases are implemented through pull requests). Do NOT proceed to the next phase until the user explicitly asks.
+- [x] STOP. Present the changes to the user for review and suggest commit messages (or pull request titles, when the phases are implemented through pull requests). Do NOT proceed to the next phase until the user explicitly asks.
 
 ## ⏭️ Next step
 
-Implement Phase 2: sign devices out, with the revoked JWT refused immediately.
+All phases are complete. Next: deploy both phases and plan cross-device duel reconnection.
 
-Devices on the map, the turtle on guard by [Codely](https://codely.com) 📱 🐢 💨
+Devices on the map, intruders shown the door by [Codely](https://codely.com) 🚪 📱 🐢 💨

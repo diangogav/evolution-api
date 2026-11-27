@@ -29,6 +29,7 @@ function buildApp() {
 	const repository = new MemoryRepository();
 	const router = createMeFormatsRouter({
 		requireUser: createRequireUser({
+			revokedSessions: { isRevoked: async () => false },
 			jwt: { decode: (token) => ({ id: token }) },
 			activeBans: { execute: async () => null },
 		}),

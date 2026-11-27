@@ -144,6 +144,7 @@ function buildApp({ configured = true, secureCookie = true, users = [] }: World 
 		attachRefreshToken: (session, input) => sessionTokens.attach(session, input),
 		// The bearer token is the user id, so a test signs in by naming the user.
 		requireUser: createRequireUser({
+			revokedSessions: { isRevoked: async () => false },
 			jwt: { decode: (token) => ({ id: token }) },
 			activeBans: { execute: async () => null },
 		}),

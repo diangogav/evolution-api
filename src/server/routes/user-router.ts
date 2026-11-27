@@ -68,7 +68,7 @@ import {
 } from "../../modules/user/infrastructure/UserBanSchemas";
 import { adminAuthorizer } from "../auth/AdminAuthorizer";
 import { requireUser } from "../auth/requireUser";
-import { refreshTokenRepository, sessionTokens } from "../composition/sessionTokens";
+import { revokeSessions, sessionTokens } from "../composition/sessionTokens";
 
 const logger = new Pino();
 const emailSender = new ResendEmailSender();
@@ -289,7 +289,7 @@ export const userRouter = new Elysia({ prefix: "/users" })
 				logger,
 				jwt,
 				userRepository,
-				refreshTokenRepository,
+				revokeSessions,
 			).resetPassword({
 				token,
 				newPassword: body.password,
@@ -478,7 +478,7 @@ export const userRouter = new Elysia({ prefix: "/users" })
 				userRepository,
 				emailSender,
 				logger,
-				refreshTokenRepository,
+				revokeSessions,
 			).run({ token: body.token, now: new Date() }),
 		{
 			detail: {
@@ -622,7 +622,7 @@ export const userRouter = new Elysia({ prefix: "/users" })
 						userRepository,
 						hash,
 						jwt,
-						refreshTokenRepository,
+						revokeSessions,
 					).upgrade({
 						...(body as { password: string }),
 						userId: id,
@@ -662,7 +662,7 @@ export const userRouter = new Elysia({ prefix: "/users" })
 						hash,
 						logger,
 						emailSender,
-						refreshTokenRepository,
+						revokeSessions,
 					).updatePassword({
 						...(body as { currentPassword: string; newPassword: string }),
 						id,

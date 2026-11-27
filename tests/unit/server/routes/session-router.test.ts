@@ -3,11 +3,13 @@ import { Elysia } from "elysia";
 
 import { EndSession } from "../../../../src/modules/auth/application/EndSession";
 import { RefreshSession } from "../../../../src/modules/auth/application/RefreshSession";
+import { RevokeSessions } from "../../../../src/modules/auth/application/RevokeSessions";
 import { SessionTokens } from "../../../../src/modules/auth/application/SessionTokens";
 import { createSessionRouter } from "../../../../src/server/routes/session-router";
 import { mapDomainErrorStatus } from "../../../../src/server/server";
 import { JWT } from "../../../../src/shared/JWT";
 import { InMemoryRefreshTokens } from "../../modules/auth/InMemoryRefreshTokens";
+import { InMemoryRevokedSessions } from "../../modules/auth/InMemoryRevokedSessions";
 import { UserMother } from "../../modules/users/mothers/UserMother";
 
 function buildApp({ banned = false } = {}) {
@@ -15,16 +17,18 @@ function buildApp({ banned = false } = {}) {
 	const jwt = new JWT({ issuer: "issuer", secret: "secret" });
 	const sessionTokens = new SessionTokens(tokens, jwt);
 	const user = UserMother.create({ id: "user-1", username: "duelist" });
+	const revokeSessions = new RevokeSessions(tokens, new InMemoryRevokedSessions());
 	const router = createSessionRouter({
 		refresh: new RefreshSession(
 			tokens,
+			revokeSessions,
 			sessionTokens,
 			{ findById: async (id) => (id === user.id ? user : null) },
 			{ execute: async () => (banned ? { userId: user.id } : null) },
 			jwt,
 			{ info: () => undefined, error: () => undefined } as never,
 		),
-		end: new EndSession(tokens),
+		end: new EndSession(tokens, revokeSessions),
 	});
 	const app = new Elysia().onError(mapDomainErrorStatus).use(router);
 	const post = (path: string, body: unknown) =>

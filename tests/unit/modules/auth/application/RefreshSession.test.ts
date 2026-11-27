@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "bun:test";
 
 import { EndSession } from "../../../../../src/modules/auth/application/EndSession";
 import { RefreshSession } from "../../../../../src/modules/auth/application/RefreshSession";
+import { RevokeSessions } from "../../../../../src/modules/auth/application/RevokeSessions";
 import {
 	hashRefreshToken,
 	SessionTokens,
@@ -12,6 +13,7 @@ import { ForbiddenError } from "../../../../../src/shared/errors/ForbiddenError"
 import { JWT } from "../../../../../src/shared/JWT";
 import { UserMother } from "../../users/mothers/UserMother";
 import { InMemoryRefreshTokens } from "../InMemoryRefreshTokens";
+import { InMemoryRevokedSessions } from "../InMemoryRevokedSessions";
 
 const DAY = 24 * 60 * 60 * 1000;
 const NOW = new Date("2026-11-13T12:00:00Z");
@@ -26,6 +28,7 @@ describe("refresh tokens", () => {
 	let users: Map<string, User>;
 	let refresh: RefreshSession;
 	let end: EndSession;
+	let revoked: InMemoryRevokedSessions;
 
 	beforeEach(() => {
 		tokens = new InMemoryRefreshTokens();
@@ -34,15 +37,18 @@ describe("refresh tokens", () => {
 		user = UserMother.create({ id: "user-1", username: "duelist" });
 		users = new Map([[user.id, user]]);
 		banned = new Set();
+		revoked = new InMemoryRevokedSessions();
+		const revokeSessions = new RevokeSessions(tokens, revoked);
 		refresh = new RefreshSession(
 			tokens,
+			revokeSessions,
 			sessionTokens,
 			{ findById: async (id) => users.get(id) ?? null },
 			{ execute: async (userId) => (banned.has(userId) ? { userId } : null) },
 			jwt,
 			{ info: () => undefined, error: () => undefined } as never,
 		);
-		end = new EndSession(tokens);
+		end = new EndSession(tokens, revokeSessions);
 	});
 
 	const signInInput = (mustUpgrade = false) => ({ userId: "user-1", mustUpgrade, now: NOW });
@@ -202,6 +208,26 @@ describe("refresh tokens", () => {
 			).rejects.toThrow(AuthenticationError);
 		});
 
+		it("refuses the JWTs of a sign-in revoked for reuse from the next request", async () => {
+			const stolen = await signIn();
+			await refresh.run({ refreshToken: stolen, now: later(DAY) });
+
+			await expect(refresh.run({ refreshToken: stolen, now: later(2 * DAY) })).rejects.toThrow();
+
+			expect(revoked.ids.has(tokens.rows[0].familyId)).toBe(true);
+		});
+
+		it("refuses the JWTs of a banned user's sign-in from the next request", async () => {
+			const token = await signIn();
+			banned.add("user-1");
+
+			await expect(refresh.run({ refreshToken: token, now: later(DAY) })).rejects.toThrow(
+				ForbiddenError,
+			);
+
+			expect(revoked.ids.has(tokens.rows[0].familyId)).toBe(true);
+		});
+
 		it("leaves other sign-ins of the same user alone when one is revoked for reuse", async () => {
 			const phone = await signIn();
 			const laptop = await signIn();
@@ -289,6 +315,14 @@ describe("refresh tokens", () => {
 			await expect(
 				refresh.run({ refreshToken: session.refreshToken, now: later(2 * DAY) }),
 			).rejects.toThrow(AuthenticationError);
+		});
+
+		it("refuses the JWTs of the ended sign-in from the next request", async () => {
+			const token = await signIn();
+
+			await end.run({ refreshToken: token, now: later(DAY) });
+
+			expect([...revoked.ids]).toEqual([tokens.rows[0].familyId]);
 		});
 
 		it("leaves other devices signed in", async () => {

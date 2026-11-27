@@ -4,6 +4,7 @@ import { JWT } from "../../../shared/JWT";
 import { Logger } from "../../../shared/logger/domain/Logger";
 import { UserRepository } from "../../user";
 import { REFRESH_REUSE_GRACE_SECONDS, RefreshTokenRepository } from "../domain/RefreshToken";
+import { RevokeSessions } from "./RevokeSessions";
 import { hashRefreshToken, SessionTokens } from "./SessionTokens";
 
 export type RefreshedSession = {
@@ -31,10 +32,8 @@ export type RefreshSessionInput = {
  */
 export class RefreshSession {
 	constructor(
-		private readonly tokens: Pick<
-			RefreshTokenRepository,
-			"consume" | "findByHash" | "revokeFamily"
-		>,
+		private readonly tokens: Pick<RefreshTokenRepository, "consume" | "findByHash">,
+		private readonly sessions: Pick<RevokeSessions, "revokeFamily">,
 		private readonly sessionTokens: Pick<SessionTokens, "issue">,
 		private readonly users: Pick<UserRepository, "findById">,
 		private readonly activeBans: { execute(userId: string): Promise<unknown | null> },
@@ -55,7 +54,7 @@ export class RefreshSession {
 			throw new AuthenticationError("Invalid or expired refresh token");
 		}
 		if (await this.activeBans.execute(user.id)) {
-			await this.tokens.revokeFamily(record.familyId, now);
+			await this.sessions.revokeFamily(record.familyId, now);
 			throw new ForbiddenError("User is banned");
 		}
 
@@ -86,6 +85,6 @@ export class RefreshSession {
 		if (secondsSinceUse <= REFRESH_REUSE_GRACE_SECONDS) return;
 
 		this.logger.error(`Refresh token reused for user ${seen.userId}; revoking the sign-in`);
-		await this.tokens.revokeFamily(seen.familyId, now);
+		await this.sessions.revokeFamily(seen.familyId, now);
 	}
 }

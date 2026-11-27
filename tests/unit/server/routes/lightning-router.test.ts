@@ -36,6 +36,7 @@ function buildApp() {
 			isAdmin: (token) => token === "admin-token",
 		},
 		requireUser: createRequireUser({
+			revokedSessions: { isRevoked: async () => false },
 			jwt: {
 				decode: (token) => {
 					if (token === "bad") throw new Error("invalid");
