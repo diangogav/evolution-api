@@ -8,7 +8,11 @@ import { UserBanPostgresRepository } from "../../modules/user/infrastructure/Use
 import { UserPostgresRepository } from "../../modules/user/infrastructure/UserPostgresRepository";
 import { Pino } from "../../shared/logger/infrastructure/Pino";
 import { apiJwt } from "../auth/apiJwt";
-import { refreshTokenRepository, sessionTokens } from "../composition/sessionTokens";
+import {
+	refreshTokenRepository,
+	revokeSessions,
+	sessionTokens,
+} from "../composition/sessionTokens";
 import { emptyOk, errorResponses, jsonOk } from "../openapi/responses";
 
 export interface SessionRouterDependencies {
@@ -54,7 +58,7 @@ export function createSessionRouter({ refresh, end }: SessionRouterDependencies)
 					tags: ["Authentication"],
 					summary: "Sign out",
 					description:
-						"Revokes the sign-in the refresh token belongs to, so it can no longer be renewed. Idempotent: an unknown token also answers 204. The JWT already issued stays valid until it expires.",
+						"Revokes the sign-in the refresh token belongs to, so it can no longer be renewed. A JWT of that sign-in that carries `sid` is refused from the next request; an older JWT without it stays valid until it expires. Idempotent: an unknown token also answers 204.",
 					responses: {
 						204: emptyOk("The sign-in can no longer be renewed"),
 						...errorResponses(422),
@@ -67,11 +71,12 @@ export function createSessionRouter({ refresh, end }: SessionRouterDependencies)
 export const sessionRouter = createSessionRouter({
 	refresh: new RefreshSession(
 		refreshTokenRepository,
+		revokeSessions,
 		sessionTokens,
 		new UserPostgresRepository(),
 		new UserGetActiveBan(new UserBanPostgresRepository()),
 		apiJwt,
 		new Pino(),
 	),
-	end: new EndSession(refreshTokenRepository),
+	end: new EndSession(refreshTokenRepository, revokeSessions),
 });

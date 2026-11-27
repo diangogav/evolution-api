@@ -33,10 +33,22 @@ export class InMemoryRefreshTokens implements RefreshTokenRepository {
 		}
 	}
 
-	async revokeAllForUser(userId: string, now: Date): Promise<void> {
+	async revokeAllForUser(userId: string, now: Date): Promise<string[]> {
+		return this.revokeWhere((row) => row.userId === userId, now);
+	}
+
+	async revokeAllForUserExcept(userId: string, keepFamilyId: string, now: Date): Promise<string[]> {
+		return this.revokeWhere((row) => row.userId === userId && row.familyId !== keepFamilyId, now);
+	}
+
+	private revokeWhere(matches: (row: Row) => boolean, now: Date): string[] {
+		const families = new Set<string>();
 		for (const row of this.rows) {
-			if (row.userId === userId && !row.revokedAt) row.revokedAt = now;
+			if (!matches(row) || row.revokedAt) continue;
+			row.revokedAt = now;
+			families.add(row.familyId);
 		}
+		return [...families];
 	}
 
 	async listActiveForUser(userId: string, now: Date): Promise<ActiveSession[]> {

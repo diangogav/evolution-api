@@ -115,6 +115,7 @@ function buildApp() {
 			isAdmin: (token) => token === "admin-token",
 		},
 		requireUser: createRequireUser({
+			revokedSessions: { isRevoked: async () => false },
 			jwt: { decode: (token) => ({ id: token }) },
 			activeBans: { execute: async (userId) => (userId === "banned" ? { userId } : null) },
 		}),

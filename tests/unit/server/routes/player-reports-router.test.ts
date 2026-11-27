@@ -48,6 +48,7 @@ function fixture() {
 	const reviews: ReviewReportInput[] = [];
 	let lists = 0;
 	const requireUser = createRequireUser({
+		revokedSessions: { isRevoked: async () => false },
 		jwt: {
 			decode: (token) => {
 				if (token === "user") return { id: "signed-user" };

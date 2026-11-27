@@ -14,6 +14,7 @@ function appWith() {
 	const banChecks: string[] = [];
 	const handled: string[] = [];
 	const requireUser = createRequireUser({
+		revokedSessions: { isRevoked: async () => false },
 		jwt: {
 			decode: (token) => {
 				decoded.push(token);
@@ -131,18 +132,44 @@ describe("requireUser", () => {
 	});
 
 	it("hands the token's sign-in id to the handler as sid, and null for a token without one", async () => {
-		const app = new Elysia()
-			.onError(mapDomainErrorStatus)
-			.guard({}, (guarded) =>
-				guarded
-					.use(createRequireUser({ jwt, activeBans: { execute: async () => null } }))
-					.get("/sid", ({ sid }) => ({ sid })),
-			);
+		const app = new Elysia().onError(mapDomainErrorStatus).guard({}, (guarded) =>
+			guarded
+				.use(
+					createRequireUser({
+						jwt,
+						activeBans: { execute: async () => null },
+						revokedSessions: { isRevoked: async () => false },
+					}),
+				)
+				.get("/sid", ({ sid }) => ({ sid })),
+		);
 
 		const withSid = await get(app, "/sid", jwt.generate({ id: "user-1", sid: "family-1" }));
 		const withoutSid = await get(app, "/sid", jwt.generate({ id: "user-1" }));
 
 		expect(await withSid.json()).toEqual({ sid: "family-1" });
 		expect(await withoutSid.json()).toEqual({ sid: null });
+	});
+
+	it("answers 401 for a token whose sign-in was revoked, and lets other sign-ins through", async () => {
+		const app = new Elysia().onError(mapDomainErrorStatus).guard({}, (guarded) =>
+			guarded
+				.use(
+					createRequireUser({
+						jwt,
+						activeBans: { execute: async () => null },
+						revokedSessions: { isRevoked: async (sid) => sid === "family-revoked" },
+					}),
+				)
+				.get("/sid", ({ sid }) => ({ sid })),
+		);
+
+		const revoked = await get(app, "/sid", jwt.generate({ id: "user-1", sid: "family-revoked" }));
+		const live = await get(app, "/sid", jwt.generate({ id: "user-1", sid: "family-live" }));
+		const legacy = await get(app, "/sid", jwt.generate({ id: "user-1" }));
+
+		expect(revoked.status).toBe(401);
+		expect(live.status).toBe(200);
+		expect(legacy.status).toBe(200);
 	});
 });

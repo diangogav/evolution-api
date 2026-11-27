@@ -37,6 +37,7 @@ function buildApp(publicKey: string | null = "BPUBLIC") {
 	const repository = new MemoryRepository();
 	const router = createPushRouter({
 		requireUser: createRequireUser({
+			revokedSessions: { isRevoked: async () => false },
 			jwt: { decode: (token) => ({ id: token }) },
 			activeBans: { execute: async (userId) => (userId === "banned" ? { userId } : null) },
 		}),

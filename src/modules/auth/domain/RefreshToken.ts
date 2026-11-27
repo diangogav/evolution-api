@@ -59,8 +59,11 @@ export interface RefreshTokenRepository {
 	/** Ends one sign-in: every token descended from it stops working. */
 	revokeFamily(familyId: string, now: Date): Promise<void>;
 
-	/** Ends every sign-in of the user, on every device. */
-	revokeAllForUser(userId: string, now: Date): Promise<void>;
+	/** Ends every sign-in of the user, on every device, and returns the ids it ended. */
+	revokeAllForUser(userId: string, now: Date): Promise<string[]>;
+
+	/** Ends every sign-in of the user except `keepFamilyId`, and returns the ids it ended. */
+	revokeAllForUserExcept(userId: string, keepFamilyId: string, now: Date): Promise<string[]>;
 
 	/** The user's sign-ins whose newest token is neither revoked nor expired. */
 	listActiveForUser(userId: string, now: Date): Promise<ActiveSession[]>;

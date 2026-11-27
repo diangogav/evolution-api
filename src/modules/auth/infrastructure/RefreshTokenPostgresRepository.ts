@@ -23,7 +23,12 @@ const REVOKE_FAMILY = `UPDATE "refresh_tokens" SET "revoked_at" = $2
 WHERE "family_id" = $1 AND "revoked_at" IS NULL`;
 
 const REVOKE_ALL_FOR_USER = `UPDATE "refresh_tokens" SET "revoked_at" = $2
-WHERE "user_id" = $1 AND "revoked_at" IS NULL`;
+WHERE "user_id" = $1 AND "revoked_at" IS NULL
+RETURNING "family_id"`;
+
+const REVOKE_ALL_FOR_USER_EXCEPT = `UPDATE "refresh_tokens" SET "revoked_at" = $2
+WHERE "user_id" = $1 AND "family_id" <> $3 AND "revoked_at" IS NULL
+RETURNING "family_id"`;
 
 // The newest token of a live sign-in is the unused one renewal handed out last.
 const LIST_ACTIVE_FOR_USER = `SELECT DISTINCT ON ("family_id") "family_id", "user_agent", "signed_in_at", "created_at"
@@ -43,6 +48,15 @@ type Row = {
 	user_agent: string | null;
 	signed_in_at: Date;
 };
+
+type FamilyRow = { family_id: string };
+
+// The pg driver answers an UPDATE ... RETURNING through TypeORM as [rows, count]; one id
+// per sign-in, since a sign-in can have several tokens that were not revoked yet.
+function familyIdsOf(result: (FamilyRow | FamilyRow[])[]): string[] {
+	const rows = (Array.isArray(result[0]) ? result[0] : result) as FamilyRow[];
+	return [...new Set(rows.map((row) => row.family_id))];
+}
 
 type ActiveRow = {
 	family_id: string;
@@ -97,8 +111,18 @@ export class RefreshTokenPostgresRepository implements RefreshTokenRepository {
 		await runQuery(REVOKE_FAMILY, [familyId, now]);
 	}
 
-	async revokeAllForUser(userId: string, now: Date): Promise<void> {
-		await runQuery(REVOKE_ALL_FOR_USER, [userId, now]);
+	async revokeAllForUser(userId: string, now: Date): Promise<string[]> {
+		return familyIdsOf(await runQuery<FamilyRow | FamilyRow[]>(REVOKE_ALL_FOR_USER, [userId, now]));
+	}
+
+	async revokeAllForUserExcept(userId: string, keepFamilyId: string, now: Date): Promise<string[]> {
+		return familyIdsOf(
+			await runQuery<FamilyRow | FamilyRow[]>(REVOKE_ALL_FOR_USER_EXCEPT, [
+				userId,
+				now,
+				keepFamilyId,
+			]),
+		);
 	}
 
 	async listActiveForUser(userId: string, now: Date): Promise<ActiveSession[]> {

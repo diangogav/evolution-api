@@ -170,6 +170,8 @@ A sign-in answers with a JWT (its lifetime is `JWT_EXPIRES_IN`) and a refresh to
 | `POST /auth/refresh` | `{ refreshToken }`. Answers a new session: JWT plus a new refresh token. `401` for an unknown, expired, used or revoked token; `403` for a banned user. |
 | `POST /auth/logout` | `{ refreshToken }`. Revokes that sign-in. Always `204`. |
 | `GET /me/sessions` | The caller's sign-ins that can still be renewed, one per device: browser and OS read from the stored User-Agent, sign-in time, last renewal, and `current` for the calling device. |
+| `DELETE /me/sessions/:id` | Ends one sign-in of the caller, the calling one included. `404` when the id is not a live sign-in of the caller. |
+| `DELETE /me/sessions` | Ends every sign-in of the caller except the calling one; every sign-in when the calling JWT has no `sid`. |
 
 - **Additive.** Clients that ignore `refreshToken` behave as before: they sign in again when the JWT expires.
 - **Storage.** Table `refresh_tokens` (API-owned, `src/migrations/`). Only the SHA-256 of a token is stored.
@@ -179,6 +181,7 @@ A sign-in answers with a JWT (its lifetime is `JWT_EXPIRES_IN`) and a refresh to
 - **`mustUpgrade`** is stored with the family and carried across renewals.
 - **Devices.** Each token stores the User-Agent of the request that issued it (bounded to 512 characters) and `signed_in_at`, the family's sign-in time copied to every successor, since expired rows are deleted. A session JWT carries `sid`, its family id: `SessionTokens.attach` signs the JWT again with it, and `RefreshSession` adds it on renewal. `requireUser` hands it to handlers as `sid`, null for a JWT issued before sessions carried it.
 - **Where tokens are issued:** every route that answers a session, through `SessionTokens.attach` (`src/server/composition/sessionTokens.ts`): `POST /users/login`, `POST /users/register`, `POST /users/upgrade-password`, `POST /users/reset-account-password`, `POST /auth/discord/session` and `POST /auth/discord/register`.
+- **Revocation cuts the JWT too.** Every revocation goes through `RevokeSessions` (`src/server/composition/sessionTokens.ts`): it revokes the refresh tokens and stores each ended family in Redis as `session:revoked:<familyId>` for one JWT lifetime (`JWT_EXPIRES_IN`). `requireUser` answers `401` (`Session revoked`) to a JWT whose `sid` is there. A JWT without `sid` cannot be refused and stays valid until it expires. The JWT keeps its full lifetime because clients that never renew (MDPro) depend on it.
 - **When every sign-in of a user ends:** changing the account password, resetting it, setting it for the first time, and confirming a change of email. Those use cases take a `SessionRevoker` and call it only after the change succeeded. The routes that answer a session then issue a fresh token for the caller; `POST /users/change-account-password` answers no body, so that device signs in again once its JWT expires.
 - **The JWT is not revoked.** It stays valid until it expires; revoking stops it from being renewed.
 
